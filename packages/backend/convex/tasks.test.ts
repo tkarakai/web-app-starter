@@ -22,6 +22,7 @@ describe("tasks", () => {
         return ctx.db.insert("projects", {
           name: "Test Project",
           description: "For tasks",
+          organizationId: "test-organization",
           ownerId: mockUser._id,
           createdAt: Date.now(),
         });
@@ -55,6 +56,7 @@ describe("tasks", () => {
         return ctx.db.insert("projects", {
           name: "Test Project",
           description: "For tasks",
+          organizationId: "test-organization",
           ownerId: mockUser._id,
           createdAt: Date.now(),
         });
@@ -84,6 +86,7 @@ describe("tasks", () => {
         return ctx.db.insert("projects", {
           name: "Project 1",
           description: "",
+          organizationId: "test-organization",
           ownerId: mockUser._id,
           createdAt: Date.now(),
         });
@@ -93,6 +96,7 @@ describe("tasks", () => {
         return ctx.db.insert("projects", {
           name: "Project 2",
           description: "",
+          organizationId: "test-organization",
           ownerId: mockUser._id,
           createdAt: Date.now(),
         });
@@ -136,6 +140,7 @@ describe("tasks", () => {
         return ctx.db.insert("projects", {
           name: "Test Project",
           description: "",
+          organizationId: "test-organization",
           ownerId: mockUser._id,
           createdAt: Date.now(),
         });
@@ -190,6 +195,7 @@ describe("tasks", () => {
         return ctx.db.insert("projects", {
           name: "Alice's Project",
           description: "Owned by Alice",
+          organizationId: "test-organization",
           ownerId: "alice-id",
           createdAt: Date.now(),
         });
@@ -221,6 +227,7 @@ describe("tasks", () => {
         return ctx.db.insert("projects", {
           name: "Alice's Project",
           description: "",
+          organizationId: "test-organization",
           ownerId: "alice-id",
           createdAt: Date.now(),
         });
@@ -261,6 +268,7 @@ describe("tasks", () => {
         return ctx.db.insert("projects", {
           name: "Alice's Project",
           description: "",
+          organizationId: "test-organization",
           ownerId: "alice-id",
           createdAt: Date.now(),
         });
@@ -296,6 +304,7 @@ describe("tasks", () => {
         return ctx.db.insert("projects", {
           name: "Alice's Project",
           description: "",
+          organizationId: "test-organization",
           ownerId: "alice-id",
           createdAt: Date.now(),
         });
@@ -339,6 +348,7 @@ describe("tasks", () => {
         return ctx.db.insert("projects", {
           name: "Test Project",
           description: "",
+          organizationId: "test-organization",
           ownerId: mockUser._id,
           createdAt: Date.now(),
         });
@@ -371,6 +381,7 @@ describe("tasks", () => {
         return ctx.db.insert("projects", {
           name: "Test Project",
           description: "",
+          organizationId: "test-organization",
           ownerId: mockUser._id,
           createdAt: Date.now(),
         });
@@ -401,6 +412,7 @@ describe("tasks", () => {
         return ctx.db.insert("projects", {
           name: "Test Project",
           description: "",
+          organizationId: "test-organization",
           ownerId: mockUser._id,
           createdAt: Date.now(),
         });
@@ -436,6 +448,7 @@ describe("tasks", () => {
         return ctx.db.insert("projects", {
           name: "Test Project",
           description: "",
+          organizationId: "test-organization",
           ownerId: mockUser._id,
           createdAt: Date.now(),
         });
@@ -475,6 +488,7 @@ describe("tasks", () => {
         return ctx.db.insert("projects", {
           name: "Test Project",
           description: "",
+          organizationId: "test-organization",
           ownerId: mockUser._id,
           createdAt: Date.now(),
         });

@@ -16,6 +16,7 @@ describe("files", () => {
         return ctx.db.insert("projects", {
           name: "Test Project",
           description: "For uploads",
+          organizationId: "test-organization",
           ownerId: "alice-id",
           createdAt: Date.now(),
         });
@@ -55,6 +56,7 @@ describe("files", () => {
         return ctx.db.insert("projects", {
           name: "Project 1",
           description: "",
+          organizationId: "test-organization",
           ownerId: "alice-id",
           createdAt: Date.now(),
         });
@@ -64,6 +66,7 @@ describe("files", () => {
         return ctx.db.insert("projects", {
           name: "Project 2",
           description: "",
+          organizationId: "test-organization",
           ownerId: "alice-id",
           createdAt: Date.now(),
         });
@@ -111,6 +114,7 @@ describe("files", () => {
         return ctx.db.insert("projects", {
           name: "Shared Project",
           description: "",
+          organizationId: "test-organization",
           ownerId: "alice-id",
           createdAt: Date.now(),
         });
@@ -160,6 +164,7 @@ describe("files", () => {
         return ctx.db.insert("projects", {
           name: "Alice's Project",
           description: "Private",
+          organizationId: "test-organization",
           ownerId: "alice-id",
           createdAt: Date.now(),
         });
@@ -192,6 +197,7 @@ describe("files", () => {
         return ctx.db.insert("projects", {
           name: "Alice's Project",
           description: "",
+          organizationId: "test-organization",
           ownerId: "alice-id",
           createdAt: Date.now(),
         });
@@ -234,6 +240,7 @@ describe("files", () => {
         return ctx.db.insert("projects", {
           name: "Alice's Project",
           description: "Private",
+          organizationId: "test-organization",
           ownerId: "alice-id",
           createdAt: Date.now(),
         });
@@ -262,6 +269,7 @@ describe("files", () => {
         return ctx.db.insert("projects", {
           name: "Alice's Project",
           description: "",
+          organizationId: "test-organization",
           ownerId: "alice-id",
           createdAt: Date.now(),
         });
@@ -309,6 +317,7 @@ describe("files", () => {
         return ctx.db.insert("projects", {
           name: "Test Project",
           description: "",
+          organizationId: "test-organization",
           ownerId: "alice-id",
           createdAt: Date.now(),
         });

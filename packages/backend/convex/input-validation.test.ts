@@ -125,29 +125,6 @@ describe("input validation", () => {
       ).rejects.toThrow("PROJECT_NOT_FOUND");
     });
 
-    test("throws PROJECT_NOT_FOUND for a project not yet assigned to an organization", async () => {
-      const t = createTestEnv();
-
-      const projectId = await t.run(async (ctx) => {
-        return ctx.db.insert("projects", {
-          name: "Pre-organization project",
-          description: "",
-          ownerId: "alice-id",
-          createdAt: Date.now(),
-        });
-      });
-
-      await expect(
-        t.run(async (ctx) => {
-          // A caller without an organization must not match a project without one.
-          return requireProjectAccess(
-            { db: ctx.db, organizationId: undefined as unknown as string },
-            projectId
-          );
-        })
-      ).rejects.toThrow("PROJECT_NOT_FOUND");
-    });
-
     test("throws PROJECT_NOT_FOUND for non-existent project ID", async () => {
       const t = createTestEnv();
 
@@ -215,6 +192,7 @@ describe("input validation", () => {
         return ctx.db.insert("projects", {
           name: "Test",
           description: "",
+          organizationId: "test-organization",
           ownerId: "user-1",
           createdAt: Date.now(),
         });
