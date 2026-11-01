@@ -124,6 +124,21 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- **Ban, unban and role changes keep organizations owned, on every path.** The owner check for
+  `/admin/ban-user` ran before, not with, the write, so a demotion committing in between could
+  leave members without an owner who can act. A Better Auth `user` trigger now checks every change
+  to a user's ban or platform role in its own transaction. Unbanning a member of an organization
+  whose owners are all banned, and making an organization's only active owner a platform
+  administrator, now need a successor too (`409 OWNER_SUCCESSOR_REQUIRED`); `users_unban` and
+  `users_setRole` take `successors`.
+- The admin app's ban dialog made the chosen successors owners in separate steps before banning,
+  so a refused ban left them owners. It now uses `agentUsers.ban`, which applies successors and
+  the ban together, and refuses a successor for an organization that doesn't need one or two for
+  the same one (`INVALID_SUCCESSOR`).
+- **Platform administrators no longer get organization context.** They could still read and write
+  app data through `orgQuery`/`orgMutation` with a membership kept from before their promotion,
+  while organization management refused them. Org builders now refuse them, an administrator
+  can't be made an owner, and owners who are administrators don't count as able to act.
 - **Organization context fails closed.** An invitation accepted while its organization was
   being deleted could still add the member, who could then read its data awaiting cleanup and
   create new data under the deleted ID. Joining is now checked in the member write's own

@@ -25,7 +25,7 @@ vi.mock("convex/react", () => ({
   useQuery: () => ["protected@example.test"],
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
-vi.mock("@/lib/admin-api", () => ({ banUser: vi.fn(), unbanUser: vi.fn(), removeUser: vi.fn(), setUserRole: vi.fn() }));
+vi.mock("@/lib/admin-api", () => ({ unbanUser: vi.fn(), removeUser: vi.fn(), setUserRole: vi.fn() }));
 vi.mock("@/components/auth/auth-guard", () => ({ useAuthUser: () => ({ id: "u-self" }) }));
 vi.mock("@/hooks/use-users", () => ({
   useUsers: (params: Params) => {
