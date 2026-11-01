@@ -89,6 +89,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
+- **Apps that still rely on the legacy `waitlistEnabled: false` setting** (no onboarding type
+  ever saved) now default to invite-only instead of public sign-up. If you want public sign-up,
+  choose it under **Configure → Features** in the admin app.
 - **Apps retaining the sample projects with existing data:** before deploying the required
   `projects.organizationId`, deploy the intermediate optional-field schema and run
   `bunx convex run migrations` from `packages/backend` against each target deployment.
@@ -124,6 +127,21 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- **Defaults that failed open now fail closed:**
+  - Organization lookups by ID no longer turn every adapter error into "not found". They also no
+    longer return another table's row: `db.get` accepts any table's ID.
+  - The password-strength check gives an account whose email can't be resolved (password change
+    or reset) the administrator minimum, and matches administrator addresses case-insensitively.
+  - The waitlist rate limit no longer trusts `X-Forwarded-For` / `X-Real-IP`, which a client can
+    set to get a fresh budget. Every join counts against a new global budget
+    (`WAITLIST_GLOBAL_RATE_PER_MINUTE`, `WAITLIST_GLOBAL_BURST`); the per-client budget applies
+    only with a verified `AUTH_TRUSTED_IP_HEADER`.
+  - `isEmailVerificationRequired` reads policy exactly as enforcement does: any stored value
+    other than `false` counts as required.
+  - An invalid stored passkey policy now reads as `required` everywhere, as enforcement already
+    treated it.
+  - A leftover legacy `waitlistEnabled: false` setting no longer turns on public sign-up (see
+    Action required).
 - **Ban, unban and role changes keep organizations owned, on every path.** The owner check for
   `/admin/ban-user` ran before, not with, the write, so a demotion committing in between could
   leave members without an owner who can act. A Better Auth `user` trigger now checks every change

@@ -76,7 +76,10 @@ Set these on the Convex deployment, from `packages/backend/`, using `bunx convex
 | `AUTH_EMAIL_RATE_PER_MINUTE` | `60` | Deployment email reservation capacity replenished per minute |
 | `AUTH_EMAIL_BURST` | `20` | Deployment short-term email capacity |
 | `AUTH_EMAIL_RATE_PER_DAY` | `1000` | Long-term reservation capacity and refill per 24 hours |
-| `AUTH_TRUSTED_IP_HEADER` | Unset | Optional verified ingress-overwritten single-IP header |
+| `AUTH_TRUSTED_IP_HEADER` | Unset | Optional verified ingress-overwritten single-IP header (also selects the waitlist per-IP budget) |
+| `WAITLIST_GLOBAL_RATE_PER_MINUTE` | `60` | Waitlist joins per minute across all clients |
+| `WAITLIST_GLOBAL_BURST` | `30` | Waitlist short-term capacity across all clients |
+| `WAITLIST_RATE_LIMIT_RATE`, `_PERIOD`, `_CAPACITY` | `5`, 1 min, `3` | Waitlist joins per client, only with `AUTH_TRUSTED_IP_HEADER` |
 
 Size email budgets for expected enrollment/reset volume and the provider's quota. Defaults
 are active without configuration. The old `AUTH_RATE_LIMIT_*` variables do not configure
@@ -88,6 +91,8 @@ A client-supplied `X-Forwarded-For` or `X-Real-IP` is not proof of origin. Comma
 chains and malformed addresses are ignored. No hosting-specific overwrite guarantee is assumed;
 verify it using real requests before enabling the additional IP budget. Recipient and deployment
 budgets apply regardless of headers, so rotating a forged header cannot evade those limits.
+The public waitlist follows the same rule: every join counts against its global budget, and
+against a per-client one only when `AUTH_TRUSTED_IP_HEADER` identifies the client.
 Better Auth's session IP metadata is separate and is not used to choose these buckets.
 
 ### Exhaustion, failures and monitoring

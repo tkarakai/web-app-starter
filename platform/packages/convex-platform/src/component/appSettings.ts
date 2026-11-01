@@ -242,12 +242,13 @@ async function getSettingValueWithFallback(
   }
 
   if (key === "onboardingType") {
+    // The pre-onboarding-type setting: `true` still means a public waitlist. Anything else falls
+    // back to the default (invite only) rather than opening public sign-up on a leftover row;
+    // an app that wants public sign-up sets the onboarding type explicitly.
     const legacyWaitlist = await getSettingRecord(ctx, "waitlistEnabled");
     if (legacyWaitlist) {
       try {
-        return JSON.parse(legacyWaitlist.value) === true
-          ? "publicWaitlist"
-          : "publicSignup";
+        return JSON.parse(legacyWaitlist.value) === true ? "publicWaitlist" : getDefault(key);
       } catch {
         return getDefault(key);
       }
