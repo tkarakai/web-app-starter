@@ -72,8 +72,9 @@ describe("banning an organization's only owner who can act", () => {
     const ban = api.platform.agentUsers.ban;
     await expect(f.boss.caller.mutation(ban, { userId: f.alice.userId, reason: "abuse" })).rejects.toThrow("OWNER_SUCCESSOR_REQUIRED");
     await f.ban(f.carol.userId);
+    // A banned member isn't a candidate.
     await expect(f.boss.caller.mutation(ban, { userId: f.alice.userId, successors: [{ organizationId: f.acme, userId: f.carol.userId }] }))
-      .rejects.toThrow("MEMBER_BANNED");
+      .rejects.toThrow("INVALID_SUCCESSOR");
     expect(await f.roles()).toMatchObject({ [f.alice.userId]: "owner", [f.bob.userId]: "admin" });
     expect(await f.banned(f.alice.userId)).toBe(false);
 
