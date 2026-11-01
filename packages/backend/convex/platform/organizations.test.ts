@@ -1,7 +1,7 @@
 // Organizations: membership resolution, the settings view, invitations, sign-up admission,
-// last-organization memory, ownership succession and the route allowlist, against the real
+// last-organization memory, ownership succession, account deletion and the route allowlist, against the real
 // Better Auth component tables. Project scoping is tested in ../organization-projects.test.ts.
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { api, components, internal } from "../_generated/api";
 import { authRoutePolicy } from "./authAssurance";
@@ -222,10 +222,85 @@ describe("organizations", () => {
     const acme = await alice.provision();
     await f.addMember(acme, bob.userId, "member");
     await f.addMember(acme, carol.userId, "admin");
+    await f.invite(acme, "dave@example.test", alice.userId);
 
-    await f.t.mutation(internal.platform.organizations.removeUserMemberships, { userId: alice.userId });
+    await f.t.mutation(internal.platform.organizations.removeUserMemberships, { userId: alice.userId, email: "alice@example.test" });
     const remaining = await f.members(acme);
     expect(remaining.map((m) => [m.userId, m.role]).sort()).toEqual([[bob.userId, "member"], [carol.userId, "owner"]].sort());
+    expect(await f.organization(acme)).not.toBeNull();
+    expect(await f.invitations(acme)).toHaveLength(1);
+  });
+
+  describe("an organization its last member's account deletion leaves empty", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    const auditEvents = async (f: Awaited<ReturnType<typeof fixture>>) => (await f.t.query(components.platform.auditTrail.list, {
+      paginationOpts: { numItems: 100, cursor: null },
+    })).page.filter((row) => row.action === "organization.deleted");
+
+    test("is deleted with all its invitations when Better Auth deletes the account", async () => {
+      const f = await fixture();
+      const alice = await f.user("alice");
+      const bob = await f.user("bob");
+      const acme = await alice.provision();
+      const bobsOwn = await bob.provision();
+      await f.addMember(bobsOwn, alice.userId, "member");
+      await alice.switchTo(acme);
+      // More invitation history than one batch deletes.
+      for (let i = 0; i < 201; i++) await f.invite(acme, `guest${i}@example.test`, alice.userId, i % 2 ? "canceled" : "rejected");
+      await f.invite(acme, "carol@example.test", alice.userId);
+      await f.invite(bobsOwn, "carol@example.test", bob.userId);
+
+      await f.t.mutation(internal.platform.organizations.removeUserMemberships, { userId: alice.userId, email: "alice@example.test" });
+      expect(await f.organization(acme)).toBeNull();
+      await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await f.invitations(acme)).toEqual([]);
+      // Bob's organization, where Alice was a member, stays with its owner and invitation.
+      expect(await f.organization(bobsOwn)).not.toBeNull();
+      expect((await f.members(bobsOwn)).map((m) => m.userId)).toEqual([bob.userId]);
+      expect(await f.invitations(bobsOwn)).toHaveLength(1);
+      expect(await auditEvents(f)).toMatchObject([{
+        actor: "alice@example.test", authenticatedUserId: alice.userId, source: "server:account-deletion",
+        resource: `organization:${acme}`, reason: "last_member_deleted",
+      }]);
+    });
+
+    test("is deleted when an administrator agent deletes the account", async () => {
+      const f = await fixture();
+      const admin = await f.user("admin", { role: "admin" });
+      const alice = await f.user("alice");
+      const acme = await alice.provision();
+      await f.invite(acme, "carol@example.test", alice.userId);
+
+      await admin.caller.mutation(api.platform.agentUsers.remove, { userId: alice.userId });
+      await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await f.organization(acme)).toBeNull();
+      expect(await f.invitations(acme)).toEqual([]);
+      expect(await f.t.query(internal.platform.organizations.hasPendingInvitation, { email: "carol@example.test" })).toBe(false);
+      expect(await auditEvents(f)).toMatchObject([{
+        actor: "admin@example.test", authenticatedUserId: admin.userId, resource: `organization:${acme}`, reason: "last_member_deleted",
+      }]);
+    });
+
+    test("is deleted whatever the last member's role, once ownership has passed on", async () => {
+      const f = await fixture();
+      const alice = await f.user("alice");
+      const bob = await f.user("bob");
+      const acme = await alice.provision();
+      await f.addMember(acme, bob.userId, "member");
+
+      await f.t.mutation(internal.platform.organizations.removeUserMemberships, { userId: alice.userId, email: "alice@example.test" });
+      expect((await f.members(acme)).map((m) => [m.userId, m.role])).toEqual([[bob.userId, "owner"]]);
+      // A member left alone without the owner role (e.g. by an earlier removal) is cleaned up too.
+      await f.t.mutation(components.betterAuth.adapter.updateOne, {
+        input: { model: "member", where: [{ field: "organizationId", value: acme }], update: { role: "member" } },
+      });
+      await f.t.mutation(internal.platform.organizations.removeUserMemberships, { userId: bob.userId, email: "bob@example.test" });
+      await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await f.organization(acme)).toBeNull();
+      expect(await f.members(acme)).toEqual([]);
+    });
   });
 
   test("only the organization routes the UI uses pass the session-assurance plugin", () => {

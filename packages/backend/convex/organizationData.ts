@@ -4,7 +4,8 @@ const BATCH = 100;
 
 /**
  * Removes a deleted organization's data. The platform calls this after an owner deletes an
- * organization, again and again until it returns `true`; by then nobody can reach the rows,
+ * organization, or deleting its last member's account leaves it empty, again and again until
+ * it returns `true`; by then nobody can reach the rows,
  * so this only frees storage. Delete a bounded batch per call and cover every table that
  * belongs to an organization (platform/docs/organizations.md#deleting-an-organization).
  */
