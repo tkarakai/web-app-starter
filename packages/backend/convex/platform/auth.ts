@@ -1,4 +1,5 @@
-import { createClient, type GenericCtx } from "@convex-dev/better-auth";
+import { createClient, type AuthFunctions, type GenericCtx } from "@convex-dev/better-auth";
+import { makeFunctionReference } from "convex/server";
 import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
@@ -29,6 +30,7 @@ import { createAssuranceHooks } from "./authAssurance";
 import { sessionFields, userFields } from "./sessionFields";
 import { identitySession } from "./sessionPolicy";
 import { organizationPlugin } from "./organizationPlugin";
+import { memberTriggers } from "./organizationOwnership";
 
 /** Truncate a string to at most `max` characters. */
 function truncate(value: string | undefined, max: number): string | undefined {
@@ -239,6 +241,14 @@ export const authComponent = createClient<DataModel, typeof authSchema>(
     local: {
       schema: authSchema,
     },
+    // Membership writes keep every organization owned (organizationOwnership.ts).
+    // By name: `internal.platform.authTriggers` would make this initializer's type circular.
+    authFunctions: {
+      onCreate: makeFunctionReference<"mutation">("platform/authTriggers:onCreate"),
+      onUpdate: makeFunctionReference<"mutation">("platform/authTriggers:onUpdate"),
+      onDelete: makeFunctionReference<"mutation">("platform/authTriggers:onDelete"),
+    } as unknown as AuthFunctions,
+    triggers: { member: memberTriggers },
   },
 );
 

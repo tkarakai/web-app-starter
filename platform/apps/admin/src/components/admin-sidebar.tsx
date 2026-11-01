@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   UserCog,
+  Building2,
   Users,
 } from "lucide-react";
 
@@ -59,6 +60,7 @@ const manageItems = [
     ? [{ label: "Announcements", href: "/manage/announcements", icon: Megaphone }]
     : []),
   { label: "Onboarding", href: "/manage/onboarding", icon: ListChecks },
+  { label: "Organizations", href: "/manage/organizations", icon: Building2 },
   { label: "Users", href: "/manage/users", icon: Users },
 ];
 

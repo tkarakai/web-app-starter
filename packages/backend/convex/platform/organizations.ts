@@ -100,7 +100,7 @@ export type InvitationStatus = "pending" | "expired" | "declined";
  * pending, and recently declined ones, so the inviter sees what became of each. One row per
  * address (the latest), leaving out anyone who has since joined.
  */
-async function organizationInvitations(ctx: Pick<QueryCtx, "runQuery">, organizationId: string, memberEmails: Set<string>) {
+export async function organizationInvitations(ctx: Pick<QueryCtx, "runQuery">, organizationId: string, memberEmails: Set<string>) {
   const byStatus = async (status: string) => (await ctx.runQuery(components.betterAuth.adapter.findMany, {
     model: "invitation",
     where: [{ field: "organizationId", value: organizationId }, { field: "status", value: status }],

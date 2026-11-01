@@ -1,5 +1,7 @@
 "use client";
 
+import type * as React from "react";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +22,8 @@ type ConfirmationDialogProps = {
   destructive?: boolean;
   pending?: boolean;
   onConfirm: () => void;
+  /** Extra detail shown between the description and the buttons. */
+  children?: React.ReactNode;
 };
 
 export function ConfirmationDialog({
@@ -31,6 +35,7 @@ export function ConfirmationDialog({
   destructive = false,
   pending = false,
   onConfirm,
+  children,
 }: ConfirmationDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -39,6 +44,7 @@ export function ConfirmationDialog({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
+        {children}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
           <AlertDialogAction

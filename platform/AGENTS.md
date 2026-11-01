@@ -171,7 +171,10 @@ Accounts can have zero memberships: keep account controls and invitations availa
 org workspaces, hide organization workspace controls and show `NoOrganization`; user-owned
 pages can still render their data. `orgMutation` refuses `NO_ORGANIZATION`; it never
 creates a replacement. The UI is `OrganizationSwitcher`, `OrganizationSection`, `OrganizationInvitations`
-and `AcceptInvitationView` from `@web-app-starter/auth-ui`. See [docs/organizations.md](docs/organizations.md).
+and `AcceptInvitationView` from `@web-app-starter/auth-ui`. An organization with members always
+has an owner: the backend refuses any membership write that would break this. Platform
+administrators manage organizations in the admin app and through `organizations_*` agent
+capabilities. See [docs/organizations.md](docs/organizations.md).
 
 Open Settings and Organization through `useAccountNavigation()` and mount
 `AccountPageCloseButton` in their headers. Close returns to the original app location, including

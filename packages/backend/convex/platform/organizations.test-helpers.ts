@@ -9,12 +9,12 @@ import type schema from "../schema";
  * caller registers it: this file stays free of the test-only module glob).
  */
 export async function organizationFixture(t: TestConvex<typeof schema>) {
-  async function user(name: string, extra: { emailVerified?: boolean; userId?: string } = {}) {
+  async function user(name: string, extra: { emailVerified?: boolean; userId?: string; role?: "admin" } = {}) {
     const now = Date.now();
     const account = await t.mutation(components.betterAuth.adapter.create, {
       input: { model: "user", data: {
         name, email: `${name}@example.test`, emailVerified: extra.emailVerified ?? true,
-        createdAt: now, updatedAt: now, ...(extra.userId ? { userId: extra.userId } : {}),
+        createdAt: now, updatedAt: now, ...(extra.userId ? { userId: extra.userId } : {}), ...(extra.role ? { role: extra.role } : {}),
       } },
     });
     const session = await t.mutation(components.betterAuth.adapter.create, {

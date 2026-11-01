@@ -277,4 +277,16 @@ describe("deleting an organization", () => {
     expect(left.doomedFiles).toEqual([null, null, null]);
     expect(left.keptFiles[0]).not.toBeNull();
   });
+
+  test("an administrator deleting the organization removes its projects too", async () => {
+    const f = await fixture();
+    const boss = await f.user("boss", { role: "admin" });
+    const alice = await f.user("alice");
+    await alice.provision();
+    await alice.caller.mutation(api.projects.create, { name: "Doomed", description: "" });
+    const acme = await activeOrganization(alice.caller);
+    await boss.caller.mutation(api.platform.adminOrganizations.remove, { organizationId: acme });
+    await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await f.t.run((ctx) => ctx.db.query("projects").collect())).toEqual([]);
+  });
 });

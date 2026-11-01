@@ -50,12 +50,20 @@ Better Auth's three built-in roles, used as they are:
 | `admin` | Invite and remove members and admins, change their roles, rename the organization |
 | `member` | Use the organization's data |
 
-An organization always keeps at least one owner. Better Auth refuses to remove, demote or let
-the last owner leave. The page explains that they must invite another owner and wait for the
+**An organization with members always has an owner.** Better Auth refuses to remove, demote or
+let the last owner leave. The page explains that they must invite another owner and wait for the
 invitation to be accepted before leaving; a pending invitation does not count as an owner.
+Nobody can change their own role on the page, and only owners change or remove owners.
 Someone who is not the last owner may leave even their only organization. When an account is
 deleted, an organization it owned alone passes to its longest-standing admin (or member).
 Only owners can delete an organization; deleting one never deletes its members' accounts.
+
+The backend enforces the rule on every membership write, not just in Better Auth's checks: a
+guard runs in the same transaction as each write, whichever path makes it (Better Auth's
+routes, account deletion, the admin app, agents). A write that would leave members without an
+owner fails and is rolled back, so two owners demoting or removing each other at the same
+moment cannot both succeed. Platform code changes memberships only through `deleteMember` and
+`setMemberRole` in `convex/platform/organizationOwnership.ts`.
 
 All three roles read and write the same sample project data. Your app's private-record checks
 need not grant an exception to owners/admins. If only admins should delete a shared record,
@@ -88,8 +96,9 @@ built-in roles; custom roles are not currently supported.
   budgets. Up to 100 members per organization and 50 organizations per user.
 - **Audited:** creating, renaming, deleting, invitation sent, canceled, deleted, accepted or rejected,
   member removed, member left and role changed (`organization.*` audit actions).
-- **Not included:** teams, custom roles, billing, organization management in the admin app, and
-  organization-scoped agent capabilities.
+- **Not included:** teams, custom roles, billing, and organization-scoped capabilities for the
+  web app's own agents. Platform administrators manage organizations in the admin app instead
+  (see [Administration](#administration)).
 
 ## The invitation, step by step
 
@@ -149,6 +158,32 @@ Delete a bounded batch per call, cover every table that belongs to an organizati
 child rows and stored files), and return `true` only when none remain. The sample's version
 removes projects with their tasks and uploads. Without the file, a deleted organization's rows
 simply stay in the database, unreachable.
+
+## Administration
+
+Platform administrators see every organization in the admin app (**Manage → Organizations**)
+and through the `organizations_*` admin agent capabilities. Both use
+`api.platform.adminOrganizations.*`:
+
+| Function | Does |
+|---|---|
+| `list` | Every organization, newest first, with owners, member count and pending invitations; `search` matches names (case-sensitive) |
+| `get` | One organization's members with roles, and its pending, expired and recently declined invitations |
+| `forUser` | A user's memberships, and what deleting the account would do to each organization |
+| `addOwner` | Make an existing member an owner, alongside the current owners |
+| `removeOwner` | Make an owner an admin or member. Refused (`LAST_OWNER`) for the only owner |
+| `cancelInvitation` | Cancel a pending invitation; its link reads as no longer valid |
+| `remove` | Delete the organization: memberships, invitations and the organization at once, then its app data through `organizationData.ts`. Accounts are kept |
+
+To transfer ownership, add the new owner, then remove the previous one. Administrators see
+organization metadata, members and invitations, never an organization's app data. They can't
+invite, add or remove members, rename an organization or change other roles: those stay with
+its owners and admins. Reads need the admin role; actions also need a recently authenticated
+admin session. Each action is audited as `admin.organization.*`.
+
+On the **Users** page, **Organizations** in a user's menu lists their memberships, and the delete
+confirmation shows, for each organization, whether ownership passes to another member or the
+organization is deleted.
 
 ## Scoping your data
 

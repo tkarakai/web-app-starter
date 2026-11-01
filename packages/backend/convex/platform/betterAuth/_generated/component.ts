@@ -173,6 +173,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             | {
                 data: {
                   createdAt: number;
+                  deletingAt?: null | number;
                   logo?: null | string;
                   metadata?: null | string;
                   name: string;
@@ -587,6 +588,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "logo"
                     | "createdAt"
                     | "metadata"
+                    | "deletingAt"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1112,6 +1114,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "logo"
                     | "createdAt"
                     | "metadata"
+                    | "deletingAt"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -1858,6 +1861,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 model: "organization";
                 update: {
                   createdAt?: number;
+                  deletingAt?: null | number;
                   logo?: null | string;
                   metadata?: null | string;
                   name?: string;
@@ -1871,6 +1875,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "logo"
                     | "createdAt"
                     | "metadata"
+                    | "deletingAt"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:
@@ -2530,6 +2535,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                 model: "organization";
                 update: {
                   createdAt?: number;
+                  deletingAt?: null | number;
                   logo?: null | string;
                   metadata?: null | string;
                   name?: string;
@@ -2543,6 +2549,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
                     | "logo"
                     | "createdAt"
                     | "metadata"
+                    | "deletingAt"
                     | "_id";
                   mode?: "sensitive" | "insensitive";
                   operator?:

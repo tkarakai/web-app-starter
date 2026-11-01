@@ -15,6 +15,19 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- **Organizations in the admin app.** **Manage → Organizations** lists every organization with
+  its owners, members and invitations. Administrators can make a member an owner, remove an
+  owner who is not the only one, cancel pending invitations and delete an organization (its app
+  data goes through `convex/organizationData.ts`). The Users page shows each user's
+  memberships, and its delete confirmation shows what happens to each organization. The same
+  operations are `organizations_*` admin agent capabilities (`api.platform.adminOrganizations.*`),
+  audited as `admin.organization.*`. Administrators never see an organization's app data.
+  See [organizations](docs/organizations.md#administration).
+
+- **An organization with members always has an owner**, enforced in the same transaction as
+  every membership write (Better Auth component triggers plus the platform's own writes), so
+  concurrent demotions or departures can no longer leave members without an owner.
+
 - Guides for individual accounts, shared workspaces, organization-private data and private/shared
   composition using the existing auth/org builders, with indexed pagination, explicit publication,
   lifecycle guidance and executable isolation checks. The table skill selects ownership and audience

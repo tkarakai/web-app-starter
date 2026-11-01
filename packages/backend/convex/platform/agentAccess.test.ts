@@ -242,8 +242,8 @@ describe("full native capability adapter and independent surfaces", () => {
       names.push(...page.matches.map(row => row.name));
       offset = page.nextOffset;
     }
-    expect(new Set(names).size).toBe(80);
-    expect(names).toEqual(expect.arrayContaining(["announcements_create", "browser_readPage", "surfaces_setEnabled"]));
+    expect(new Set(names).size).toBe(87);
+    expect(names).toEqual(expect.arrayContaining(["announcements_create", "browser_readPage", "surfaces_setEnabled", "organizations_list", "organizations_remove"]));
     const descriptions = JSON.parse(await gateway("describe", { names: ["announcements_create"] }));
     expect(descriptions).toMatchObject([{ inputSchema: { required: expect.arrayContaining(["name", "bannerText"]) } }]);
     const input = { name: "announcements_create", input: { name: "Draft", bannerText: "Hello" } };
