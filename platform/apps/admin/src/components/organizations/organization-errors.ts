@@ -9,6 +9,8 @@ const MESSAGES: Record<string, string> = {
   ORGANIZATION_NOT_FOUND: "This organization no longer exists.",
   INVITATION_NOT_FOUND: "This invitation no longer exists.",
   INVITATION_NOT_PENDING: "This invitation is no longer pending.",
+  CLEANUP_NOT_FAILED: "This cleanup is no longer failed; it is running or finished.",
+  CLEANUP_NOT_FOUND: "No cleanup is recorded for this organization.",
   RECENT_AUTHENTICATION_REQUIRED: "Confirm your identity again, then retry.",
 };
 

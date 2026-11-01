@@ -185,6 +185,7 @@ Administrator enrollment follows the [bound enrollment contract](authentication-
 | `admin.organization.owner_removed` | `server:admin-organizations` | platform administrator | `userId`; `oldValue` `owner`, `newValue` `admin` or `member` |
 | `admin.organization.invitation_canceled` | `server:admin-organizations` | platform administrator | `invitationId` |
 | `admin.organization.deleted` | `server:admin-organizations` | platform administrator | `name` |
+| `admin.organization.cleanup_retried` | `server:admin-organizations` | platform administrator | — |
 
 The `server:account-deletion` row is written by `removeMemberships`
 (`packages/backend/convex/platform/organizationAccess.ts`) when deleting an account leaves an

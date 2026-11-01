@@ -296,33 +296,106 @@ export const rememberActive = internalMutation({
 });
 
 /** The app's cleanup for a deleted organization's data (`organizationDataCleanup`). */
-const deleteOrganizationData = makeFunctionReference<"mutation", { organizationId: string }, { done: boolean }>(
-  "organizationData:deleteOrganizationData",
-);
+const DELETE_ORGANIZATION_DATA = "organizationData:deleteOrganizationData";
+const deleteOrganizationData = makeFunctionReference<"mutation", { organizationId: string }, { done: boolean }>(DELETE_ORGANIZATION_DATA);
 const CLEANUP_BATCHES_PER_RUN = 50;
+/** Failed runs in a row before the cleanup stops and waits for an administrator's retry. */
+export const CLEANUP_MAX_ATTEMPTS = 5;
+const CLEANUP_RETRY_BASE_MS = 60_000;
+
+/** Convex can't resolve the app's cleanup at all: the app has no `organizationData.ts`. */
+export function isMissingCleanup(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message;
+  return message.includes(DELETE_ORGANIZATION_DATA) && /Couldn't resolve|Could not find/i.test(message);
+}
+
+/**
+ * Start (or resume) a cleanup run. `false` when it has already finished, so a duplicate or late
+ * delivery does nothing.
+ */
+export const beginCleanup = internalMutation({
+  args: { organizationId: v.string() },
+  handler: async (ctx, { organizationId }) => {
+    const row = await ctx.db.query("organizationCleanups").withIndex("by_organization", (q) => q.eq("organizationId", organizationId)).unique();
+    const now = Date.now();
+    if (!row) {
+      await ctx.db.insert("organizationCleanups", { organizationId, state: "running", attempts: 0, batches: 0, startedAt: now, updatedAt: now });
+      return true;
+    }
+    if (row.state !== "running") return false;
+    await ctx.db.patch(row._id, { updatedAt: now });
+    return true;
+  },
+});
+
+/**
+ * Record what a run did and schedule what comes next, in one transaction: continue after
+ * progress, retry with backoff after an error, stop as `failed` after `CLEANUP_MAX_ATTEMPTS`.
+ */
+export const recordCleanup = internalMutation({
+  args: {
+    organizationId: v.string(),
+    batches: v.number(),
+    outcome: v.union(v.literal("progress"), v.literal("done"), v.literal("retained"), v.literal("error")),
+    error: v.optional(v.string()),
+  },
+  handler: async (ctx, { organizationId, batches, outcome, error }) => {
+    const row = await ctx.db.query("organizationCleanups").withIndex("by_organization", (q) => q.eq("organizationId", organizationId)).unique();
+    if (!row || row.state !== "running") return;
+    const now = Date.now();
+    const total = row.batches + batches;
+    if (outcome === "done" || outcome === "retained") {
+      await ctx.db.patch(row._id, { state: outcome, batches: total, attempts: 0, lastError: undefined, updatedAt: now });
+      return;
+    }
+    if (outcome === "progress") {
+      await ctx.db.patch(row._id, { batches: total, attempts: 0, updatedAt: now });
+      await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationAppData, { organizationId });
+      return;
+    }
+    const attempts = row.attempts + 1;
+    const failed = attempts >= CLEANUP_MAX_ATTEMPTS;
+    await ctx.db.patch(row._id, { state: failed ? "failed" : "running", batches: total, attempts, lastError: (error ?? "").slice(0, 500), updatedAt: now });
+    if (failed) {
+      console.error(`Cleanup of deleted organization ${organizationId} failed ${attempts} times; retry it from the admin app.`);
+      return;
+    }
+    await ctx.scheduler.runAfter(CLEANUP_RETRY_BASE_MS * 2 ** (attempts - 1), internal.platform.organizations.deleteOrganizationAppData, { organizationId });
+  },
+});
 
 /**
  * After an organization is deleted, run the app's cleanup until it reports done. Its rows are
- * already unreachable (nobody is a member), so this only frees storage. Without the app's
- * `organizationData.ts` there is nothing to run.
+ * already unreachable (nobody is a member), so this only frees storage. Progress is recorded in
+ * `organizationCleanups`: a failed run is retried with backoff, then left `failed` for an
+ * administrator to retry (`adminOrganizations.retryCleanup`). Without the app's
+ * `organizationData.ts` the data is deliberately kept (`retained`).
  */
 export const deleteOrganizationAppData = internalAction({
   args: { organizationId: v.string() },
   handler: async (ctx, args) => {
-    for (let batch = 0; batch < CLEANUP_BATCHES_PER_RUN; batch++) {
-      let result: { done: boolean };
-      try {
-        result = await ctx.runMutation(deleteOrganizationData, args);
-      } catch (error) {
-        // The app has no organizationData.ts: Convex can't resolve the function.
-        if (error instanceof Error && /Couldn't resolve|Could not find/i.test(error.message)) {
-          console.warn(`No organizationData:deleteOrganizationData; data of deleted organization ${args.organizationId} is kept.`);
+    if (!(await ctx.runMutation(internal.platform.organizations.beginCleanup, args))) return;
+    let batches = 0;
+    try {
+      while (batches < CLEANUP_BATCHES_PER_RUN) {
+        const result = await ctx.runMutation(deleteOrganizationData, args);
+        batches++;
+        if (result.done) {
+          await ctx.runMutation(internal.platform.organizations.recordCleanup, { ...args, batches, outcome: "done" });
           return;
         }
-        throw error;
       }
-      if (result.done) return;
+    } catch (error) {
+      if (batches === 0 && isMissingCleanup(error)) {
+        console.warn(`No ${DELETE_ORGANIZATION_DATA}; data of deleted organization ${args.organizationId} is kept.`);
+        await ctx.runMutation(internal.platform.organizations.recordCleanup, { ...args, batches, outcome: "retained" });
+        return;
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      await ctx.runMutation(internal.platform.organizations.recordCleanup, { ...args, batches, outcome: "error", error: message });
+      return;
     }
-    await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationAppData, args);
+    await ctx.runMutation(internal.platform.organizations.recordCleanup, { ...args, batches, outcome: "progress" });
   },
 });
