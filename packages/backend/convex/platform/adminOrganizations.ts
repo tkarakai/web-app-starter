@@ -212,11 +212,6 @@ async function deleteAll(ctx: AdminCtx, model: "member" | "invitation", organiza
   throw new Error("TOO_MANY_ORGANIZATION_RECORDS");
 }
 
-/**
- * Delete an organization, as its owner could: memberships, invitations and the organization in
- * one transaction, then the app's own data through `organizationData.ts`. Accounts are kept;
- * members whose session was in it continue in another of their organizations, or none.
- */
 /** Cleanups of deleted organizations' app data that need attention: failed ones, and ones still running. */
 export const cleanups = authedQuery({
   args: {},
@@ -244,6 +239,11 @@ export const retryCleanup = adminMutation({
   },
 });
 
+/**
+ * Delete an organization, as its owner could: memberships, invitations and the organization in
+ * one transaction, then the app's own data through `organizationData.ts`. Accounts are kept;
+ * members whose session was in it continue in another of their organizations, or none.
+ */
 export const remove = adminMutation({
   args: { organizationId: v.string() },
   handler: async (ctx, { organizationId }) => {
