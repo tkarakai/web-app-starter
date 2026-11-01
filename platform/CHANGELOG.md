@@ -124,6 +124,15 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- **Org mutations no longer write to a fallback organization.** When the session's selected
+  organization is no longer valid (the user was removed, or it was deleted), reads still move to
+  the oldest membership, but `orgMutation`, and `getOrgAuth(ctx, { write: true })`, now refuse
+  with `ORGANIZATION_CHANGED` instead of writing to that membership, whether or not the caller
+  passes `expectedOrganizationId`. `organizations.mine` adds `selectionStale`, and
+  `OrganizationAccessNotice` switches the session to the organization the page shows, so writes
+  resume and a later re-invitation can't silently restore the old selection. Keep
+  `OrganizationAccessNotice` mounted, as `ProtectedLayout` does. A session that never selected an
+  organization still writes to the oldest membership.
 - **Ban, unban and role changes keep organizations owned, on every path.** The owner check for
   `/admin/ban-user` ran before, not with, the write, so a demotion committing in between could
   leave members without an owner who can act. A Better Auth `user` trigger now checks every change

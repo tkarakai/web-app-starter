@@ -100,7 +100,7 @@ describe("admin organizations", () => {
 
       expect(await f.members(f.acme)).toEqual([]);
       expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "organization", where: [{ field: "_id", value: f.acme }] })).toBeNull();
-      expect(await f.alice.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
+      expect(await f.alice.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: null, organizations: [] });
       await expect(f.boss.caller.query(orgs.get, { organizationId: f.acme })).rejects.toThrow("ORGANIZATION_NOT_FOUND");
     } finally {
       vi.useRealTimers();

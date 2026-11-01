@@ -142,8 +142,8 @@ describe("deleting an organization", () => {
     expect(await f.members(acme)).toEqual([]);
     expect(await f.t.query(internal.platform.organizations.hasPendingInvitation, { email: "carol@example.test" })).toBe(false);
     // Accounts survive without memberships; ordinary organization operations never recreate one.
-    expect(await bob.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
-    expect(await alice.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
+    expect(await bob.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: null, organizations: [] });
+    expect(await alice.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: null, organizations: [] });
     await expect(bob.caller.mutation(api.platform.organizations.deleteInvitation, { invitationId: "unknown" })).rejects.toThrow("NO_ORGANIZATION");
     await bob.caller.mutation(api.platform.userProfiles.setLocale, { locale: "de" });
     expect(await bob.caller.query(api.platform.userProfiles.get, {})).toMatchObject({ locale: "de" });
@@ -173,7 +173,7 @@ describe("deleting an organization", () => {
     const accepted = await f.post("/organization/accept-invitation", { invitationId: invitation.id }, f.token("bob"));
     expect(accepted.status, await accepted.clone().text()).toBe(200);
     expect((await leave()).status).toBe(200);
-    expect(await alice.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
+    expect(await alice.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: null, organizations: [] });
     expect(await f.members(acme)).toMatchObject([{ userId: bob.userId, role: "owner" }]);
   });
 });

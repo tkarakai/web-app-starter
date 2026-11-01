@@ -7,7 +7,7 @@ import {
 import { v, type ObjectType, type PropertyValidators } from "convex/values";
 
 import { authorizedSession } from "./sessionPolicy";
-import { resolveActiveOrganization, type ActiveOrganization } from "./organizationAccess";
+import { resolveActiveOrganization, resolveOrganizationSelection, type ActiveOrganization } from "./organizationAccess";
 import { rateLimit } from "./rateLimits";
 import {
   LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
@@ -63,14 +63,34 @@ export async function getAuth(ctx: QueryCtx) {
 type AuthInfo = NonNullable<Awaited<ReturnType<typeof getAuth>>>;
 
 /**
+ * The organization a write goes to: the session's selected organization. When the selection is
+ * no longer a live membership (the caller was removed, or it was deleted), the write is refused
+ * with `ORGANIZATION_CHANGED` rather than sent to another organization; only a session that
+ * never selected one starts in the oldest membership. `NO_ORGANIZATION` without any.
+ */
+async function writeOrganization(ctx: QueryCtx, auth: AuthInfo): Promise<ActiveOrganization> {
+  const selection = await resolveOrganizationSelection(ctx, auth.user, auth.session);
+  if (!selection.active) throw new Error("NO_ORGANIZATION");
+  if (selection.stale) throw new Error("ORGANIZATION_CHANGED");
+  return selection.active;
+}
+
+/**
  * `getAuth` plus the caller's active organization, for functions that can't use
  * `orgQuery`/`orgMutation` (internal functions called from an action). `null` when the
  * caller is not authenticated, is a platform administrator (administrators don't use app
- * data), or belongs to no organization.
+ * data), or belongs to no organization. Pass `{ write: true }` from a function that writes:
+ * it then follows `orgMutation`'s rule and throws `ORGANIZATION_CHANGED` for a stale selection.
  */
-export async function getOrgAuth(ctx: QueryCtx): Promise<(AuthInfo & ActiveOrganization) | null> {
+export async function getOrgAuth(ctx: QueryCtx, options: { write?: boolean } = {}): Promise<(AuthInfo & ActiveOrganization) | null> {
   const auth = await getAuth(ctx);
   if (!auth || getPolicyScopeFromRole(auth.user.role) === "admin") return null;
+  if (options.write) {
+    const selection = await resolveOrganizationSelection(ctx, auth.user, auth.session);
+    if (!selection.active) return null;
+    if (selection.stale) throw new Error("ORGANIZATION_CHANGED");
+    return { ...auth, ...selection.active };
+  }
   const organization = await resolveActiveOrganization(ctx, auth.user, auth.session);
   return organization ? { ...auth, ...organization } : null;
 }
@@ -183,8 +203,7 @@ export const orgMutation = customMutation(mutation, {
       throws: true,
     });
 
-    const organization = await resolveActiveOrganization(ctx, auth.user, auth.session);
-    if (!organization) throw new Error("NO_ORGANIZATION");
+    const organization = await writeOrganization(ctx, auth);
     if (expectedOrganizationId !== undefined && expectedOrganizationId !== organization.organizationId) {
       throw new Error("ORGANIZATION_CHANGED");
     }
