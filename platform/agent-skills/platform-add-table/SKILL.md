@@ -1,6 +1,6 @@
 ---
 name: platform-add-table
-description: Use to add a new Convex table for app data - schema entry, indexes, organization-scoped queries and mutations with access checks, generated types and backend tests. Also covers adding fields to an app table.
+description: Use to add a Convex app table or fields, choosing user-owned, organization-shared or organization-private access with schema, indexes, functions, generated types and backend tests.
 ---
 
 # Add an app table
@@ -11,8 +11,8 @@ modules live at the `convex/` root and are called as `api.<module>`. `schema.ts`
 it spreads the platform's tables (`...platformTables`, the platform hook) and the sample domain's
 (`...sampleTables` from `sampleTables.ts`), then lists yours. Background:
 `platform/docs/code-style.md` (Convex section), `platform/docs/testing.md` (convex-test) and
-`platform/docs/convex-migrations.md`. App data belongs to organizations:
-read `platform/docs/organizations.md`.
+`platform/docs/convex-migrations.md`. Read `platform/docs/data-access-models.md` and the selected
+recipe before choosing builders and indexes; read `platform/docs/organizations.md` for org lifecycle.
 
 ## Rules
 
@@ -21,26 +21,36 @@ read `platform/docs/organizations.md`.
   `convex/platform/tables.ts`; Better Auth's component tables are separate).
 - **One module per table**, named in camelCase after it: `convex/bookmarks.ts`. Never put app
   modules in `convex/platform/`.
-- **Organization-scoped by default.** Use `orgQuery` and `orgMutation` from `./platform/functions`:
+- **Choose ownership and audience.** Follow the app's declared model. Use `authedQuery` and
+  `authedMutation` with owner checks for user-owned data, including an individual-only service.
+  Use `orgQuery`/`orgMutation` with org checks for shared data, and **both org and owner checks**
+  for member-private org data. Compose those recipes for mixed apps. If intent is unspecified,
+  determine whether colleagues should see the records before implementing; do not silently
+  turn personal data into shared data. Builders add context, not automatic row filtering.
+  With `orgQuery` and `orgMutation` from `./platform/functions`:
   handlers get `ctx.organizationId` (the caller's active organization, membership re-checked on
   every call), `ctx.organizationRole` (`owner`, `admin` or `member`) and `ctx.ownerId`. `orgQuery`
   returns `null` when signed out or without a membership (safe for `useQuery`); `orgMutation`
   throws `NO_ORGANIZATION` for a signed-in user without a membership and `NOT_AUTHENTICATED`
   when signed out, and applies the global mutation rate limit. Both enforce live session assurance and current
-  verification/MFA/passkey/enrollment policy. Use `authedQuery`/`authedMutation` (user-scoped,
-  `ctx.ownerId` only) just for deliberately personal data that follows a user across
-  organizations, such as preferences.
+  verification/MFA/passkey/enrollment policy. `authed*` provides `ctx.user` and `ctx.ownerId`
+  without requiring org membership. Use canonical `ctx.ownerId` for app ownership; it may
+  differ from the Better Auth user ID on migrated accounts.
   Use `adminMutation` for administrative writes: it adds admin-role and recent-authentication
   checks. Do not substitute `auth.getCurrentUser`, raw Better Auth user lookup or account MFA flags
   for authorization; those can represent a limited enrollment/recovery session. See
   [session assurance](../../docs/authentication-and-onboarding.md#85-session-assurance-and-reauthentication).
   Use plain `query`/`mutation` only for data that is deliberately public.
-- **Scope your rows.** Store `organizationId: v.string()` and index it (`by_organization`); keep
+- **Scope org-owned rows.** Store `organizationId: v.string()` and index it (`by_organization`); keep
   `ownerId: v.string()` too if you want to show who created a row. Every read filters by
   `ctx.organizationId` through the index; every read or write of a row by ID loads it and checks
   `row.organizationId === ctx.organizationId` first, answering not-found otherwise. **Never take an
-  organization ID as an argument.** Every member may read and write; check `ctx.organizationRole`
-  where only owners or admins should act. Rows that belong to a project go through
+  organization ID as an argument.** Only the shared recipe permits every member to read/write.
+  Member-private rows also check `row.ownerId === ctx.ownerId` on IDs and list through an
+  `organizationId, ownerId` compound index. Owners/admins get no implicit private-data exception.
+  User-owned rows instead use an owner-leading index with `authed*` and owner checks.
+  Check `ctx.organizationRole` where only owners/admins should act on accessible shared data.
+  Children/files inherit the complete parent policy. Sample project rows go through
   `requireProjectAccess(ctx, projectId)` from `./projectAccess` (part of the sample domain; keep it if you keep projects).
 - **Validate everything.** `v` validators on every argument and field; string lengths with
   `assertMaxLength(value, MAX_NAME_LENGTH, "TITLE")`.
@@ -56,7 +66,7 @@ read `platform/docs/organizations.md`.
 ## Steps
 
 1. **Schema.** Add the table at the end of `packages/backend/convex/schema.ts`, with indexes for
-   every query you will run.
+   every query you will run. State whether `ownerId` controls access or only creator attribution.
 2. **Functions.** Create `packages/backend/convex/<table>.ts` with the queries and mutations.
    For an organization's table, also delete its rows in `packages/backend/convex/organizationData.ts`
    (a bounded batch per call; "Deleting an organization" in `platform/docs/organizations.md`), so
@@ -74,10 +84,14 @@ read `platform/docs/organizations.md`.
    `convex/platform/betterAuth/_generated/` and
    `platform/packages/convex-platform/src/component/_generated/`, even lines unrelated to your table: generated files are
    committed as generated, never trimmed by hand.
-4. **Tests.** `packages/backend/convex/<table>.test.ts` with convex-test. Use the shared test factory so scheduled audit writes reach the component, and cover: required fields are enforced, the owner index returns only
-   that organization's rows, and each pure helper your module exports. For the functions
-   themselves, sign in two users with the real Better Auth component (see
-   `convex/organizations.test.ts`) and check that one organization's IDs are not found from another.
+4. **Tests.** `packages/backend/convex/<table>.test.ts` with convex-test. Use the shared test
+   factory so scheduled audit writes reach the component. Cover required fields, every page
+   of the selected audience's list, and pure helpers. Exercise the functions with real Better
+   Auth sessions (`convex/platform/organizations.test-helpers.ts` and
+   `convex/organization-projects.test.ts`): cross-user IDs for personal data, cross-org IDs for
+   org data, and same-org peers including owners/admins for private org data. Check switching,
+   removal and zero memberships: personal functions work; org functions refuse. Raw index
+   tests alone do not establish authorization.
 
    ```ts
    import { createTestEnv } from "./test.modules";
@@ -99,9 +113,13 @@ read `platform/docs/organizations.md`.
 
 7. **Use it** from an app with `useQuery(api.<table>.list)` and `useMutation(api.<table>.add)`
    (`import { api } from "@repo/backend"`). Handle `undefined` (loading) and `null` (signed out).
-   Results follow the active organization: when the user switches, subscribed queries rerun.
+   Org-scoped results follow the active organization: when the user switches, subscribed queries
+   rerun. Personal results follow the user. Reset org-specific drafts/pagination on switching.
 
 ## Worked example
+
+This example deliberately chooses the **shared workspace** recipe. For individual, private
+or mixed data, use the corresponding worked guide in `platform/docs/data-access/` instead.
 
 **Task:** signed-in users of the web app can save bookmarks: a URL and a title. Everyone in an
 organization shares its bookmarks: they can list them, newest first, and remove one. Nobody

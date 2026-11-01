@@ -65,8 +65,8 @@ export function ItemCard({ className, children }: ItemCardProps) {
   `registerPlatformRoutes(http)` before the app's routes; `convex.config.ts` installs the platform's
   Better Auth component; `auth.config.ts` re-exports the platform's auth config.
 - App modules import the platform's function builders and helpers from `./platform/*`, for example
-  `import { orgQuery } from "./platform/functions"` (organization-scoped app data; see
-  [organizations](organizations.md)).
+  `import { orgQuery } from "./platform/functions"` for org data or `authedQuery` for user-owned
+  data. Add the row/list checks for the chosen [data access model](data-access-models.md).
 - **Schema** is defined in `packages/backend/convex/schema.ts`
 - Use `v` validator for all fields
 - Queries are read-only, mutations modify data
