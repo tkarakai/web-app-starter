@@ -65,11 +65,12 @@ type AuthInfo = NonNullable<Awaited<ReturnType<typeof getAuth>>>;
 /**
  * `getAuth` plus the caller's active organization, for functions that can't use
  * `orgQuery`/`orgMutation` (internal functions called from an action). `null` when the
- * caller is not authenticated or belongs to no organization.
+ * caller is not authenticated, is a platform administrator (administrators don't use app
+ * data), or belongs to no organization.
  */
 export async function getOrgAuth(ctx: QueryCtx): Promise<(AuthInfo & ActiveOrganization) | null> {
   const auth = await getAuth(ctx);
-  if (!auth) return null;
+  if (!auth || getPolicyScopeFromRole(auth.user.role) === "admin") return null;
   const organization = await resolveActiveOrganization(ctx, auth.user, auth.session);
   return organization ? { ...auth, ...organization } : null;
 }
@@ -127,8 +128,8 @@ export const authedMutation = captureNativeBuilder(customMutation(
  * Organization-scoped query builder: use it for every read of app data.
  * Handlers receive `ctx.organizationId` and `ctx.organizationRole` (the caller's active
  * organization, membership re-checked on every call) as well as `ctx.user` and `ctx.ownerId`.
- * Returns `null` when the caller is not authenticated or belongs to no organization.
- * Filter every read by `ctx.organizationId`; never accept an organization ID as an argument.
+ * Returns `null` when the caller is not authenticated, is a platform administrator, or belongs
+ * to no organization. Filter every read by `ctx.organizationId`; never accept an organization ID as an argument.
  */
 export function orgQuery<
   ArgsValidator extends PropertyValidators,
@@ -157,13 +158,24 @@ export function orgQuery<
  * Organization-scoped mutation builder: use it for every write of app data.
  * Like `authedMutation`, plus `ctx.organizationId` and `ctx.organizationRole`. Stamp new
  * rows with `ctx.organizationId`. A signed-in user with no membership gets
- * `NO_ORGANIZATION`; ordinary app operations never create an organization.
+ * `NO_ORGANIZATION`, a platform administrator `NOT_APPLICATION_USER`; ordinary app operations
+ * never create an organization.
+ *
+ * Every function built with it also takes an optional `expectedOrganizationId`: the
+ * organization the caller's UI showed when the write was composed. When the active
+ * organization has changed since (the caller was removed, the organization deleted, another
+ * tab switched), the write is refused with `ORGANIZATION_CHANGED` instead of landing where
+ * other people can see it. It is a precondition only, never the organization written to.
+ * Pass it on every write that doesn't name an existing record (creates); a record ID already
+ * pins the organization through its access check.
  */
-export const orgMutation = customMutation(
-  mutation,
-  customCtx(async (ctx) => {
+export const orgMutation = customMutation(mutation, {
+  args: { expectedOrganizationId: v.optional(v.string()) },
+  input: async (ctx, { expectedOrganizationId }) => {
     const auth = await getAuth(ctx);
     if (!auth) throw new Error("NOT_AUTHENTICATED");
+    // Platform administrators manage organizations in the admin app; they don't use app data.
+    if (getPolicyScopeFromRole(auth.user.role) === "admin") throw new Error("NOT_APPLICATION_USER");
 
     await rateLimit(ctx, {
       name: "mutationGlobal",
@@ -173,9 +185,12 @@ export const orgMutation = customMutation(
 
     const organization = await resolveActiveOrganization(ctx, auth.user, auth.session);
     if (!organization) throw new Error("NO_ORGANIZATION");
-    return { ...auth, ...organization };
-  }),
-);
+    if (expectedOrganizationId !== undefined && expectedOrganizationId !== organization.organizationId) {
+      throw new Error("ORGANIZATION_CHANGED");
+    }
+    return { ctx: { ...auth, ...organization }, args: {} };
+  },
+});
 
 /**
  * Builds the app's cleanup for a deleted organization. Export it as `deleteOrganizationData`

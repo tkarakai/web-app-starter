@@ -109,6 +109,7 @@
   "projects": {
     "newProject": "新建项目",
     "createProject": "创建项目",
+    "organizationChanged": "您的组织已更改，因此未创建项目。草稿已保留：请检查组织后重试。",
     "createFirst": "创建您的第一个项目",
     "noProjects": "暂无项目",
     "editProject": "编辑项目",

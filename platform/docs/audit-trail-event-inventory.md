@@ -181,7 +181,7 @@ Administrator enrollment follows the [bound enrollment contract](authentication-
 | `organization.member.removed` | `server:auth-endpoint-hook` | owner or admin who removed them | `endpoint`, `member` |
 | `organization.member.role_changed` | `server:auth-endpoint-hook` | owner or admin who changed it | `endpoint`, `memberId`, `role` |
 | `organization.member.left` | `server:auth-endpoint-hook` | member who left | `endpoint` |
-| `admin.organization.owner_added` | `server:admin-organizations` | platform administrator | `userId` (plus `reason: ban_successor`, `bannedUserId` when the agent ban named it); `oldValue` previous role, `newValue` `owner` |
+| `admin.organization.owner_added` | `server:admin-organizations` | platform administrator | `userId` (plus, when named as a successor: `reason: ban_successor` and `bannedUserId`, `reason: role_successor` and `promotedUserId`, or `reason: reactivation_successor` and `reactivatedUserId`); `oldValue` previous role, `newValue` `owner` |
 | `admin.organization.owner_removed` | `server:admin-organizations` | platform administrator | `userId`; `oldValue` `owner`, `newValue` `admin` or `member` |
 | `admin.organization.invitation_canceled` | `server:admin-organizations` | platform administrator | `invitationId` |
 | `admin.organization.deleted` | `server:admin-organizations` | platform administrator | `name` |

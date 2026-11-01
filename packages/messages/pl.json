@@ -109,6 +109,7 @@
   "projects": {
     "newProject": "Nowy projekt",
     "createProject": "Utwórz projekt",
+    "organizationChanged": "Twoja organizacja się zmieniła, więc projekt nie został utworzony. Szkic został zachowany: sprawdź organizację i spróbuj ponownie.",
     "createFirst": "Utwórz swój pierwszy projekt",
     "noProjects": "Brak projektów",
     "editProject": "Edytuj projekt",

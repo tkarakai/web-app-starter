@@ -107,7 +107,8 @@ grants an exception: an org owner/admin sees only their own private notes under 
 ## Organization membership and lifecycle
 
 Use the normal [organization UI](../organizations.md#ui-building-blocks), with a private notes
-page instead of a shared notes page. Explain to users that notes are private from colleagues,
+page instead of a shared notes page. Call `add` with `expectedOrganizationId` (see
+[organizations](../organizations.md#scoping-your-data)). Explain to users that notes are private from colleagues,
 but belong to the organization and become inaccessible after departure. Keep account settings
 and invitations reachable with zero memberships.
 
@@ -129,5 +130,6 @@ Account deletion also needs a deliberate retention/erasure policy.
 - Every pagination page contains only the current org and canonical owner.
 - Alice cannot access even her own note while another org is active.
 - Removal blocks her access despite a stale session selection; no-membership writes fail.
+- An `add` composed for an org she has since left is refused (`ORGANIZATION_CHANGED`).
 - Rejoining restores only her retained notes under this example's stated policy.
 - Children, files, counts, search and exports do not reveal another member's private data.

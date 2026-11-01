@@ -109,6 +109,7 @@
   "projects": {
     "newProject": "Nový projekt",
     "createProject": "Vytvořit projekt",
+    "organizationChanged": "Vaše organizace se změnila, proto projekt nebyl vytvořen. Koncept zůstal zachován: zkontrolujte organizaci a zkuste to znovu.",
     "createFirst": "Vytvořte svůj první projekt",
     "noProjects": "Žádné projekty",
     "editProject": "Upravit projekt",

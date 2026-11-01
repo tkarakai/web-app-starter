@@ -15,8 +15,8 @@ import type { Doc } from "./betterAuth/_generated/dataModel";
 import { adminMutation, authedQuery } from "./functions";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { findById, findMembership, listMemberships, listOrganizationMembers, parseRole } from "./organizationAccess";
-import { isBanned, markOrganizationDeleting, needsSuccessor, organizationSeats, pickSuccessor, setMemberRole, successorsNeededForBan } from "./organizationOwnership";
-import { organizationInvitations } from "./organizations";
+import { canAct, isBanned, markOrganizationDeleting, needsSuccessor, organizationSeats, pickSuccessor, setMemberRole, successorsNeededForBan } from "./organizationOwnership";
+import { livePendingInvitations, organizationInvitations } from "./organizations";
 
 type Reader = Pick<QueryCtx, "runQuery">;
 type AdminCtx = Pick<MutationCtx, "runQuery" | "runMutation" | "scheduler"> & { user: Doc<"user">; ownerId: string };
@@ -54,19 +54,14 @@ async function summary(ctx: Reader, organization: Doc<"organization">) {
     const user = await findById(ctx, "user", member.userId);
     return { userId: member.userId, name: user?.name ?? "", email: user?.email ?? "", banned: isBanned(user) };
   }));
-  const pending = await ctx.runQuery(components.betterAuth.adapter.findMany, {
-    model: "invitation",
-    where: [{ field: "organizationId", value: organization._id }, { field: "status", value: "pending" }],
-    paginationOpts: { numItems: 200, cursor: null },
-  });
-  const now = Date.now();
+  const pending = await livePendingInvitations(ctx, organization._id);
   return {
     id: organization._id,
     name: organization.name,
     createdAt: organization.createdAt,
     memberCount: rows.length,
     owners,
-    pendingInvitations: (pending.page as Doc<"invitation">[]).filter((row) => row.expiresAt > now).length,
+    pendingInvitations: pending.length,
   };
 }
 
@@ -153,14 +148,17 @@ async function memberOf(ctx: Reader, organizationId: string, userId: string) {
 }
 
 /**
- * Make an existing member an owner, alongside any current owners. A banned member can't be made
- * an owner: owners must be able to act for the organization. Shared with `agentUsers.ban`.
+ * Make an existing member an owner, alongside any current owners. A banned member, or a platform
+ * administrator, can't be made an owner: owners must be able to act for the organization.
+ * Shared with `agentUsers`.
  */
 export async function promoteToOwner(ctx: AdminCtx, organizationId: string, userId: string, meta: Record<string, string> = {}) {
   const member = await memberOf(ctx, organizationId, userId);
   const previous = parseRole(member.role);
   if (previous === "owner") return;
-  if (isBanned(await findById(ctx, "user", userId))) throw new Error("MEMBER_BANNED");
+  const user = await findById(ctx, "user", userId);
+  if (isBanned(user)) throw new Error("MEMBER_BANNED");
+  if (!canAct(user)) throw new Error("MEMBER_IS_ADMINISTRATOR");
   await setMemberRole(ctx, member._id, "owner");
   await audit(ctx, "admin.organization.owner_added", organizationId, { userId, ...meta }, { oldValue: previous, newValue: "owner" });
 }
@@ -181,7 +179,7 @@ export const removeOwner = adminMutation({
     if (parseRole(member.role) !== "owner") throw new Error("NOT_AN_OWNER");
     const others = (await organizationSeats(ctx, organizationId)).filter((s) => s.member._id !== member._id);
     if (!others.some((s) => s.role === "owner")) throw new Error("LAST_OWNER");
-    const active = !isBanned(await findById(ctx, "user", userId));
+    const active = canAct(await findById(ctx, "user", userId));
     if (active && others.some((s) => s.active) && !others.some((s) => s.active && s.role === "owner")) throw new Error("LAST_OWNER");
     await setMemberRole(ctx, member._id, role);
     await audit(ctx, "admin.organization.owner_removed", organizationId, { userId }, { oldValue: "owner", newValue: role });

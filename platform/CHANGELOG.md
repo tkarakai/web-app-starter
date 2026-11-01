@@ -124,6 +124,46 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- **Ban, unban and role changes keep organizations owned, on every path.** The owner check for
+  `/admin/ban-user` ran before, not with, the write, so a demotion committing in between could
+  leave members without an owner who can act. A Better Auth `user` trigger now checks every change
+  to a user's ban or platform role in its own transaction. Unbanning a member of an organization
+  whose owners are all banned, and making an organization's only active owner a platform
+  administrator, now need a successor too (`409 OWNER_SUCCESSOR_REQUIRED`); `users_unban` and
+  `users_setRole` take `successors`.
+- The admin app's ban dialog made the chosen successors owners in separate steps before banning,
+  so a refused ban left them owners. It now uses `agentUsers.ban`, which applies successors and
+  the ban together, and refuses a successor for an organization that doesn't need one or two for
+  the same one (`INVALID_SUCCESSOR`).
+- **Platform administrators no longer get organization context.** They could still read and write
+  app data through `orgQuery`/`orgMutation` with a membership kept from before their promotion,
+  while organization management refused them. Org builders now refuse them, an administrator
+  can't be made an owner, and owners who are administrators don't count as able to act.
+- **Organization context fails closed.** An invitation accepted while its organization was
+  being deleted could still add the member, who could then read its data awaiting cleanup and
+  create new data under the deleted ID. Joining is now checked in the member write's own
+  transaction (the organization must exist and not be deleting), and a membership of a
+  deleted or deleting organization never counts as an active organization.
+- **A create composed for one organization no longer lands in another.** After removal,
+  deletion or a switch in another tab, `orgMutation` silently fell back to another membership,
+  so a draft could become visible to a different organization. Every `orgMutation` now takes an
+  optional `expectedOrganizationId` precondition and refuses a mismatch with
+  `ORGANIZATION_CHANGED`, writing nothing. The sample's new-project dialog passes it and keeps
+  the draft. Pass it from your own creates ([organizations](docs/organizations.md#scoping-your-data)).
+- Membership reads were cut off at 200 rows, so a user in more organizations was shown only
+  some, and deleting their account left memberships behind. Every membership is now read, and
+  the documented limit of 50 organizations per user applies to joining as well as creating
+  (`MEMBERSHIP_LIMIT_REACHED`).
+- Someone who can sign in can no longer join an organization whose owners are all banned
+  (`ORGANIZATION_OWNER_REQUIRED`).
+- An organization with much invitation history could hide a live invitation from its owners
+  and admins, and from the admin app's pending count: only the first 200 rows were read before
+  filtering out expired ones. Every page is read now. Expired and declined invitations are listed
+  for 30 days after they were sent.
+- Agent capabilities (MCP, WebMCP, A2A and the CLI) reported organization refusals as a generic
+  `CAPABILITY_FAILED`. They now return the code (`OWNER_SUCCESSOR_REQUIRED`, `LAST_OWNER`,
+  `MEMBER_BANNED`, `MEMBER_IS_ADMINISTRATOR`, `ORGANIZATION_OWNER_REQUIRED`, `ORGANIZATION_NOT_FOUND`,
+  `INVITATION_NOT_PENDING`, and others) with a fixed recovery step, never the backend message.
 - **Removing a deleted organization's app data is durable.** A failing batch of
   `convex/organizationData.ts` ended the cleanup silently, and an error inside it that mentioned a
   missing function was taken for an app without cleanup. Progress is now recorded in a new

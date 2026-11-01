@@ -109,6 +109,7 @@
   "projects": {
     "newProject": "Nieuw project",
     "createProject": "Project aanmaken",
+    "organizationChanged": "Je organisatie is gewijzigd, dus het project is niet aangemaakt. Je concept is bewaard: controleer de organisatie en probeer het opnieuw.",
     "createFirst": "Maak je eerste project aan",
     "noProjects": "Geen projecten",
     "editProject": "Project bewerken",

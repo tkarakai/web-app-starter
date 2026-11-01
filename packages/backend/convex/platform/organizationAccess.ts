@@ -28,8 +28,38 @@ export type ActiveOrganization = {
   organizationRole: OrganizationRole;
 };
 
-/** Better Auth's `membershipLimit` and `organizationLimit` are below this. */
+/** Page size for reading component rows; readers that decide anything read every page. */
 const MAX_ROWS = 200;
+
+/**
+ * Organizations one user may belong to. Better Auth's `organizationLimit` counts only the ones a
+ * user creates; the member trigger (organizationOwnership.ts) applies this to joining as well.
+ */
+export const MAX_MEMBERSHIPS_PER_USER = 50;
+
+/** A deletion marker only exempts the organization briefly, so a failed deletion can't leave it unguarded. */
+const DELETION_WINDOW_MS = 10 * 60 * 1000;
+
+/** Whether an organization is being deleted (Better Auth removes its members before its row). */
+export function isDeleting(organization: Pick<Doc<"organization">, "deletingAt">): boolean {
+  return !!organization.deletingAt && organization.deletingAt > Date.now() - DELETION_WINDOW_MS;
+}
+
+/** Every row of a component query, page by page: safety decisions must not see only the first page. */
+async function findAll<T>(ctx: Reader, model: "member", where: { field: string; value: string }[]): Promise<T[]> {
+  const rows: T[] = [];
+  let cursor: string | null = null;
+  do {
+    const result: { page: unknown[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+      model,
+      where,
+      paginationOpts: { numItems: MAX_ROWS, cursor },
+    });
+    rows.push(...(result.page as T[]));
+    cursor = result.isDone ? null : result.continueCursor;
+  } while (cursor);
+  return rows;
+}
 
 /** Better Auth stores roles as a comma-separated list; the platform uses one built-in role. */
 export function parseRole(role: string): OrganizationRole {
@@ -44,23 +74,14 @@ function oldestFirst(a: Doc<"member">, b: Doc<"member">): number {
   return a.createdAt - b.createdAt || a._creationTime - b._creationTime;
 }
 
-/** The user's memberships, oldest first. */
+/** All of the user's memberships, oldest first. */
 export async function listMemberships(ctx: Reader, userId: string): Promise<Doc<"member">[]> {
-  const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
-    model: "member",
-    where: [{ field: "userId", value: userId }],
-    paginationOpts: { numItems: MAX_ROWS, cursor: null },
-  });
-  return (result.page as Doc<"member">[]).sort(oldestFirst);
+  return (await findAll<Doc<"member">>(ctx, "member", [{ field: "userId", value: userId }])).sort(oldestFirst);
 }
 
+/** All of the organization's members, oldest first. */
 export async function listOrganizationMembers(ctx: Reader, organizationId: string): Promise<Doc<"member">[]> {
-  const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
-    model: "member",
-    where: [{ field: "organizationId", value: organizationId }],
-    paginationOpts: { numItems: MAX_ROWS, cursor: null },
-  });
-  return (result.page as Doc<"member">[]).sort(oldestFirst);
+  return (await findAll<Doc<"member">>(ctx, "member", [{ field: "organizationId", value: organizationId }])).sort(oldestFirst);
 }
 
 export async function findMembership(
@@ -93,10 +114,18 @@ export async function findById<M extends "organization" | "invitation" | "user">
   }
 }
 
+/** A membership counts only while its organization exists and isn't being deleted. */
+async function inLiveOrganization(ctx: Reader, member: Doc<"member"> | null): Promise<boolean> {
+  if (!member) return false;
+  const organization = await findById(ctx, "organization", member.organizationId);
+  return !!organization && !isDeleting(organization);
+}
+
 /**
  * The caller's organization: the session's active organization while they are still a
  * member of it, otherwise their oldest membership. Removal from an organization therefore
- * takes effect on the next request. `null` only when the user belongs to none.
+ * takes effect on the next request. Memberships of a deleted organization, or one being
+ * deleted, never count. `null` only when the user belongs to no live organization.
  */
 export async function resolveActiveOrganization(
   ctx: Reader,
@@ -104,8 +133,16 @@ export async function resolveActiveOrganization(
   session: Pick<Doc<"session">, "activeOrganizationId">,
 ): Promise<ActiveOrganization | null> {
   const requested = session.activeOrganizationId;
-  const member = (requested ? await findMembership(ctx, user._id, requested) : null)
-    ?? (await listMemberships(ctx, user._id))[0];
+  let member = requested ? await findMembership(ctx, user._id, requested) : null;
+  if (!(await inLiveOrganization(ctx, member))) {
+    member = null;
+    for (const candidate of await listMemberships(ctx, user._id)) {
+      if (await inLiveOrganization(ctx, candidate)) {
+        member = candidate;
+        break;
+      }
+    }
+  }
   return member ? { organizationId: member.organizationId, organizationRole: parseRole(member.role) } : null;
 }
 

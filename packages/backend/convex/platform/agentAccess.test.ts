@@ -286,6 +286,14 @@ describe("durable A2A task lifecycle", () => {
     await expect(f.t.mutation(api.platform.agentTasks.cancel, { ...f.auth, id: first.id })).rejects.toThrow("TASK_NOT_CANCELABLE");
     const list = await f.t.query(api.platform.agentTasks.list, { ...f.auth, pageSize: 10 }); expect(list).toMatchObject({ totalSize: 1, tasks: [expect.not.objectContaining({ artifacts: expect.anything() })] });
   });
+  test("an organization refusal fails the task with its code and recovery step", async () => {
+    const f = await setup();
+    const task = await f.send({ operation: "execute", input: { name: "organizations_removeOwner", input: { organizationId: "missing", userId: "missing", role: "member" } } });
+    const failed = await f.work(task.id);
+    expect(failed.status.state).toBe("TASK_STATE_FAILED");
+    expect(JSON.stringify(failed)).toContain("ORGANIZATION_NOT_FOUND: ");
+    expect(JSON.stringify(failed)).toContain("organizations_list");
+  });
   test("cancellation and disable/expiry stop queued writes; invalid input never enters durable storage", async () => {
     const f = await setup();
     const command = { operation: "execute", input: { name: "announcements_create", input: { name: "Canceled", bannerText: "No" } } };

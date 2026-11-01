@@ -71,9 +71,23 @@ Banning is the other way to lose an owner who can act, so **banning the only suc
 organization whose other members can sign in requires a successor first**. Better Auth's
 `/admin/ban-user` refuses with `409 OWNER_SUCCESSOR_REQUIRED`, naming the organizations; the
 admin app's ban dialog lists them with a successor picker (the longest-standing admin, else
-member, preselected) and makes the choices owners before banning. The admin agent's
-`users_ban` takes `successors: [{ organizationId, userId }]` and applies them and the ban in
-one transaction. A batch ban skips such users with that error. An organization whose only
+member, preselected), then makes the choices owners and bans in one transaction
+(`api.platform.agentUsers.ban`), so a refused ban leaves no new owners behind. The admin agent's
+`users_ban` takes the same `successors: [{ organizationId, userId }]`: one per organization that
+needs one, and only for those (`INVALID_SUCCESSOR` otherwise).
+
+The rule is checked in the transaction of every user write, whichever path makes it (Better
+Auth's `/admin/*` routes, the admin app, agents), so a ban racing a demotion can't leave members
+without an owner who can act. **Platform administrators can't act in organizations**: org
+builders refuse them (`orgQuery` returns `null`, `orgMutation` throws `NOT_APPLICATION_USER`),
+they can't be made owners (`MEMBER_IS_ADMINISTRATOR`), and making the only owner who can act an
+administrator needs a successor, exactly like a ban (`/admin/set-role` answers
+`409 OWNER_SUCCESSOR_REQUIRED`; `users_setRole` takes `successors`). Unbanning someone, or
+making an administrator a user again, is refused the same way where every owner of one of their
+organizations is banned: unban an owner first, or name a successor (`users_unban` and
+`users_setRole` take `successors`; the user themself may be the successor). A temporary ban that
+simply runs out is not a write, so it isn't checked: an organization whose only active owner is
+banned for a while can find its other members reactivated before its owner. A batch ban skips such users with that error. An organization whose only
 owner was banned before this rule keeps working; deleting that owner's account hands
 ownership to someone who can sign in. Platform code changes memberships only through `deleteMember` and
 `setMemberRole` in `convex/platform/organizationOwnership.ts`.
@@ -87,7 +101,8 @@ built-in roles; custom roles are not currently supported.
 
 - **Active organization.** Better Auth stores it on the session (`session.activeOrganizationId`).
   On every request, the backend checks that the user is still a member of it, and otherwise falls
-  back to their oldest membership. Removing someone takes effect on their next request.
+  back to their oldest membership. Removing someone takes effect on their next request. A
+  membership of an organization that is deleted, or being deleted, never counts.
 - **Reads are Convex queries** over Better Auth's tables, so the UI updates live:
   `api.platform.organizations.mine` (memberships and active), `.active` (settings view),
   `.myInvitations`, `.invitation`.
@@ -106,7 +121,13 @@ built-in roles; custom roles are not currently supported.
   and banner still let the invitee request one. A session that still needs verification or
   enrollment sees what is missing on the invitation page instead of the invitation.
 - **Limits:** 10 invitations at once and 30 an hour per inviter (resends included), plus the platform's auth email
-  budgets. Up to 100 members per organization and 50 organizations per user.
+  budgets. Up to 100 members per organization and 50 organizations per user, counting those a
+  user joins as well as those they create (`MEMBERSHIP_LIMIT_REACHED`).
+- **Joining is checked in the write's own transaction.** Accepting an invitation is refused
+  (`ORGANIZATION_NOT_FOUND`) once its organization is deleted or being deleted, even when the
+  deletion commits while the acceptance is under way. Someone who can sign in can't join an
+  organization whose owners are all banned (`ORGANIZATION_OWNER_REQUIRED`): nobody could manage
+  it for them.
 - **Audited:** creating, renaming, deleting (including by deleting its last member's account), invitation sent, canceled, deleted, accepted or rejected,
   member removed, member left and role changed (`organization.*` audit actions).
 - **Not included:** teams, custom roles, billing, and organization-scoped capabilities for the
@@ -137,7 +158,8 @@ others available.
 
 On the inviting side, the organization page lists each invited address once, with its latest
 invitation: **pending** (with its expiry; resend), **expired** (resend), or
-**declined** for 30 days (invite again). Owners and admins can delete an invitation in any
+**declined** (invite again). Expired and declined invitations are listed for 30 days after they
+were sent; a live one is always listed, however much history the organization has. Owners and admins can delete an invitation in any
 state, after confirming (`api.platform.organizations.deleteInvitation`). Deleting the row removes
 all unaccepted invitations to that address in the active organization, so an older declined or
 expired invitation cannot take its place. Their links then read as no longer valid. Accepted
@@ -200,7 +222,7 @@ and through the `organizations_*` admin agent capabilities. Both use
 | `list` | Every organization, newest first, with owners, member count and pending invitations; `search` matches names (case-sensitive) |
 | `get` | One organization's members with roles, and its pending, expired and recently declined invitations |
 | `forUser` | A user's memberships, what deleting the account would do to each organization, and `banSuccessor` (candidates and a suggestion) where banning needs a new owner first |
-| `addOwner` | Make an existing member an owner, alongside the current owners. Refused (`MEMBER_BANNED`) for banned members |
+| `addOwner` | Make an existing member an owner, alongside the current owners. Refused for banned members (`MEMBER_BANNED`) and platform administrators (`MEMBER_IS_ADMINISTRATOR`) |
 | `removeOwner` | Make an owner an admin or member. Refused (`LAST_OWNER`) for the only owner, or the only one who isn't banned while members can sign in |
 | `cancelInvitation` | Cancel a pending invitation; its link reads as no longer valid |
 | `remove` | Delete the organization: memberships, invitations and the organization at once, then its app data through `organizationData.ts`. Accounts are kept |
@@ -225,7 +247,12 @@ Choose shared or member-private audience explicitly using the [data access recip
 - `orgQuery` gives the handler `ctx.organizationId` and `ctx.organizationRole` (as well as
   `ctx.user` and `ctx.ownerId`). It returns `null` when signed out or without an organization.
 - `orgMutation` adds the same to `authedMutation`. A signed-in user with no membership gets
-  `NO_ORGANIZATION`; the mutation never creates an organization as a side effect.
+  `NO_ORGANIZATION`; the mutation never creates an organization as a side effect. Every
+  `orgMutation` also takes an optional `expectedOrganizationId`: the organization the UI showed
+  when the user composed the write. If the active organization has changed since (they were
+  removed, it was deleted, another tab switched), the write is refused with
+  `ORGANIZATION_CHANGED` and nothing is written. It is a precondition, never the organization
+  written to.
 - `getOrgAuth(ctx)` resolves the same thing inside an internal function called from an action.
 
 The rules:
@@ -241,6 +268,12 @@ The rules:
 6. A child table can inherit its parent's organization instead, as the sample does: tasks and
    uploads have no `organizationId`, and every access goes through
    `requireProjectAccess(ctx, projectId)`.
+7. **Pass `expectedOrganizationId` on every create** (any write that doesn't name an existing
+   record): the active organization from `useOrganizations()` when the form opened. Otherwise
+   a draft composed for one organization can land in another the user falls back to, where
+   other people read it. On `ORGANIZATION_CHANGED`, keep the draft and ask the user to check
+   the organization, as the sample's new-project dialog does. Writes to an existing record need
+   nothing extra: rule 4 already pins them.
 
 Use `authedQuery`/`authedMutation` for data that belongs to the individual and follows them
 across organizations, including an entire [individual service](data-access/individual-accounts.md).

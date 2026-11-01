@@ -52,6 +52,15 @@ describe("bounded MCP discovery", () => {
       expect(result.isError).toBe(true); expect(JSON.stringify(result)).not.toContain("sensitive");
     } finally { await client.close(); }
   });
+  test("organization refusals reach the agent with their code and recovery step", async () => {
+    const client = await connection(announcementCatalogue, async () => { throw new Error("OWNER_SUCCESSOR_REQUIRED: make another member an owner of Private Org before banning this user"); });
+    try {
+      const result = await client.callTool({ name: "capabilities_execute", arguments: { name: "announcements_list" } });
+      expect(result.isError).toBe(true);
+      const text = JSON.stringify(result);
+      expect(text).toContain("OWNER_SUCCESSOR_REQUIRED"); expect(text).toContain("organizations_forUser"); expect(text).not.toContain("Private Org");
+    } finally { await client.close(); }
+  });
   test("authorization rejects non-loopback redirects and weak PKCE/state", () => {
     const base = new URLSearchParams({ client_id: "pi-announcements", response_type: "code", redirect_uri: "http://127.0.0.1:45678/callback", scope: "admin:manage", code_challenge_method: "S256", code_challenge: "c".repeat(43), state: "s".repeat(43) });
     expect(validateAuthorization(base).clientId).toBe("pi-announcements");
