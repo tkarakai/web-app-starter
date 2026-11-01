@@ -96,6 +96,13 @@ test("an invited teammate signs in from the link, joins, shares the organization
     await expect(teammatePage.getByText(`You no longer have access to ${organization}.`)).toBeVisible();
     await expect(teammatePage.getByTestId("active-organization")).toHaveText("E2E User");
     await expect(teammatePage.getByRole("button", { name: "Shared roadmap" })).toHaveCount(0);
+
+    // The session switched to the organization shown, so the teammate's next project goes there.
+    await teammatePage.getByTitle("New project", { exact: true }).click();
+    await teammatePage.getByLabel("Name", { exact: true }).fill("After removal");
+    await teammatePage.getByRole("button", { name: "Create project", exact: true }).click();
+    await expect(teammatePage.getByRole("heading", { name: "After removal", level: 1 })).toBeVisible();
+    await expect(teammatePage.getByTestId("active-organization")).toHaveText("E2E User");
   });
 });
 
