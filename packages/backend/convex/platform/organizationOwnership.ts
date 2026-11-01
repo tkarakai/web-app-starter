@@ -16,23 +16,33 @@
  * deleted, whose members Better Auth removes before the organization row (`markDeleting`), and
  * one whose members are all banned, which needs only an owner. A write that leaves an existing
  * banned-owner-only state as it was is allowed; one that removes the last owner who can sign in
- * is not.
+ * is not, and neither is admitting someone who can sign in where no owner can.
+ *
+ * Joining is checked too: nobody joins an organization that is gone or being deleted, nor
+ * beyond `MAX_MEMBERSHIPS_PER_USER`.
  */
 import { createFunctionHandle } from "convex/server";
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import { internalMutation, internalQuery, type MutationCtx, type QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
-import { findById, listMemberships, listOrganizationMembers, parseRole, type OrganizationRole } from "./organizationAccess";
+import {
+  findById,
+  isDeleting,
+  listMemberships,
+  listOrganizationMembers,
+  MAX_MEMBERSHIPS_PER_USER,
+  parseRole,
+  type OrganizationRole,
+} from "./organizationAccess";
 
 type Reader = Pick<QueryCtx, "runQuery">;
 type Writer = Pick<MutationCtx, "runQuery" | "runMutation">;
 
 export const OWNER_REQUIRED = "ORGANIZATION_OWNER_REQUIRED";
 export const SUCCESSOR_REQUIRED = "OWNER_SUCCESSOR_REQUIRED";
-
-/** A deletion marker only exempts the organization briefly, so a failed deletion can't leave it unguarded. */
-const DELETION_WINDOW_MS = 10 * 60 * 1000;
+export const ORGANIZATION_NOT_FOUND = "ORGANIZATION_NOT_FOUND";
+export const MEMBERSHIP_LIMIT_REACHED = "MEMBERSHIP_LIMIT_REACHED";
 
 /** A ban counts until it expires; Better Auth clears an expired ban at the next sign-in. */
 export function isBanned(user: Pick<Doc<"user">, "banned" | "banExpires"> | null | undefined): boolean {
@@ -75,7 +85,7 @@ export async function assertOrganizationHasOwner(
 ): Promise<void> {
   const organization = await findById(ctx, "organization", organizationId);
   if (!organization) return;
-  if (organization.deletingAt && organization.deletingAt > Date.now() - DELETION_WINDOW_MS) return;
+  if (isDeleting(organization)) return;
   const seats = (await organizationSeats(ctx, organizationId)).filter((s) => s.member._id !== change.leaving);
   if (seats.length === 0) return;
   if (!seats.some((s) => s.role === "owner")) throw new Error(OWNER_REQUIRED);
@@ -90,9 +100,45 @@ async function activeOwner(ctx: Reader, row: MemberRow): Promise<boolean> {
   return parseRole(row.role) === "owner" && !isBanned(await findById(ctx, "user", row.userId));
 }
 
+/**
+ * Why this user can't join, or `null`. Only into an organization that exists and isn't being
+ * deleted, for a user who exists and is under the membership limit. An active member can't
+ * join where no owner can act: nobody could manage the organization for them. `joined` says the
+ * membership row is already written (in the trigger) rather than about to be.
+ */
+async function joinBlocker(
+  ctx: Reader,
+  row: { organizationId: string; userId: string; role: string },
+  joined: boolean,
+): Promise<string | null> {
+  const organization = await findById(ctx, "organization", row.organizationId);
+  if (!organization || isDeleting(organization)) return ORGANIZATION_NOT_FOUND;
+  const user = await findById(ctx, "user", row.userId);
+  if (!user) return "USER_NOT_FOUND";
+  const memberships = (await listMemberships(ctx, row.userId)).length + (joined ? 0 : 1);
+  if (memberships > MAX_MEMBERSHIPS_PER_USER) return MEMBERSHIP_LIMIT_REACHED;
+  if (parseRole(row.role) === "owner" || isBanned(user)) return null;
+  const seats = await organizationSeats(ctx, row.organizationId);
+  return seats.some((s) => s.active && s.role === "owner") ? null : OWNER_REQUIRED;
+}
+
+/**
+ * For Better Auth's `beforeAcceptInvitation` hook, so the invitee learns why. The member trigger
+ * checks the same in the write's own transaction: Better Auth accepts the invitation and writes
+ * the member in separate steps, and a deletion could commit in between.
+ */
+export const admissionBlocker = internalQuery({
+  args: { organizationId: v.string(), userId: v.string(), role: v.string() },
+  handler: async (ctx, args) => await joinBlocker(ctx, args, false),
+});
+
 /** Better Auth's member writes, checked in their own transaction (see `authTriggers.ts`). */
 export const memberTriggers = {
-  onCreate: async (ctx: Reader, doc: MemberRow) => assertOrganizationHasOwner(ctx, doc.organizationId),
+  onCreate: async (ctx: Reader, doc: MemberRow) => {
+    const blocker = await joinBlocker(ctx, doc, true);
+    if (blocker) throw new Error(blocker);
+    await assertOrganizationHasOwner(ctx, doc.organizationId);
+  },
   onUpdate: async (ctx: Reader, doc: MemberRow, old: MemberRow) => {
     const demoted = parseRole(doc.role) !== "owner" || old.organizationId !== doc.organizationId;
     const removedActiveOwner = demoted && await activeOwner(ctx, old);

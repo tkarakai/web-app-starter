@@ -109,6 +109,7 @@
   "projects": {
     "newProject": "New project",
     "createProject": "Create project",
+    "organizationChanged": "Your organization changed, so the project wasn't created. Your draft is kept: check the organization and try again.",
     "createFirst": "Create your first project",
     "noProjects": "No projects",
     "editProject": "Edit project",

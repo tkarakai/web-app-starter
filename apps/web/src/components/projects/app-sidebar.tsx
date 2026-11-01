@@ -40,6 +40,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   Textarea,
+  toast,
   useSidebar,
 } from "@web-app-starter/design-system";
 import { normalizeText } from "@/lib/projects";
@@ -113,14 +114,22 @@ export function AppSidebar({
 
     setSubmitting(true);
     try {
+      // The organization this dialog was opened for: if it is no longer the active one when the
+      // write runs, the server refuses rather than create the project somewhere else.
       const id = await createProject({
         name: trimmedName,
         description: normalizeText(description),
+        ...(dialogOrganizationId ? { expectedOrganizationId: dialogOrganizationId } : {}),
       });
       setName("");
       setDescription("");
       setDialogOpen(false);
       onSelectProject(id);
+    } catch (error) {
+      if (!(error instanceof Error && error.message.includes("ORGANIZATION_CHANGED"))) throw error;
+      // Nothing was written. Keep the draft for the next attempt and say why.
+      setDialogOpen(false);
+      toast.error(tp("organizationChanged"));
     } finally {
       setSubmitting(false);
     }

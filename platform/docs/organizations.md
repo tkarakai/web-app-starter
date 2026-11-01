@@ -87,7 +87,8 @@ built-in roles; custom roles are not currently supported.
 
 - **Active organization.** Better Auth stores it on the session (`session.activeOrganizationId`).
   On every request, the backend checks that the user is still a member of it, and otherwise falls
-  back to their oldest membership. Removing someone takes effect on their next request.
+  back to their oldest membership. Removing someone takes effect on their next request. A
+  membership of an organization that is deleted, or being deleted, never counts.
 - **Reads are Convex queries** over Better Auth's tables, so the UI updates live:
   `api.platform.organizations.mine` (memberships and active), `.active` (settings view),
   `.myInvitations`, `.invitation`.
@@ -106,7 +107,13 @@ built-in roles; custom roles are not currently supported.
   and banner still let the invitee request one. A session that still needs verification or
   enrollment sees what is missing on the invitation page instead of the invitation.
 - **Limits:** 10 invitations at once and 30 an hour per inviter (resends included), plus the platform's auth email
-  budgets. Up to 100 members per organization and 50 organizations per user.
+  budgets. Up to 100 members per organization and 50 organizations per user, counting those a
+  user joins as well as those they create (`MEMBERSHIP_LIMIT_REACHED`).
+- **Joining is checked in the write's own transaction.** Accepting an invitation is refused
+  (`ORGANIZATION_NOT_FOUND`) once its organization is deleted or being deleted, even when the
+  deletion commits while the acceptance is under way. Someone who can sign in can't join an
+  organization whose owners are all banned (`ORGANIZATION_OWNER_REQUIRED`): nobody could manage
+  it for them.
 - **Audited:** creating, renaming, deleting (including by deleting its last member's account), invitation sent, canceled, deleted, accepted or rejected,
   member removed, member left and role changed (`organization.*` audit actions).
 - **Not included:** teams, custom roles, billing, and organization-scoped capabilities for the
@@ -215,7 +222,12 @@ Choose shared or member-private audience explicitly using the [data access recip
 - `orgQuery` gives the handler `ctx.organizationId` and `ctx.organizationRole` (as well as
   `ctx.user` and `ctx.ownerId`). It returns `null` when signed out or without an organization.
 - `orgMutation` adds the same to `authedMutation`. A signed-in user with no membership gets
-  `NO_ORGANIZATION`; the mutation never creates an organization as a side effect.
+  `NO_ORGANIZATION`; the mutation never creates an organization as a side effect. Every
+  `orgMutation` also takes an optional `expectedOrganizationId`: the organization the UI showed
+  when the user composed the write. If the active organization has changed since (they were
+  removed, it was deleted, another tab switched), the write is refused with
+  `ORGANIZATION_CHANGED` and nothing is written. It is a precondition, never the organization
+  written to.
 - `getOrgAuth(ctx)` resolves the same thing inside an internal function called from an action.
 
 The rules:
@@ -231,6 +243,12 @@ The rules:
 6. A child table can inherit its parent's organization instead, as the sample does: tasks and
    uploads have no `organizationId`, and every access goes through
    `requireProjectAccess(ctx, projectId)`.
+7. **Pass `expectedOrganizationId` on every create** (any write that doesn't name an existing
+   record): the active organization from `useOrganizations()` when the form opened. Otherwise
+   a draft composed for one organization can land in another the user falls back to, where
+   other people read it. On `ORGANIZATION_CHANGED`, keep the draft and ask the user to check
+   the organization, as the sample's new-project dialog does. Writes to an existing record need
+   nothing extra: rule 4 already pins them.
 
 Use `authedQuery`/`authedMutation` for data that belongs to the individual and follows them
 across organizations, including an entire [individual service](data-access/individual-accounts.md).

@@ -108,6 +108,40 @@ describe("organization projects", () => {
     expect(await bob.caller.query(api.projects.list, {})).toEqual([]);
     expect(await bob.caller.query(api.projects.get, { id: projectId })).toBeNull();
   });
+
+  test("a create composed for one organization never lands in another the caller fell back to", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    const carol = await f.user("carol");
+    const shared = await alice.provision();
+    await f.addMember(shared, carol.userId, "member");
+    const target = await bob.provision();
+    const membership = await f.addMember(target, alice.userId, "member");
+    await alice.switchTo(target);
+    expect(await activeOrganization(alice.caller)).toBe(target);
+
+    // Alice composes a project for the target organization; she is removed before submitting.
+    await f.t.mutation(components.betterAuth.adapter.deleteOne, {
+      input: { model: "member", where: [{ field: "_id", value: membership._id }] },
+    });
+    const draft = { name: "Confidential", description: "For target only", expectedOrganizationId: target };
+    await expect(alice.caller.mutation(api.projects.create, draft)).rejects.toThrow("ORGANIZATION_CHANGED");
+    expect(await f.t.run((ctx) => ctx.db.query("projects").collect())).toEqual([]);
+
+    // The same holds when the active organization changed on purpose (another tab switched).
+    const third = await f.user("dave");
+    const daves = await third.provision();
+    await f.addMember(daves, alice.userId, "member");
+    await alice.switchTo(daves);
+    await expect(alice.caller.mutation(api.projects.create, { ...draft, expectedOrganizationId: shared })).rejects.toThrow("ORGANIZATION_CHANGED");
+
+    // A matching precondition writes where it says, and it never chooses the organization.
+    const id = await alice.caller.mutation(api.projects.create, { ...draft, expectedOrganizationId: daves });
+    expect(await f.t.run((ctx) => ctx.db.get(id))).toMatchObject({ organizationId: daves });
+    await expect(alice.caller.mutation(api.projects.create, { ...draft, expectedOrganizationId: target })).rejects.toThrow("ORGANIZATION_CHANGED");
+    expect(await carol.caller.query(api.projects.list, {})).toEqual([]);
+  });
 });
 
 describe("upgrade migration", () => {

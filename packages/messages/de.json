@@ -109,6 +109,7 @@
   "projects": {
     "newProject": "Neues Projekt",
     "createProject": "Projekt erstellen",
+    "organizationChanged": "Ihre Organisation hat sich geändert, daher wurde das Projekt nicht erstellt. Ihr Entwurf bleibt erhalten: Prüfen Sie die Organisation und versuchen Sie es erneut.",
     "createFirst": "Erstellen Sie Ihr erstes Projekt",
     "noProjects": "Keine Projekte",
     "editProject": "Projekt bearbeiten",
