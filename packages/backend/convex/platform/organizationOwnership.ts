@@ -9,8 +9,9 @@
  * and the platform's own writes go through `deleteMember` / `setMemberRole` below, which pass the
  * same trigger handles. Convex serializes transactions that read the same members, so concurrent
  * writes cannot both leave the organization without an owner; the loser fails and rolls back.
- * Banning is the other way to lose an owner who can act: both ban paths require a successor
- * first (`successorsNeededForBan`).
+ * Banning, or making someone a platform administrator, is the other way to lose an owner who can
+ * act; unbanning (or the reverse role change) the way to gain a member who can act. Those user
+ * writes are checked in their own transaction too (`userTriggers`).
  *
  * Allowed: an organization with no members at all (account deletion then deletes it), one being
  * deleted, whose members Better Auth removes before the organization row (`markDeleting`), and
@@ -26,6 +27,7 @@ import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import { internalMutation, internalQuery, type MutationCtx, type QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
+import { getPolicyScopeFromRole } from "./securityPolicies";
 import {
   findById,
   isDeleting,
@@ -49,14 +51,22 @@ export function isBanned(user: Pick<Doc<"user">, "banned" | "banExpires"> | null
   return !!user?.banned && (!user.banExpires || user.banExpires > Date.now());
 }
 
-/** A membership with its role and whether its user can sign in (exists and is not banned). */
+/**
+ * Whether a user can act in organizations: they exist, aren't banned, and aren't a platform
+ * administrator (administrators can't use the web app or the organization routes).
+ */
+export function canAct(user: Pick<Doc<"user">, "banned" | "banExpires" | "role"> | null | undefined): boolean {
+  return !!user && !isBanned(user) && getPolicyScopeFromRole(user.role) !== "admin";
+}
+
+/** A membership with its role and whether its user can act (`canAct`). */
 export type Seat = { member: Doc<"member">; role: OrganizationRole; active: boolean; user: Doc<"user"> | null };
 
 export async function organizationSeats(ctx: Reader, organizationId: string): Promise<Seat[]> {
   const members = await listOrganizationMembers(ctx, organizationId);
   return await Promise.all(members.map(async (member) => {
     const user = await findById(ctx, "user", member.userId);
-    return { member, role: parseRole(member.role), active: !!user && !isBanned(user), user };
+    return { member, role: parseRole(member.role), active: canAct(user), user };
   }));
 }
 
@@ -97,7 +107,7 @@ export async function assertOrganizationHasOwner(
 type MemberRow = Pick<Doc<"member">, "organizationId" | "role" | "userId"> & { _id: string };
 
 async function activeOwner(ctx: Reader, row: MemberRow): Promise<boolean> {
-  return parseRole(row.role) === "owner" && !isBanned(await findById(ctx, "user", row.userId));
+  return parseRole(row.role) === "owner" && canAct(await findById(ctx, "user", row.userId));
 }
 
 /**
@@ -117,7 +127,7 @@ async function joinBlocker(
   if (!user) return "USER_NOT_FOUND";
   const memberships = (await listMemberships(ctx, row.userId)).length + (joined ? 0 : 1);
   if (memberships > MAX_MEMBERSHIPS_PER_USER) return MEMBERSHIP_LIMIT_REACHED;
-  if (parseRole(row.role) === "owner" || isBanned(user)) return null;
+  if (parseRole(row.role) === "owner" || !canAct(user)) return null;
   const seats = await organizationSeats(ctx, row.organizationId);
   return seats.some((s) => s.active && s.role === "owner") ? null : OWNER_REQUIRED;
 }
@@ -179,15 +189,75 @@ export async function successorsNeededForBan(ctx: Reader, userId: string): Promi
   return needed;
 }
 
-/** Thrown, by both ban paths, while a ban would leave an organization without an owner who can act. */
-export function successorRequiredMessage(needed: SuccessorNeeded[]): string {
-  return `${SUCCESSOR_REQUIRED}: make another member an owner of ${needed.map((n) => n.name || n.organizationId).join(", ")} before banning this user`;
+/** Thrown while a ban or role change would leave an organization without an owner who can act. */
+export function successorRequiredMessage(needed: Pick<SuccessorNeeded, "name" | "organizationId">[], change = "banning"): string {
+  return `${SUCCESSOR_REQUIRED}: make another member an owner of ${needed.map((n) => n.name || n.organizationId).join(", ")} before ${change} this user`;
 }
+
+/**
+ * Organizations that would have members who can act but no owner who can, once this user can act
+ * again (unbanned, or no longer a platform administrator): they are not an owner there, and its
+ * owners are all banned. With `assumeActive`, as if the user could act already.
+ */
+export async function ownersNeededForReactivation(
+  ctx: Reader,
+  userId: string,
+  assumeActive = false,
+): Promise<{ organizationId: string; name: string }[]> {
+  const needed: { organizationId: string; name: string }[] = [];
+  for (const membership of await listMemberships(ctx, userId)) {
+    const seats = (await organizationSeats(ctx, membership.organizationId))
+      .map((s) => assumeActive && s.member._id === membership._id ? { ...s, active: true } : s);
+    if (!seats.some((s) => s.active) || seats.some((s) => s.active && s.role === "owner")) continue;
+    const organization = await findById(ctx, "organization", membership.organizationId);
+    needed.push({ organizationId: membership.organizationId, name: organization?.name ?? "" });
+  }
+  return needed;
+}
+
+type UserRow = Pick<Doc<"user">, "banned" | "banExpires" | "role"> & { _id: string };
+
+/**
+ * Better Auth's user writes, checked in their own transaction (see `authTriggers.ts`), whatever
+ * the path: `/admin/ban-user`, `/admin/unban-user`, `/admin/set-role`, or the platform's own
+ * mutations. Losing the ability to act (a ban, becoming a platform administrator) needs a
+ * successor where this user is the only owner who can act; regaining it (an unban, ceasing to
+ * be an administrator) must not leave members who can act without an owner who can. A ban that
+ * simply expires is not a write, and the sign-in that clears it changes nothing here.
+ */
+export const userTriggers = {
+  onUpdate: async (ctx: Reader, doc: UserRow, old: UserRow) => {
+    const before = canAct(old);
+    const after = canAct(doc);
+    if (before && !after) {
+      const needed = await successorsNeededForBan(ctx, doc._id);
+      if (needed.length > 0) throw new Error(successorRequiredMessage(needed, isBanned(doc) ? "banning" : "making an administrator of"));
+    } else if (!before && after) {
+      const needed = await ownersNeededForReactivation(ctx, doc._id);
+      if (needed.length > 0) throw new Error(successorRequiredMessage(needed, "reactivating"));
+    }
+  },
+};
 
 /** For Better Auth's `/admin/ban-user` request hook, which runs in an action. */
 export const banBlockers = internalQuery({
   args: { userId: v.string() },
   handler: async (ctx, args) => await successorsNeededForBan(ctx, args.userId),
+});
+
+/** For the `/admin/unban-user` and `/admin/set-role` request hooks: what a change of this user's ability to act would need. */
+export const statusChangeBlockers = internalQuery({
+  args: { userId: v.string(), banned: v.optional(v.boolean()), role: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const user = await findById(ctx, "user", args.userId);
+    if (!user) return [];
+    const next = { ...user, ...(args.banned === false ? { banned: false, banExpires: null } : {}), ...(args.role !== undefined ? { role: args.role } : {}) };
+    const before = canAct(user);
+    const after = canAct(next);
+    if (before && !after) return (await successorsNeededForBan(ctx, args.userId)).map(({ organizationId, name }) => ({ organizationId, name }));
+    if (!before && after) return await ownersNeededForReactivation(ctx, args.userId, true);
+    return [];
+  },
 });
 
 /** Delete one membership through the guard. Every platform membership deletion uses this. */

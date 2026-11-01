@@ -71,9 +71,23 @@ Banning is the other way to lose an owner who can act, so **banning the only suc
 organization whose other members can sign in requires a successor first**. Better Auth's
 `/admin/ban-user` refuses with `409 OWNER_SUCCESSOR_REQUIRED`, naming the organizations; the
 admin app's ban dialog lists them with a successor picker (the longest-standing admin, else
-member, preselected) and makes the choices owners before banning. The admin agent's
-`users_ban` takes `successors: [{ organizationId, userId }]` and applies them and the ban in
-one transaction. A batch ban skips such users with that error. An organization whose only
+member, preselected), then makes the choices owners and bans in one transaction
+(`api.platform.agentUsers.ban`), so a refused ban leaves no new owners behind. The admin agent's
+`users_ban` takes the same `successors: [{ organizationId, userId }]`: one per organization that
+needs one, and only for those (`INVALID_SUCCESSOR` otherwise).
+
+The rule is checked in the transaction of every user write, whichever path makes it (Better
+Auth's `/admin/*` routes, the admin app, agents), so a ban racing a demotion can't leave members
+without an owner who can act. **Platform administrators can't act in organizations**: org
+builders refuse them (`orgQuery` returns `null`, `orgMutation` throws `NOT_APPLICATION_USER`),
+they can't be made owners (`MEMBER_IS_ADMINISTRATOR`), and making the only owner who can act an
+administrator needs a successor, exactly like a ban (`/admin/set-role` answers
+`409 OWNER_SUCCESSOR_REQUIRED`; `users_setRole` takes `successors`). Unbanning someone, or
+making an administrator a user again, is refused the same way where every owner of one of their
+organizations is banned: unban an owner first, or name a successor (`users_unban` and
+`users_setRole` take `successors`; the user themself may be the successor). A temporary ban that
+simply runs out is not a write, so it isn't checked: an organization whose only active owner is
+banned for a while can find its other members reactivated before its owner. A batch ban skips such users with that error. An organization whose only
 owner was banned before this rule keeps working; deleting that owner's account hands
 ownership to someone who can sign in. Platform code changes memberships only through `deleteMember` and
 `setMemberRole` in `convex/platform/organizationOwnership.ts`.

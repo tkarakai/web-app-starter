@@ -24,7 +24,7 @@ import {
   TooltipProvider,
 } from "@web-app-starter/design-system";
 import type { AdminUser } from "@/lib/admin-api";
-import { banUser, unbanUser, removeUser, setUserRole } from "@/lib/admin-api";
+import { unbanUser, removeUser, setUserRole } from "@/lib/admin-api";
 import { useUsers } from "@/hooks/use-users";
 import { useAuthUser } from "@/components/auth/auth-guard";
 import { createColumns } from "./columns";
@@ -79,7 +79,28 @@ export function UsersDataTable() {
   const authUser = useAuthUser();
   const currentUserId = authUser?.id;
   const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
-  const addOwner = useMutation(api.platform.adminOrganizations.addOwner);
+  // Successors and the ban commit in one transaction, or nothing does (`agentUsers.ban`).
+  const banWithSuccessors = useMutation(api.platform.agentUsers.ban);
+  const banUser = React.useCallback(
+    async (userId: string, banReason: string, banExpiresIn?: number, successors: BanSuccessor[] = []) => {
+      try {
+        await banWithSuccessors({
+          userId,
+          ...(banReason ? { reason: banReason } : {}),
+          ...(banExpiresIn != null ? { expiresInSeconds: banExpiresIn } : {}),
+          ...(successors.length > 0 ? { successors } : {}),
+        });
+      } catch (err) {
+        // Success is audited by the mutation; record the refusal here.
+        postAuditEvent({
+          happenedAt: Date.now(), sourceDetail: "admin", action: "admin.user.banned", resource: `user:${userId}`,
+          status: "failed.unknown", reason: banReason,
+        }).catch(() => {});
+        throw err;
+      }
+    },
+    [banWithSuccessors, postAuditEvent],
+  );
 
   // Protected admin emails (from adminEmails table) — these users cannot be banned/deleted/demoted.
   const protectedEmailsList = useQuery(api.platform.adminEmails.listProtected);
@@ -236,15 +257,13 @@ export function UsersDataTable() {
     if (banTarget.length === 1) {
       setBanPending(true);
       try {
-        // New owners first: the ban is refused while an organization would lose its only owner who can act.
-        for (const successor of successors) await addOwner(successor);
-        await banUser(banTarget[0].id, banReason, banExpiresIn, postAuditEvent);
+        await banUser(banTarget[0].id, banReason, banExpiresIn, successors);
         toast.success(`${banTarget[0].email} has been banned`);
         setBanTarget(null);
         setRowSelection({});
         refresh();
       } catch (err) {
-        toast.error(err instanceof Error && /OWNER_SUCCESSOR_REQUIRED|MEMBER_BANNED|ORGANIZATION_OWNER_REQUIRED/.test(err.message)
+        toast.error(err instanceof Error && /OWNER_SUCCESSOR_REQUIRED|INVALID_SUCCESSOR|MEMBER_BANNED|ORGANIZATION_OWNER_REQUIRED/.test(err.message)
           ? organizationErrorMessage(err)
           : err instanceof Error ? err.message : "Failed to ban user");
       } finally {
@@ -271,7 +290,9 @@ export function UsersDataTable() {
       setRowSelection({});
       refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to unban user");
+      toast.error(err instanceof Error && /OWNER_SUCCESSOR_REQUIRED/.test(err.message)
+        ? organizationErrorMessage(err)
+        : err instanceof Error ? err.message : "Failed to unban user");
     } finally {
       setUnbanPending(false);
     }
@@ -300,7 +321,9 @@ export function UsersDataTable() {
       setRowSelection({});
       refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Action failed");
+      toast.error(err instanceof Error && /OWNER_SUCCESSOR_REQUIRED/.test(err.message)
+        ? organizationErrorMessage(err)
+        : err instanceof Error ? err.message : "Action failed");
     } finally {
       setSinglePending(false);
     }
@@ -326,7 +349,7 @@ export function UsersDataTable() {
       if (batchAction.action === "ban") {
         if (user.banned === true) return; // Already banned — skip (defense-in-depth)
         const params = batchBanParamsRef.current;
-        await banUser(user.id, params?.banReason ?? "", params?.banExpiresIn, postAuditEvent);
+        await banUser(user.id, params?.banReason ?? "", params?.banExpiresIn);
       } else if (batchAction.action === "unban") {
         if (user.banned !== true) return; // Not banned — skip (defense-in-depth)
         await unbanUser(user.id, postAuditEvent);
@@ -334,7 +357,7 @@ export function UsersDataTable() {
         await removeUser(user.id, postAuditEvent);
       }
     },
-    [batchAction, postAuditEvent],
+    [batchAction, banUser, postAuditEvent],
   );
 
   // ----- Label helpers -----
