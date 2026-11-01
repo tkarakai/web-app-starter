@@ -244,11 +244,14 @@ const passwordStrengthPlugin = (
       }
     }
 
-    // Determine role: admin emails get the stricter threshold
+    // Determine role: admin emails get the stricter threshold. An existing account whose email
+    // couldn't be resolved (change or reset) also gets it: it may be an administrator's.
     const actionCtx = requireActionCtx(convexCtx);
     const adminEmails = await actionCtx.runQuery(internal.platform.adminEmails.list);
+    const normalized = email.trim().toLowerCase();
+    const unresolvedAccount = !normalized && !path.endsWith("/sign-up/email");
     const role =
-      email && adminEmails.some((row: { email: string }) => row.email === email)
+      unresolvedAccount || (normalized && adminEmails.some((row: { email: string }) => row.email.trim().toLowerCase() === normalized))
         ? "admin"
         : "user";
 

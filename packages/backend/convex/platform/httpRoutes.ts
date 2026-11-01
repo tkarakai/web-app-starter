@@ -10,6 +10,7 @@ import {
   revokeOtherSessionsHandler,
   viewBackupCodesHandler,
 } from "./sessions";
+import { trustedAuthIp } from "./authRateLimits";
 import { getDevTotpCode } from "./devTotp";
 import { createE2eUser } from "./e2eFixtures";
 import {
@@ -141,11 +142,9 @@ export function registerPlatformRoutes(http: HttpRouter): void {
           });
         }
 
-        // Forward IP for rate limiting
-        const clientIp =
-          request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-          request.headers.get("x-real-ip") ??
-          "unknown";
+        // A per-IP budget only from a verified ingress header: a client chooses its own
+        // x-forwarded-for, so it would get a fresh bucket per request.
+        const clientIp = trustedAuthIp(request);
 
         const result = await ctx.runMutation(internal.platform.waitlist.join, {
           email: email.trim().toLowerCase(),

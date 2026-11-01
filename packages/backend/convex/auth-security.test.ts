@@ -76,6 +76,15 @@ describe("email verification policy fallback", () => {
 
     expect(required).toBe(true);
   });
+
+  test("a stored value other than false counts as required, as enforcement reads it", async () => {
+    const t = createTestEnv();
+    const required = await t.run(async (ctx) => {
+      await ctx.runMutation(components.platform.appSettings.putRaw, { key: "adminEmailVerificationRequired", value: "1" });
+      return await isEmailVerificationRequired(ctx, { role: "admin" });
+    });
+    expect(required).toBe(true);
+  });
 });
 
 describe("authorization — cross-tenant isolation", () => {
