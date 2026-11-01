@@ -153,44 +153,6 @@ export async function fetchUsers(params: FetchUsersParams): Promise<FetchUsersRe
   };
 }
 
-export async function banUser(
-  userId: string,
-  banReason: string,
-  banExpiresIn?: number,
-  postAuditEvent?: PostAuditEventFn,
-): Promise<void> {
-  const happenedAt = Date.now();
-  let status: AuditStatus = "succeeded";
-  let error: unknown;
-
-  try {
-    const result = await authClient.admin.banUser({
-      userId,
-      banReason,
-      ...(banExpiresIn != null ? { banExpiresIn } : {}),
-    });
-    if (result.error) {
-      status = mapAuthErrorToAuditStatus(result.error as AuthErrorLike);
-      error = new Error(result.error.message ?? "Failed to ban user");
-    }
-  } catch (e) {
-    error = e;
-    status = "failed.unknown";
-  } finally {
-    postAuditEvent?.({
-      happenedAt,
-      sourceDetail: "admin",
-      action: "admin.user.banned",
-      resource: `user:${userId}`,
-      status,
-      reason: banReason,
-      meta: banExpiresIn != null ? JSON.stringify({ banExpiresIn }) : undefined,
-    }).catch(() => {});
-  }
-
-  if (error) throw error;
-}
-
 export async function unbanUser(
   userId: string,
   postAuditEvent?: PostAuditEventFn,
