@@ -109,6 +109,7 @@
   "projects": {
     "newProject": "Új projekt",
     "createProject": "Projekt létrehozása",
+    "organizationChanged": "A szervezete megváltozott, ezért a projekt nem jött létre. A piszkozat megmaradt: ellenőrizze a szervezetet, és próbálja újra.",
     "createFirst": "Hozd létre az első projektedet",
     "noProjects": "Nincsenek projektek",
     "editProject": "Projekt szerkesztése",

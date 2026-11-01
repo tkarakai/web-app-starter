@@ -109,6 +109,7 @@
   "projects": {
     "newProject": "Nouveau projet",
     "createProject": "Créer un projet",
+    "organizationChanged": "Votre organisation a changé, le projet n'a donc pas été créé. Votre brouillon est conservé : vérifiez l'organisation et réessayez.",
     "createFirst": "Créez votre premier projet",
     "noProjects": "Aucun projet",
     "editProject": "Modifier le projet",

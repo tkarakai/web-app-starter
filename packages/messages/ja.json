@@ -109,6 +109,7 @@
   "projects": {
     "newProject": "新規プロジェクト",
     "createProject": "プロジェクト作成",
+    "organizationChanged": "組織が変更されたため、プロジェクトは作成されませんでした。下書きは保持されています。組織を確認して、もう一度お試しください。",
     "createFirst": "最初のプロジェクトを作成",
     "noProjects": "プロジェクトなし",
     "editProject": "プロジェクトを編集",

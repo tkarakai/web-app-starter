@@ -13,6 +13,7 @@ const ORGANIZATION_CODES: [code: string, recovery: string][] = [
   ["LAST_OWNER", "this is the organization's only owner who can act; make another member an owner first"],
   ["NOT_AN_OWNER", "the user is not an owner of this organization; re-read organizations_get"],
   ["MEMBER_BANNED", "a banned member can't be made an owner; choose another member"],
+  ["MEMBER_IS_ADMINISTRATOR", "a platform administrator can't be made an owner; choose another member"],
   ["MEMBER_NOT_FOUND", "the user is not a member of this organization; re-read organizations_get"],
   ["ORGANIZATION_NOT_FOUND", "the organization no longer exists; re-read organizations_list"],
   ["INVITATION_NOT_PENDING", "the invitation was already accepted, declined or canceled; re-read organizations_get"],

@@ -30,7 +30,7 @@ import { createAssuranceHooks } from "./authAssurance";
 import { sessionFields, userFields } from "./sessionFields";
 import { identitySession } from "./sessionPolicy";
 import { organizationPlugin } from "./organizationPlugin";
-import { memberTriggers, SUCCESSOR_REQUIRED, successorRequiredMessage } from "./organizationOwnership";
+import { memberTriggers, SUCCESSOR_REQUIRED, successorRequiredMessage, userTriggers } from "./organizationOwnership";
 
 /** Truncate a string to at most `max` characters. */
 function truncate(value: string | undefined, max: number): string | undefined {
@@ -102,17 +102,29 @@ const protectedAdminPlugin = (
 ): BetterAuthPlugin => ({
   id: "protected-admin",
   hooks: {
-    // Every organization with members who can sign in keeps an owner who can: make a successor
+    // Every organization with members who can act keeps an owner who can: make a successor
     // an owner first (organizationOwnership.ts). Runs after session assurance has admitted an
-    // administrator, so other callers learn nothing about a user's organizations.
+    // administrator, so other callers learn nothing about a user's organizations. The user
+    // trigger enforces the same in the write's transaction; this only explains the refusal.
     before: [{
-      matcher: (context) => context.path === "/admin/ban-user",
+      matcher: (context) => context.path === "/admin/ban-user" || context.path === "/admin/unban-user" || context.path === "/admin/set-role",
       handler: createAuthMiddleware(async (context) => {
-        const userId = (context.body as { userId?: unknown } | undefined)?.userId;
+        const body = context.body as { userId?: unknown; role?: unknown } | undefined;
+        const userId = body?.userId;
         if (typeof userId !== "string") return;
-        const needed = await requireActionCtx(convexCtx).runQuery(internal.platform.organizationOwnership.banBlockers, { userId });
+        const runQuery = requireActionCtx(convexCtx).runQuery;
+        if (context.path === "/admin/ban-user") {
+          const needed = await runQuery(internal.platform.organizationOwnership.banBlockers, { userId });
+          if (needed.length > 0) throw new APIError("CONFLICT", { code: SUCCESSOR_REQUIRED, message: successorRequiredMessage(needed) });
+          return;
+        }
+        const role = Array.isArray(body?.role) ? body.role.join(",") : typeof body?.role === "string" ? body.role : undefined;
+        const unban = context.path === "/admin/unban-user";
+        if (!unban && role === undefined) return;
+        const needed = await runQuery(internal.platform.organizationOwnership.statusChangeBlockers, unban ? { userId, banned: false } : { userId, role });
         if (needed.length > 0) {
-          throw new APIError("CONFLICT", { code: SUCCESSOR_REQUIRED, message: successorRequiredMessage(needed) });
+          const change = unban ? "unbanning" : "changing the role of";
+          throw new APIError("CONFLICT", { code: SUCCESSOR_REQUIRED, message: successorRequiredMessage(needed, change) });
         }
       }),
     }],
@@ -265,7 +277,7 @@ export const authComponent = createClient<DataModel, typeof authSchema>(
       onUpdate: makeFunctionReference<"mutation">("platform/authTriggers:onUpdate"),
       onDelete: makeFunctionReference<"mutation">("platform/authTriggers:onDelete"),
     } as unknown as AuthFunctions,
-    triggers: { member: memberTriggers },
+    triggers: { member: memberTriggers, user: userTriggers },
   },
 );
 

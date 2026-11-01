@@ -22,6 +22,7 @@ import {
   removeMemberships,
   findById,
   findMembership,
+  isDeleting,
   listMemberships,
   listOrganizationMembers,
   parseRole,
@@ -44,7 +45,7 @@ export const mine = authedQuery({
     ]);
     const organizations = await Promise.all(memberships.map(async (member) => {
       const organization = await findById(ctx, "organization", member.organizationId);
-      return organization && { id: organization._id, name: organization.name, role: parseRole(member.role) };
+      return organization && !isDeleting(organization) ? { id: organization._id, name: organization.name, role: parseRole(member.role) } : null;
     }));
     return {
       activeOrganizationId: active?.organizationId ?? null,

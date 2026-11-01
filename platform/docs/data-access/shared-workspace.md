@@ -95,6 +95,8 @@ resolving that context. Do not replace the organization check with creator owner
 Mount the [organization UI](../organizations.md#ui-building-blocks). Members select the active
 workspace; these functions accept no organization argument. Queries return `null` without a
 membership, so show the workspace empty state while preserving account controls/invitations.
+Call `add` with `expectedOrganizationId` set to the active organization the form was opened
+for; on `ORGANIZATION_CHANGED` keep the draft and let the user check where it goes.
 
 Every member can read and edit these notes. If, for example, only owners/admins may delete,
 add an explicit `ctx.organizationRole` check **after** the row's organization check in `remove`.
@@ -111,5 +113,7 @@ events; decide whether to retain or redact creator attribution.
 - A member of another org cannot list/get/change them, including by guessed IDs.
 - Switching orgs changes the list and blocks direct IDs from the previous workspace.
 - Removal revokes access on the next request, including a stale active-org selection.
+- An `add` composed for an org the caller has since left or switched away from is refused
+  (`ORGANIZATION_CHANGED`) and writes nothing anywhere.
 - With no memberships, reads are `null`, writes refuse `NO_ORGANIZATION`, and no org is created.
 - Org cleanup removes its notes and preserves personal data and other orgs' notes.
