@@ -47,15 +47,20 @@ async function membersWithUsers(ctx: Reader, organizationId: string) {
   }));
 }
 
+/** Counts and owners only: member identities beyond the owners are not read for a summary. */
 async function summary(ctx: Reader, organization: Doc<"organization">) {
-  const members = await membersWithUsers(ctx, organization._id);
+  const rows = await listOrganizationMembers(ctx, organization._id);
+  const owners = await Promise.all(rows.filter((member) => parseRole(member.role) === "owner").map(async (member) => {
+    const user = await findById(ctx, "user", member.userId);
+    return { userId: member.userId, name: user?.name ?? "", email: user?.email ?? "", banned: isBanned(user) };
+  }));
   const pending = await livePendingInvitations(ctx, organization._id);
   return {
     id: organization._id,
     name: organization.name,
     createdAt: organization.createdAt,
-    memberCount: members.length,
-    owners: members.filter((m) => m.role === "owner").map(({ userId, name, email, banned }) => ({ userId, name, email, banned })),
+    memberCount: rows.length,
+    owners,
     pendingInvitations: pending.length,
   };
 }
@@ -122,7 +127,7 @@ export const forUser = authedQuery({
   },
 });
 
-async function audit(ctx: AdminCtx, action: "admin.organization.owner_added" | "admin.organization.owner_removed" | "admin.organization.invitation_canceled" | "admin.organization.deleted", organizationId: string, meta?: Record<string, string>, values?: { oldValue: string; newValue: string }) {
+async function audit(ctx: AdminCtx, action: "admin.organization.owner_added" | "admin.organization.owner_removed" | "admin.organization.invitation_canceled" | "admin.organization.deleted" | "admin.organization.cleanup_retried", organizationId: string, meta?: Record<string, string>, values?: { oldValue: string; newValue: string }) {
   await scheduleAuditEvent(ctx, {
     actor: ctx.user.email,
     authenticatedUserId: ctx.ownerId,
@@ -206,6 +211,33 @@ async function deleteAll(ctx: AdminCtx, model: "member" | "invitation", organiza
   }
   throw new Error("TOO_MANY_ORGANIZATION_RECORDS");
 }
+
+/** Cleanups of deleted organizations' app data that need attention: failed ones, and ones still running. */
+export const cleanups = authedQuery({
+  args: {},
+  handler: async (ctx) => {
+    requireAdmin(ctx.user);
+    const byState = (state: "failed" | "running") => ctx.db.query("organizationCleanups")
+      .withIndex("by_state", (q) => q.eq("state", state)).order("desc").take(100);
+    return [...await byState("failed"), ...await byState("running")].map((row) => ({
+      organizationId: row.organizationId, state: row.state, attempts: row.attempts, batches: row.batches,
+      lastError: row.lastError ?? null, startedAt: row.startedAt, updatedAt: row.updatedAt,
+    }));
+  },
+});
+
+/** Run a failed cleanup again, from where it stopped (cleanup batches are idempotent). */
+export const retryCleanup = adminMutation({
+  args: { organizationId: v.string() },
+  handler: async (ctx, { organizationId }) => {
+    const row = await ctx.db.query("organizationCleanups").withIndex("by_organization", (q) => q.eq("organizationId", organizationId)).unique();
+    if (!row) throw new Error("CLEANUP_NOT_FOUND");
+    if (row.state !== "failed") throw new Error("CLEANUP_NOT_FAILED");
+    await ctx.db.patch(row._id, { state: "running", attempts: 0, updatedAt: Date.now() });
+    await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationAppData, { organizationId });
+    await audit(ctx, "admin.organization.cleanup_retried", organizationId);
+  },
+});
 
 /**
  * Delete an organization, as its owner could: memberships, invitations and the organization in

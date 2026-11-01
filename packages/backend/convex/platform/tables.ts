@@ -27,6 +27,17 @@ export const platformTables = {
   agentTaskMessages: defineTable({ userId: v.string(), messageId: v.string(), taskId: v.id("agentTasks"), requestHash: v.string(), expiresAt: v.number() }).index("by_user_message", ["userId", "messageId"]).index("by_task", ["taskId"]),
   agentTasks: defineTable({ userId: v.string(), grantId: v.id("agentGrants"), resource: v.string(), generation: v.string(), contextId: v.string(), messageId: v.string(), requestHash: v.string(), command: v.optional(v.string()), state: v.string(), createdAt: v.number(), updatedAt: v.number(), expiresAt: v.number(), result: v.optional(v.string()), error: v.optional(v.string()) }).index("by_user", ["userId"]).index("by_user_message", ["userId", "messageId"]),
 
+  // Removing a deleted organization's app data: progress, retries and outcome (organizations.ts).
+  organizationCleanups: defineTable({
+    organizationId: v.string(),
+    state: v.union(v.literal("running"), v.literal("done"), v.literal("retained"), v.literal("failed")),
+    attempts: v.number(),
+    batches: v.number(),
+    lastError: v.optional(v.string()),
+    startedAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_organization", ["organizationId"]).index("by_state", ["state", "updatedAt"]),
+
   userProfiles: defineTable({
     ownerId: v.string(),
     locale: v.optional(v.string()),

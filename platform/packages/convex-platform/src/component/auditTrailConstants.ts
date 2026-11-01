@@ -83,6 +83,7 @@ export const AUDIT_ACTIONS = [
   "admin.organization.owner_removed",
   "admin.organization.invitation_canceled",
   "admin.organization.deleted",
+  "admin.organization.cleanup_retried",
 
   // admin.onboarding.*
   "admin.onboarding.account_created",

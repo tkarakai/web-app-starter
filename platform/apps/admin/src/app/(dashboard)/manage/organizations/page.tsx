@@ -1,3 +1,4 @@
+import { OrganizationCleanups } from "@/components/organizations/organization-cleanups";
 import { OrganizationsDataTable } from "@/components/organizations/organizations-data-table";
 
 export default function OrganizationsPage() {
@@ -9,6 +10,7 @@ export default function OrganizationsPage() {
           Every organization, its members and invitations. Administrators never see an organization&apos;s app data.
         </p>
       </div>
+      <OrganizationCleanups />
       <OrganizationsDataTable />
     </div>
   );

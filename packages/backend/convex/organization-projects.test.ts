@@ -378,6 +378,11 @@ describe("deleting an organization", () => {
     await boss.caller.mutation(api.platform.adminOrganizations.remove, { organizationId: acme });
     await f.t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(await f.t.run((ctx) => ctx.db.query("projects").collect())).toEqual([]);
+    // The cleanup records that it finished, and a duplicate delivery does nothing.
+    const cleanup = () => f.t.run((ctx) => ctx.db.query("organizationCleanups").collect());
+    expect(await cleanup()).toMatchObject([{ organizationId: acme, state: "done", attempts: 0 }]);
+    await f.t.action(internal.platform.organizations.deleteOrganizationAppData, { organizationId: acme });
+    expect(await cleanup()).toMatchObject([{ state: "done" }]);
   });
 
   test("deleting its last member's account removes its projects, tasks and files, through either deletion path", async () => {

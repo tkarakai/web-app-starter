@@ -164,6 +164,16 @@ version. Release-specific compatibility and deployment steps are listed explicit
   `CAPABILITY_FAILED`. They now return the code (`OWNER_SUCCESSOR_REQUIRED`, `LAST_OWNER`,
   `MEMBER_BANNED`, `MEMBER_IS_ADMINISTRATOR`, `ORGANIZATION_OWNER_REQUIRED`, `ORGANIZATION_NOT_FOUND`,
   `INVITATION_NOT_PENDING`, and others) with a fixed recovery step, never the backend message.
+- **Removing a deleted organization's app data is durable.** A failing batch of
+  `convex/organizationData.ts` ended the cleanup silently, and an error inside it that mentioned a
+  missing function was taken for an app without cleanup. Progress is now recorded in a new
+  platform table, `organizationCleanups`. A failing batch is retried with backoff, then marked
+  `failed`. The admin Organizations page lists failed and running cleanups with **Retry**, also
+  available as `organizations_cleanups` and `organizations_retryCleanup`, audited as
+  `admin.organization.cleanup_retried`. Only an unresolvable `deleteOrganizationData` counts as no
+  cleanup (`retained`). Keep your cleanup batches idempotent.
+- The admin organizations list no longer reads every member's account to show each organization's
+  owners and counts: only the owners' accounts are read.
 - Deleting an account now deletes every organization it leaves with no members, including the
   personal organization every account gets at sign-up, with its invitations and its app data
   (through the app's `convex/organizationData.ts` cleanup, as when an owner deletes an
