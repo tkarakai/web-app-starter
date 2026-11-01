@@ -15,6 +15,7 @@ import type { Doc } from "./betterAuth/_generated/dataModel";
 import { evaluateSession, identitySession } from "./sessionPolicy";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { authedQuery, orgMutation, orgQuery } from "./functions";
+import { needsSuccessor, organizationSeats } from "./organizationOwnership";
 import {
   deleteInvitationBatch,
   ensurePersonalOrganization,
@@ -80,10 +81,15 @@ export const active = orgQuery({
       ? await organizationInvitations(ctx, ctx.organizationId, new Set(members.map((member) => member.email.toLowerCase())))
       : [];
 
+    // An owner may leave only if an owner who can sign in stays (organizationOwnership.ts).
+    const others = (await organizationSeats(ctx, ctx.organizationId)).filter((s) => s.member.userId !== ctx.user._id);
+    const lastOwner = ctx.organizationRole === "owner" && needsSuccessor(others);
+
     return {
       id: organization._id,
       name: organization.name,
       role: ctx.organizationRole,
+      lastOwner,
       memberCount: members.length,
       members,
       invitations,

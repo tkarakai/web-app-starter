@@ -76,7 +76,13 @@ export function OrganizationDetailsDialog({ organizationId, onOpenChange }: Prop
     }
   };
 
-  const ownerCount = organization?.members.filter((member) => member.role === "owner").length ?? 0;
+  type Member = NonNullable<typeof organization>["members"][number];
+  // Mirrors the backend rule: an owner stays, and while anyone can sign in, one who isn't banned.
+  const canRemoveOwner = (member: Member) => {
+    const others = organization?.members.filter((m) => m.memberId !== member.memberId) ?? [];
+    if (!others.some((m) => m.role === "owner")) return false;
+    return member.banned || !others.some((m) => !m.banned) || others.some((m) => !m.banned && m.role === "owner");
+  };
 
   const onConfirm = () => {
     if (!organizationId || !confirm) return;
@@ -126,8 +132,8 @@ export function OrganizationDetailsDialog({ organizationId, onOpenChange }: Prop
             <section className="space-y-2">
               <h3 className="text-sm font-medium">Members</h3>
               <p className="text-xs text-muted-foreground">
-                Every organization with members always has at least one owner. To transfer ownership, make another
-                member an owner, then remove the previous owner.
+                Every organization with members always has an owner who isn&apos;t banned (unless every member is).
+                To transfer ownership, make another member an owner, then remove the previous owner.
               </p>
               <div className="rounded-md border">
                 <Table>
@@ -141,7 +147,7 @@ export function OrganizationDetailsDialog({ organizationId, onOpenChange }: Prop
                   </TableHeader>
                   <TableBody>
                     {organization.members.map((member) => {
-                      const onlyOwner = member.role === "owner" && ownerCount <= 1;
+                      const onlyOwner = member.role === "owner" && !canRemoveOwner(member);
                       return (
                         <TableRow key={member.memberId} data-testid="organization-member">
                           <TableCell>
@@ -167,6 +173,8 @@ export function OrganizationDetailsDialog({ organizationId, onOpenChange }: Prop
                                   Remove as owner
                                 </Button>
                               )
+                            ) : member.banned ? (
+                              <span className="text-xs text-muted-foreground">Banned members can&apos;t be owners</span>
                             ) : (
                               <Button
                                 variant="outline"

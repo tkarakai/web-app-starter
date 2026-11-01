@@ -172,7 +172,8 @@ org workspaces, hide organization workspace controls and show `NoOrganization`; 
 pages can still render their data. `orgMutation` refuses `NO_ORGANIZATION`; it never
 creates a replacement. The UI is `OrganizationSwitcher`, `OrganizationSection`, `OrganizationInvitations`
 and `AcceptInvitationView` from `@web-app-starter/auth-ui`. An organization with members always
-has an owner: the backend refuses any membership write that would break this. Platform
+has an owner, and one who isn't banned while members can sign in: the backend refuses any
+membership write or ban that would break this (a ban needs a successor first). Platform
 administrators manage organizations in the admin app and through `organizations_*` agent
 capabilities. See [docs/organizations.md](docs/organizations.md).
 

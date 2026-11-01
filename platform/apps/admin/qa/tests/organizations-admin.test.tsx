@@ -91,3 +91,21 @@ describe("admin organizations", () => {
     await waitFor(() => expect(mocks.mutation).toHaveBeenCalledWith("cancelInvitation", { invitationId: "i1" }));
   });
 });
+
+describe("banning an organization's only owner who can act", () => {
+  test("the ban dialog preselects a successor and passes it with the ban", async () => {
+    const { BanDialog } = await import("../../src/components/users/ban-dialog");
+    mocks.detail = [{
+      organizationId: "org1", name: "Acme", role: "owner", memberCount: 2, soleOwner: true,
+      onAccountDeletion: "ownershipPasses", successor: null,
+      banSuccessor: { suggested: "u2", candidates: [{ userId: "u2", name: "", email: "bob@example.test", role: "admin" }] },
+    }];
+    const onConfirm = vi.fn();
+    render(<BanDialog open onOpenChange={() => {}} onConfirm={onConfirm}
+      users={[{ id: "u1", email: "ada@example.test" } as never]} />);
+    expect(screen.getByTestId("ban-successors").textContent).toContain("Acme");
+    fireEvent.change(screen.getByLabelText(/Ban reason/), { target: { value: "abuse" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ban user" }));
+    expect(onConfirm).toHaveBeenCalledWith("abuse", undefined, [{ organizationId: "org1", userId: "u2" }]);
+  });
+});

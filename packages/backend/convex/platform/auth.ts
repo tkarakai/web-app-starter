@@ -30,7 +30,7 @@ import { createAssuranceHooks } from "./authAssurance";
 import { sessionFields, userFields } from "./sessionFields";
 import { identitySession } from "./sessionPolicy";
 import { organizationPlugin } from "./organizationPlugin";
-import { memberTriggers } from "./organizationOwnership";
+import { memberTriggers, SUCCESSOR_REQUIRED, successorRequiredMessage } from "./organizationOwnership";
 
 /** Truncate a string to at most `max` characters. */
 function truncate(value: string | undefined, max: number): string | undefined {
@@ -101,6 +101,22 @@ const protectedAdminPlugin = (
   convexCtx: GenericCtx<DataModel>,
 ): BetterAuthPlugin => ({
   id: "protected-admin",
+  hooks: {
+    // Every organization with members who can sign in keeps an owner who can: make a successor
+    // an owner first (organizationOwnership.ts). Runs after session assurance has admitted an
+    // administrator, so other callers learn nothing about a user's organizations.
+    before: [{
+      matcher: (context) => context.path === "/admin/ban-user",
+      handler: createAuthMiddleware(async (context) => {
+        const userId = (context.body as { userId?: unknown } | undefined)?.userId;
+        if (typeof userId !== "string") return;
+        const needed = await requireActionCtx(convexCtx).runQuery(internal.platform.organizationOwnership.banBlockers, { userId });
+        if (needed.length > 0) {
+          throw new APIError("CONFLICT", { code: SUCCESSOR_REQUIRED, message: successorRequiredMessage(needed) });
+        }
+      }),
+    }],
+  },
   async onRequest(request, ctx) {
     const url = new URL(request.url);
     // Strip the base path prefix (e.g. /api/auth) to get the route path
@@ -137,6 +153,7 @@ const protectedAdminPlugin = (
         ),
       };
     }
+
   },
 });
 

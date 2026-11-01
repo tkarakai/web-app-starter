@@ -11,7 +11,7 @@
 import { components, internal } from "../_generated/api";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
-import { deleteMember, setMemberRole } from "./organizationOwnership";
+import { deleteMember, needsSuccessor, organizationSeats, pickSuccessor, setMemberRole } from "./organizationOwnership";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 
 type Reader = Pick<QueryCtx, "runQuery">;
@@ -212,19 +212,18 @@ export async function findUserByOwnerId(ctx: Reader, ownerId: string): Promise<D
 export type AccountDeletionActor = { email: string; userId?: string };
 
 /**
- * Account deletion: drop the user's memberships. An organization that would be left with
- * members but no owner first passes ownership to its longest-standing admin, else member, so
- * it always stays administrable (the ownership guard refuses the deletion otherwise). One left
+ * Account deletion: drop the user's memberships. An organization that would be left without an
+ * owner (or without one who can sign in, while members can) first passes ownership to its
+ * longest-standing admin, else member, preferring people who aren't banned, so it always stays
+ * administrable (the ownership guard refuses the deletion otherwise). One left
  * with no members at all is deleted, as if its owner had deleted it (every account has a
  * personal organization, so this is the common case). Call it from every path that deletes a user.
  */
 export async function removeMemberships(ctx: Deleter, userId: string, actor: AccountDeletionActor): Promise<void> {
   for (const member of await listMemberships(ctx, userId)) {
-    const others = (await listOrganizationMembers(ctx, member.organizationId)).filter((m) => m._id !== member._id);
-    if (parseRole(member.role) === "owner" && others.length > 0 && !others.some((m) => parseRole(m.role) === "owner")) {
-      const successor = others.find((m) => parseRole(m.role) === "admin") ?? others[0]!;
-      await setMemberRole(ctx, successor._id, "owner");
-    }
+    const others = (await organizationSeats(ctx, member.organizationId)).filter((s) => s.member._id !== member._id);
+    const successor = parseRole(member.role) === "owner" && needsSuccessor(others) ? pickSuccessor(others) : undefined;
+    if (successor) await setMemberRole(ctx, successor.member._id, "owner");
     await deleteMember(ctx, member._id);
     if (others.length === 0) await deleteEmptyOrganization(ctx, member.organizationId, userId, actor);
   }

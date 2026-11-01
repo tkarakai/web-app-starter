@@ -16,13 +16,14 @@ import {
 } from "@web-app-starter/design-system";
 import type { AdminUser } from "@/lib/admin-api";
 import { useEscapeConfirm } from "@/hooks/use-escape-confirm";
+import { BanSuccessors, type BanSuccessor } from "@/components/organizations/ban-successors";
 
 type BanDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   users: AdminUser[];
   pending?: boolean;
-  onConfirm: (banReason: string, banExpiresIn?: number) => void;
+  onConfirm: (banReason: string, banExpiresIn?: number, successors?: BanSuccessor[]) => void;
 };
 
 export function BanDialog({
@@ -35,6 +36,8 @@ export function BanDialog({
   const [reason, setReason] = React.useState("");
   const [expiresDate, setExpiresDate] = React.useState("");
   const [expiresTime, setExpiresTime] = React.useState("");
+  // Single bans name new owners where needed; null while that list loads.
+  const [successors, setSuccessors] = React.useState<BanSuccessor[] | null>(null);
 
   React.useEffect(() => {
     if (open) {
@@ -49,7 +52,7 @@ export function BanDialog({
     ? `Ban ${users[0].email}`
     : `Ban ${users.length} users`;
 
-  const canConfirm = reason.trim().length > 0 && !pending;
+  const canConfirm = reason.trim().length > 0 && !pending && (!isSingle || successors !== null);
 
   // Minimum date: tomorrow (ban must be at least 24h from now).
   const minDate = React.useMemo(() => {
@@ -79,7 +82,7 @@ export function BanDialog({
       }
     }
 
-    onConfirm(reason.trim(), banExpiresIn);
+    onConfirm(reason.trim(), banExpiresIn, isSingle ? successors ?? [] : undefined);
   };
 
   return (
@@ -143,6 +146,15 @@ export function BanDialog({
             </p>
           </div>
         </div>
+
+        {isSingle ? (
+          <BanSuccessors userId={users[0].id} onChange={setSuccessors} />
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            A user who is the only owner able to act for an organization can&apos;t be banned in a batch:
+            ban them individually to choose a new owner.
+          </p>
+        )}
 
         <div className="flex justify-end gap-2 pt-4">
           <Button
