@@ -7,6 +7,8 @@ import type { Doc } from "./betterAuth/_generated/dataModel";
 import { adminMutation, authedQuery } from "./functions";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { removeMemberships } from "./organizationAccess";
+import { promoteToOwner } from "./adminOrganizations";
+import { successorRequiredMessage, successorsNeededForBan } from "./organizationOwnership";
 
 const userArgs = { userId: v.string() };
 function userResult(user: Doc<"user">) {
@@ -46,11 +48,26 @@ export const list = authedQuery({
   },
 });
 export const get = authedQuery({ args: userArgs, handler: async (ctx, { userId }) => { if (ctx.user.role !== "admin") throw new Error("NOT_ADMIN"); return userResult(await target(ctx, userId)); } });
+/**
+ * Ban a user. Every organization with members who can sign in must keep an owner who can: where
+ * this user is that only owner, name a successor in `successors` (see
+ * `organizations_forUser`'s `banSuccessor`). Successors are made owners and the user banned in
+ * one transaction; with any organization left uncovered nothing changes.
+ */
 export const ban = adminMutation({
-  args: { ...userArgs, reason: v.optional(v.string()), expiresInSeconds: v.optional(v.number()) }, handler: async (ctx, args) => {
+  args: {
+    ...userArgs, reason: v.optional(v.string()), expiresInSeconds: v.optional(v.number()),
+    successors: v.optional(v.array(v.object({ organizationId: v.string(), userId: v.string() }))),
+  }, handler: async (ctx, args) => {
     const user = await protectedTarget(ctx, args.userId);
     if (args.userId === ctx.user._id) throw new Error("CANNOT_BAN_SELF");
     if (args.reason && args.reason.length > 1000 || args.expiresInSeconds !== undefined && (!Number.isFinite(args.expiresInSeconds) || args.expiresInSeconds <= 0 || args.expiresInSeconds > 31_536_000)) throw new Error("INVALID_BAN");
+    if ((args.successors ?? []).some((s) => s.userId === args.userId) || (args.successors?.length ?? 0) > 50) throw new Error("INVALID_SUCCESSOR");
+    for (const successor of args.successors ?? []) {
+      await promoteToOwner(ctx, successor.organizationId, successor.userId, { reason: "ban_successor", bannedUserId: args.userId });
+    }
+    const uncovered = await successorsNeededForBan(ctx, args.userId);
+    if (uncovered.length > 0) throw new Error(successorRequiredMessage(uncovered));
     await ctx.runMutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: user._id }], update: { banned: true, banReason: args.reason ?? null, banExpires: args.expiresInSeconds ? Date.now() + args.expiresInSeconds * 1000 : null, updatedAt: Date.now() } } });
     await deleteSessions(ctx, user._id);
     await scheduleAuditEvent(ctx, { actor: ctx.user.email, authenticatedUserId: ctx.ownerId, sourceDetail: "agent-users", action: "admin.user.banned", resource: `user:${user._id}`, status: "succeeded", reason: args.reason });

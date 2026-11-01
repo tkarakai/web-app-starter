@@ -24,9 +24,13 @@ version. Release-specific compatibility and deployment steps are listed explicit
   audited as `admin.organization.*`. Administrators never see an organization's app data.
   See [organizations](docs/organizations.md#administration).
 
-- **An organization with members always has an owner**, enforced in the same transaction as
-  every membership write (Better Auth component triggers plus the platform's own writes), so
-  concurrent demotions or departures can no longer leave members without an owner.
+- **An organization with members always has an owner**, and while any member can sign in, an
+  owner who isn't banned. It is enforced in the same transaction as every membership write
+  (Better Auth component triggers plus the platform's own writes), so concurrent demotions or
+  departures can no longer leave members without an owner. Banning an organization's only
+  owner who can act requires a successor first: `/admin/ban-user` answers
+  `409 OWNER_SUCCESSOR_REQUIRED`, the admin ban dialog picks the new owners, and the agent
+  `users_ban` takes `successors`. Banned members can't be made owners.
 
 - Guides for individual accounts, shared workspaces, organization-private data and private/shared
   composition using the existing auth/org builders, with indexed pagination, explicit publication,

@@ -165,8 +165,9 @@ function MembersCard({ organization, run, roleLabel }: CardProps) {
   const youAreOwner = organization.role === "owner";
   const canManage = organization.role !== "member";
   const roles: OrganizationRole[] = youAreOwner ? ["member", "admin", "owner"] : ["member", "admin"];
-  // The last owner can't leave (Better Auth refuses): they promote someone or delete instead.
-  const lastOwner = youAreOwner && organization.members.filter((member) => member.role === "owner").length === 1;
+  // The last owner, or the last who isn't banned while others can sign in, can't leave: they
+  // promote someone or delete instead. The backend decides (`lastOwner`).
+  const lastOwner = youAreOwner && (organization.lastOwner || organization.members.filter((member) => member.role === "owner").length === 1);
 
   return (
     <Card>

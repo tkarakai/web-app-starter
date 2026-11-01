@@ -15,7 +15,7 @@ import type { Doc } from "./betterAuth/_generated/dataModel";
 import { adminMutation, authedQuery } from "./functions";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { findById, findMembership, listMemberships, listOrganizationMembers, parseRole } from "./organizationAccess";
-import { markOrganizationDeleting, setMemberRole } from "./organizationOwnership";
+import { isBanned, markOrganizationDeleting, needsSuccessor, organizationSeats, pickSuccessor, setMemberRole, successorsNeededForBan } from "./organizationOwnership";
 import { organizationInvitations } from "./organizations";
 
 type Reader = Pick<QueryCtx, "runQuery">;
@@ -42,7 +42,7 @@ async function membersWithUsers(ctx: Reader, organizationId: string) {
       email: user?.email ?? "",
       role: parseRole(member.role),
       joinedAt: member.createdAt,
-      banned: user?.banned ?? false,
+      banned: isBanned(user),
     };
   }));
 }
@@ -95,29 +95,33 @@ export const get = authedQuery({
 });
 
 /**
- * A user's memberships, and what deleting the account would do to each organization: hand
- * ownership to a successor, or delete an organization the user is the only member of.
+ * A user's memberships; what deleting the account would do to each organization (hand ownership
+ * to a successor, or delete an organization the user is the only member of); and which
+ * organizations need a new owner before the user can be banned, with who could take over.
  */
 export const forUser = authedQuery({
   args: { userId: v.string() },
   handler: async (ctx, { userId }) => {
     requireAdmin(ctx.user);
     const memberships = await listMemberships(ctx, userId);
+    const banBlockers = new Map((await successorsNeededForBan(ctx, userId)).map((n) => [n.organizationId, n]));
     return await Promise.all(memberships.map(async (membership) => {
       const organization = await findById(ctx, "organization", membership.organizationId);
-      const members = await membersWithUsers(ctx, membership.organizationId);
-      const others = members.filter((m) => m.memberId !== membership._id);
+      const seats = await organizationSeats(ctx, membership.organizationId);
+      const others = seats.filter((s) => s.member._id !== membership._id);
       const role = parseRole(membership.role);
-      const soleOwner = role === "owner" && !others.some((m) => m.role === "owner");
-      const successor = soleOwner ? others.find((m) => m.role === "admin") ?? others[0] : undefined;
+      const successor = role === "owner" && needsSuccessor(others) ? pickSuccessor(others) : undefined;
+      const onBan = banBlockers.get(membership.organizationId);
       return {
         organizationId: membership.organizationId,
         name: organization?.name ?? "",
         role,
-        memberCount: members.length,
-        soleOwner,
+        memberCount: seats.length,
+        soleOwner: role === "owner" && !others.some((s) => s.role === "owner"),
         onAccountDeletion: others.length === 0 ? "organizationDeleted" as const : successor ? "ownershipPasses" as const : "membershipRemoved" as const,
-        successor: successor ? { userId: successor.userId, name: successor.name, email: successor.email } : null,
+        successor: successor ? { userId: successor.member.userId, name: successor.user?.name ?? "", email: successor.user?.email ?? "" } : null,
+        /** Present when banning needs a new owner here first: choose one of `candidates`. */
+        banSuccessor: onBan ? { candidates: onBan.candidates, suggested: onBan.suggested } : null,
       };
     }));
   },
@@ -143,29 +147,37 @@ async function memberOf(ctx: Reader, organizationId: string, userId: string) {
   return member;
 }
 
-/** Make an existing member an owner, alongside any current owners. */
+/**
+ * Make an existing member an owner, alongside any current owners. A banned member can't be made
+ * an owner: owners must be able to act for the organization. Shared with `agentUsers.ban`.
+ */
+export async function promoteToOwner(ctx: AdminCtx, organizationId: string, userId: string, meta: Record<string, string> = {}) {
+  const member = await memberOf(ctx, organizationId, userId);
+  const previous = parseRole(member.role);
+  if (previous === "owner") return;
+  if (isBanned(await findById(ctx, "user", userId))) throw new Error("MEMBER_BANNED");
+  await setMemberRole(ctx, member._id, "owner");
+  await audit(ctx, "admin.organization.owner_added", organizationId, { userId, ...meta }, { oldValue: previous, newValue: "owner" });
+}
+
 export const addOwner = adminMutation({
   args: { organizationId: v.string(), userId: v.string() },
-  handler: async (ctx, { organizationId, userId }) => {
-    const member = await memberOf(ctx, organizationId, userId);
-    const previous = parseRole(member.role);
-    if (previous === "owner") return;
-    await setMemberRole(ctx, member._id, "owner");
-    await audit(ctx, "admin.organization.owner_added", organizationId, { userId }, { oldValue: previous, newValue: "owner" });
-  },
+  handler: async (ctx, { organizationId, userId }) => await promoteToOwner(ctx, organizationId, userId),
 });
 
 /**
- * Make an owner an admin or member. Refused for the organization's only owner: add another
- * owner first. Together with `addOwner` this transfers ownership.
+ * Make an owner an admin or member. Refused for the organization's only owner, and for its only
+ * owner who isn't banned while members can sign in: add another owner first. Together with `addOwner` this transfers ownership.
  */
 export const removeOwner = adminMutation({
   args: { organizationId: v.string(), userId: v.string(), role: v.union(v.literal("admin"), v.literal("member")) },
   handler: async (ctx, { organizationId, userId, role }) => {
     const member = await memberOf(ctx, organizationId, userId);
     if (parseRole(member.role) !== "owner") throw new Error("NOT_AN_OWNER");
-    const owners = (await listOrganizationMembers(ctx, organizationId)).filter((m) => parseRole(m.role) === "owner");
-    if (owners.length <= 1) throw new Error("LAST_OWNER");
+    const others = (await organizationSeats(ctx, organizationId)).filter((s) => s.member._id !== member._id);
+    if (!others.some((s) => s.role === "owner")) throw new Error("LAST_OWNER");
+    const active = !isBanned(await findById(ctx, "user", userId));
+    if (active && others.some((s) => s.active) && !others.some((s) => s.active && s.role === "owner")) throw new Error("LAST_OWNER");
     await setMemberRole(ctx, member._id, role);
     await audit(ctx, "admin.organization.owner_removed", organizationId, { userId }, { oldValue: "owner", newValue: role });
   },

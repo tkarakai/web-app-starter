@@ -50,20 +50,32 @@ Better Auth's three built-in roles, used as they are:
 | `admin` | Invite and remove members and admins, change their roles, rename the organization |
 | `member` | Use the organization's data |
 
-**An organization with members always has an owner.** Better Auth refuses to remove, demote or
-let the last owner leave. The page explains that they must invite another owner and wait for the
-invitation to be accepted before leaving; a pending invitation does not count as an owner.
-Nobody can change their own role on the page, and only owners change or remove owners.
-Someone who is not the last owner may leave even their only organization. When an account is
-deleted, an organization it owned alone passes to its longest-standing admin (or member), and
-one it leaves with no members at all is deleted (see [deleting an organization](#deleting-an-organization)).
+**An organization with members always has an owner, and, while any member can sign in, an
+owner who isn't banned.** Better Auth refuses to remove, demote or let the last owner leave. The
+page explains that they must invite another owner and wait for the invitation to be accepted
+before leaving; a pending invitation does not count as an owner. An owner whose only fellow
+owners are banned counts as the last owner. Nobody can change their own role on the page, and
+only owners change or remove owners. Someone who is not the last owner may leave even their
+only organization. When an account is deleted, an organization it owned alone passes to its
+longest-standing admin (or member), preferring people who aren't banned.
 Only owners can delete an organization; deleting one never deletes its members' accounts.
 
 The backend enforces the rule on every membership write, not just in Better Auth's checks: a
 guard runs in the same transaction as each write, whichever path makes it (Better Auth's
 routes, account deletion, the admin app, agents). A write that would leave members without an
-owner fails and is rolled back, so two owners demoting or removing each other at the same
-moment cannot both succeed. Platform code changes memberships only through `deleteMember` and
+owner, or take away the last owner who can sign in while members can, fails and is rolled back,
+so two owners demoting or removing each other at the same moment cannot both succeed. Banned
+members can't be made owners.
+
+Banning is the other way to lose an owner who can act, so **banning the only such owner of an
+organization whose other members can sign in requires a successor first**. Better Auth's
+`/admin/ban-user` refuses with `409 OWNER_SUCCESSOR_REQUIRED`, naming the organizations; the
+admin app's ban dialog lists them with a successor picker (the longest-standing admin, else
+member, preselected) and makes the choices owners before banning. The admin agent's
+`users_ban` takes `successors: [{ organizationId, userId }]` and applies them and the ban in
+one transaction. A batch ban skips such users with that error. An organization whose only
+owner was banned before this rule keeps working; deleting that owner's account hands
+ownership to someone who can sign in. Platform code changes memberships only through `deleteMember` and
 `setMemberRole` in `convex/platform/organizationOwnership.ts`.
 
 All three roles read and write the same sample project data. Your app's private-record checks
@@ -179,9 +191,9 @@ and through the `organizations_*` admin agent capabilities. Both use
 |---|---|
 | `list` | Every organization, newest first, with owners, member count and pending invitations; `search` matches names (case-sensitive) |
 | `get` | One organization's members with roles, and its pending, expired and recently declined invitations |
-| `forUser` | A user's memberships, and what deleting the account would do to each organization |
-| `addOwner` | Make an existing member an owner, alongside the current owners |
-| `removeOwner` | Make an owner an admin or member. Refused (`LAST_OWNER`) for the only owner |
+| `forUser` | A user's memberships, what deleting the account would do to each organization, and `banSuccessor` (candidates and a suggestion) where banning needs a new owner first |
+| `addOwner` | Make an existing member an owner, alongside the current owners. Refused (`MEMBER_BANNED`) for banned members |
+| `removeOwner` | Make an owner an admin or member. Refused (`LAST_OWNER`) for the only owner, or the only one who isn't banned while members can sign in |
 | `cancelInvitation` | Cancel a pending invitation; its link reads as no longer valid |
 | `remove` | Delete the organization: memberships, invitations and the organization at once, then its app data through `organizationData.ts`. Accounts are kept |
 

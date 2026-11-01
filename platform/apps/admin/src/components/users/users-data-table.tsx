@@ -37,6 +37,8 @@ import { BatchActionDialog } from "./batch-action-dialog";
 import { UserActionsProvider } from "./user-actions-context";
 import { UserSessionsDialog } from "./user-sessions-dialog";
 import { UserOrganizationsDialog, UserOrganizationsList } from "@/components/organizations/user-organizations";
+import type { BanSuccessor } from "@/components/organizations/ban-successors";
+import { organizationErrorMessage } from "@/components/organizations/organization-errors";
 
 type UserAction =
   | "ban"
@@ -77,6 +79,7 @@ export function UsersDataTable() {
   const authUser = useAuthUser();
   const currentUserId = authUser?.id;
   const postAuditEvent = useMutation(api.platform.auditTrail.postEvent);
+  const addOwner = useMutation(api.platform.adminOrganizations.addOwner);
 
   // Protected admin emails (from adminEmails table) — these users cannot be banned/deleted/demoted.
   const protectedEmailsList = useQuery(api.platform.adminEmails.listProtected);
@@ -227,19 +230,23 @@ export function UsersDataTable() {
 
   // ----- Ban confirm -----
 
-  const handleBanConfirm = async (banReason: string, banExpiresIn?: number) => {
+  const handleBanConfirm = async (banReason: string, banExpiresIn?: number, successors: BanSuccessor[] = []) => {
     if (!banTarget) return;
 
     if (banTarget.length === 1) {
       setBanPending(true);
       try {
+        // New owners first: the ban is refused while an organization would lose its only owner who can act.
+        for (const successor of successors) await addOwner(successor);
         await banUser(banTarget[0].id, banReason, banExpiresIn, postAuditEvent);
         toast.success(`${banTarget[0].email} has been banned`);
         setBanTarget(null);
         setRowSelection({});
         refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Failed to ban user");
+        toast.error(err instanceof Error && /OWNER_SUCCESSOR_REQUIRED|MEMBER_BANNED|ORGANIZATION_OWNER_REQUIRED/.test(err.message)
+          ? organizationErrorMessage(err)
+          : err instanceof Error ? err.message : "Failed to ban user");
       } finally {
         setBanPending(false);
       }
