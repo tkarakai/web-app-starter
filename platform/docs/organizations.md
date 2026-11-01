@@ -158,7 +158,8 @@ others available.
 
 On the inviting side, the organization page lists each invited address once, with its latest
 invitation: **pending** (with its expiry; resend), **expired** (resend), or
-**declined** for 30 days (invite again). Owners and admins can delete an invitation in any
+**declined** (invite again). Expired and declined invitations are listed for 30 days after they
+were sent; a live one is always listed, however much history the organization has. Owners and admins can delete an invitation in any
 state, after confirming (`api.platform.organizations.deleteInvitation`). Deleting the row removes
 all unaccepted invitations to that address in the active organization, so an older declined or
 expired invitation cannot take its place. Their links then read as no longer valid. Accepted
@@ -213,7 +214,7 @@ and through the `organizations_*` admin agent capabilities. Both use
 | `list` | Every organization, newest first, with owners, member count and pending invitations; `search` matches names (case-sensitive) |
 | `get` | One organization's members with roles, and its pending, expired and recently declined invitations |
 | `forUser` | A user's memberships, what deleting the account would do to each organization, and `banSuccessor` (candidates and a suggestion) where banning needs a new owner first |
-| `addOwner` | Make an existing member an owner, alongside the current owners. Refused (`MEMBER_BANNED`) for banned members |
+| `addOwner` | Make an existing member an owner, alongside the current owners. Refused for banned members (`MEMBER_BANNED`) and platform administrators (`MEMBER_IS_ADMINISTRATOR`) |
 | `removeOwner` | Make an owner an admin or member. Refused (`LAST_OWNER`) for the only owner, or the only one who isn't banned while members can sign in |
 | `cancelInvitation` | Cancel a pending invitation; its link reads as no longer valid |
 | `remove` | Delete the organization: memberships, invitations and the organization at once, then its app data through `organizationData.ts`. Accounts are kept |

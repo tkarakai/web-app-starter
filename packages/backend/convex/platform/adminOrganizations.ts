@@ -16,7 +16,7 @@ import { adminMutation, authedQuery } from "./functions";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { findById, findMembership, listMemberships, listOrganizationMembers, parseRole } from "./organizationAccess";
 import { canAct, isBanned, markOrganizationDeleting, needsSuccessor, organizationSeats, pickSuccessor, setMemberRole, successorsNeededForBan } from "./organizationOwnership";
-import { organizationInvitations } from "./organizations";
+import { livePendingInvitations, organizationInvitations } from "./organizations";
 
 type Reader = Pick<QueryCtx, "runQuery">;
 type AdminCtx = Pick<MutationCtx, "runQuery" | "runMutation" | "scheduler"> & { user: Doc<"user">; ownerId: string };
@@ -49,19 +49,14 @@ async function membersWithUsers(ctx: Reader, organizationId: string) {
 
 async function summary(ctx: Reader, organization: Doc<"organization">) {
   const members = await membersWithUsers(ctx, organization._id);
-  const pending = await ctx.runQuery(components.betterAuth.adapter.findMany, {
-    model: "invitation",
-    where: [{ field: "organizationId", value: organization._id }, { field: "status", value: "pending" }],
-    paginationOpts: { numItems: 200, cursor: null },
-  });
-  const now = Date.now();
+  const pending = await livePendingInvitations(ctx, organization._id);
   return {
     id: organization._id,
     name: organization.name,
     createdAt: organization.createdAt,
     memberCount: members.length,
     owners: members.filter((m) => m.role === "owner").map(({ userId, name, email, banned }) => ({ userId, name, email, banned })),
-    pendingInvitations: (pending.page as Doc<"invitation">[]).filter((row) => row.expiresAt > now).length,
+    pendingInvitations: pending.length,
   };
 }
 
