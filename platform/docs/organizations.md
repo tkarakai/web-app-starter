@@ -137,7 +137,8 @@ others available.
 
 On the inviting side, the organization page lists each invited address once, with its latest
 invitation: **pending** (with its expiry; resend), **expired** (resend), or
-**declined** for 30 days (invite again). Owners and admins can delete an invitation in any
+**declined** (invite again). Expired and declined invitations are listed for 30 days after they
+were sent; a live one is always listed, however much history the organization has. Owners and admins can delete an invitation in any
 state, after confirming (`api.platform.organizations.deleteInvitation`). Deleting the row removes
 all unaccepted invitations to that address in the active organization, so an older declined or
 expired invitation cannot take its place. Their links then read as no longer valid. Accepted

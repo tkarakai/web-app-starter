@@ -26,3 +26,12 @@ test("WebMCP simulator enforces authentication, schemas, cancellation and unregi
   expect(await staleTool.execute({ name: "announcements_delete", input: { announcementId: "x" } })).toMatchObject({ isError: true });
   expect(executions).toBe(1);
 });
+
+test("WebMCP returns organization refusals with their code and recovery step", async () => {
+  const provider = new WebMcpSimulator(); const controller = new globalThis.AbortController();
+  await registerWebMcp(provider, async () => { throw new Error("LAST_OWNER"); }, controller.signal);
+  const result = await provider.execute("capabilities_execute", { name: "organizations_removeOwner", input: {} });
+  expect(result).toMatchObject({ isError: true });
+  expect(JSON.stringify(result)).toContain("LAST_OWNER: ");
+  controller.abort();
+});

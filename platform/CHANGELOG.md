@@ -124,6 +124,14 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- An organization with much invitation history could hide a live invitation from its owners
+  and admins, and from the admin app's pending count: only the first 200 rows were read before
+  filtering out expired ones. Every page is read now. Expired and declined invitations are listed
+  for 30 days after they were sent.
+- Agent capabilities (MCP, WebMCP, A2A and the CLI) reported organization refusals as a generic
+  `CAPABILITY_FAILED`. They now return the code (`OWNER_SUCCESSOR_REQUIRED`, `LAST_OWNER`,
+  `MEMBER_BANNED`, `ORGANIZATION_OWNER_REQUIRED`, `ORGANIZATION_NOT_FOUND`,
+  `INVITATION_NOT_PENDING`, and others) with a fixed recovery step, never the backend message.
 - Deleting an account now deletes every organization it leaves with no members, including the
   personal organization every account gets at sign-up, with its invitations and its app data
   (through the app's `convex/organizationData.ts` cleanup, as when an owner deletes an

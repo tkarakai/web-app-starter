@@ -94,6 +94,37 @@ describe("organizations", () => {
     ]);
   });
 
+  test("a live invitation is listed and counted however much expired history comes first", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const boss = await f.user("boss", { role: "admin" });
+    const acme = await alice.provision();
+    const day = 86_400_000;
+    const seed = (email: string, status: string, sentDaysAgo: number) => f.t.mutation(components.betterAuth.adapter.create, {
+      input: { model: "invitation", data: {
+        organizationId: acme, email, role: "member", status, inviterId: alice.userId,
+        createdAt: Date.now() - sentDaysAgo * day, expiresAt: Date.now() + (7 - sentDaysAgo) * day,
+      } },
+    });
+    // More expired-but-pending and declined rows than one page, all inside the listing window.
+    for (let i = 0; i < 210; i++) await seed(`expired${i}@example.test`, "pending", 8 + (i % 20));
+    for (let i = 0; i < 5; i++) await seed(`declined${i}@example.test`, "rejected", 2);
+    await seed("ancient@example.test", "pending", 60);
+    const live = await seed("live@example.test", "pending", 1);
+
+    const asOwner = await alice.caller.query(api.platform.organizations.active, {});
+    const statuses = new Map(asOwner!.invitations.map((row) => [row.email, row.status]));
+    expect(statuses.get("live@example.test")).toBe("pending");
+    expect(asOwner!.invitations.find((row) => row.email === "live@example.test")!.id).toBe(live._id);
+    expect([...statuses.values()].filter((s) => s === "declined")).toHaveLength(5);
+    expect(statuses.get("expired209@example.test")).toBe("expired");
+    // History older than the listing window drops off; every live invitation is younger.
+    expect(statuses.has("ancient@example.test")).toBe(false);
+
+    const view = await boss.caller.query(api.platform.adminOrganizations.get, { organizationId: acme });
+    expect(view!.pendingInvitations).toBe(1);
+  });
+
   test("owners and admins delete an invitation in any state; nobody else, and only their organization's", async () => {
     const f = await fixture();
     const alice = await f.user("alice");

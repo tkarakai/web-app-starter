@@ -97,25 +97,52 @@ export const active = orgQuery({
   },
 });
 
-/** How long a declined invitation stays listed for the people who manage the organization. */
+/** How long a declined or expired invitation stays listed for the people who manage the organization. */
 const DECLINED_LISTED_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type InvitationStatus = "pending" | "expired" | "declined";
 
+type Reader = Pick<QueryCtx, "runQuery">;
+
 /**
- * The organization's invitations for its owners and admins: pending ones, expired ones still
- * pending, and recently declined ones, so the inviter sees what became of each. One row per
- * address (the latest), leaving out anyone who has since joined.
+ * Every invitation of the organization with this status sent since `since`, reading all pages:
+ * expired invitations stay `pending`, and a first page of them must not hide a live one.
+ * Invitation history is bounded by the per-inviter invitation budgets.
  */
-export async function organizationInvitations(ctx: Pick<QueryCtx, "runQuery">, organizationId: string, memberEmails: Set<string>) {
-  const byStatus = async (status: string) => (await ctx.runQuery(components.betterAuth.adapter.findMany, {
-    model: "invitation",
-    where: [{ field: "organizationId", value: organizationId }, { field: "status", value: status }],
-    paginationOpts: { numItems: 200, cursor: null },
-  })).page as Doc<"invitation">[];
+async function invitationsSince(ctx: Reader, organizationId: string, status: string, since: number): Promise<Doc<"invitation">[]> {
+  const rows: Doc<"invitation">[] = [];
+  let cursor: string | null = null;
+  do {
+    const result: { page: unknown[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+      model: "invitation",
+      where: [{ field: "organizationId", value: organizationId }, { field: "status", value: status }],
+      paginationOpts: { numItems: 200, cursor },
+    });
+    rows.push(...(result.page as Doc<"invitation">[]).filter((row) => row.createdAt > since));
+    cursor = result.isDone ? null : result.continueCursor;
+  } while (cursor);
+  return rows;
+}
+
+/** Live pending invitations: unexpired, so sent within the expiry period (7 days), well inside the listing window. */
+export async function livePendingInvitations(ctx: Reader, organizationId: string): Promise<Doc<"invitation">[]> {
   const now = Date.now();
-  const rows = [...await byStatus("pending"), ...(await byStatus("rejected")).filter((row) => row.createdAt > now - DECLINED_LISTED_MS)]
-    .sort((a, b) => b.createdAt - a.createdAt);
+  return (await invitationsSince(ctx, organizationId, "pending", now - DECLINED_LISTED_MS)).filter((row) => row.expiresAt > now);
+}
+
+/**
+ * The organization's invitations for its owners and admins, from the last 30 days: pending
+ * ones, expired ones still pending, and declined ones, so the inviter sees what became of each.
+ * One row per address (the latest), leaving out anyone who has since joined. Older history is
+ * not listed; every live invitation is younger than that.
+ */
+export async function organizationInvitations(ctx: Reader, organizationId: string, memberEmails: Set<string>) {
+  const now = Date.now();
+  const since = now - DECLINED_LISTED_MS;
+  const rows = [
+    ...await invitationsSince(ctx, organizationId, "pending", since),
+    ...await invitationsSince(ctx, organizationId, "rejected", since),
+  ].sort((a, b) => b.createdAt - a.createdAt);
   const seen = new Set<string>();
   const invitations: { id: string; email: string; role: OrganizationRole; status: InvitationStatus; sentAt: number; expiresAt: number }[] = [];
   for (const row of rows) {
