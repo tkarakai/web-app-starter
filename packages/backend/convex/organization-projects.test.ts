@@ -9,6 +9,7 @@ import { api, components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { activeOrganization, organizationFixture } from "./platform/organizations.test-helpers";
 import authSchema from "./platform/betterAuth/schema";
+import { createAuth } from "./platform/auth";
 import { requireProjectAccess } from "./projectAccess";
 import schema from "./schema";
 import { createTestEnv, modules } from "./test.modules";
@@ -310,6 +311,61 @@ describe("deleting an organization", () => {
     expect(left.uploads).toEqual([kept]);
     expect(left.doomedFiles).toEqual([null, null, null]);
     expect(left.keptFiles[0]).not.toBeNull();
+  });
+
+  test("an invitation accepted while the organization is deleted reaches none of its data, before or after cleanup", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    const acme = await alice.provision();
+    await alice.caller.mutation(api.projects.create, { name: "Before deletion", description: "" });
+    const invitation = await f.invite(acme, "bob@example.test", alice.userId);
+    // Better Auth checks the organization and accepts the invitation before writing the member, in
+    // separate transactions: delete the organization in between.
+    let interleaved = false;
+    const result = await f.t.action(async (ctx) => {
+      const wrapped = { ...ctx, runMutation: async (ref: unknown, args: { input?: { model?: string; data?: { userId?: string } } }) => {
+        if (!interleaved && args?.input?.model === "member" && args.input.data?.userId === bob.userId) {
+          interleaved = true;
+          const deleted = await f.t.fetch("/api/auth/organization/delete", {
+            method: "POST",
+            headers: { origin: "http://localhost:3001", "content-type": "application/json", authorization: "Bearer alice-session" },
+            body: JSON.stringify({ organizationId: acme }),
+          });
+          expect(deleted.status, await deleted.clone().text()).toBe(200);
+        }
+        return ctx.runMutation(ref as never, args as never);
+      } };
+      const response = await createAuth(wrapped as never).handler(new Request("http://localhost:3001/api/auth/organization/accept-invitation", {
+        method: "POST",
+        headers: { origin: "http://localhost:3001", "content-type": "application/json", authorization: "Bearer bob-session" },
+        body: JSON.stringify({ invitationId: invitation._id }),
+      }));
+      return response.status;
+    });
+    expect(interleaved).toBe(true);
+    expect(result).not.toBe(200);
+    expect(await bob.caller.query(api.projects.list, {})).toBeNull();
+    await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+    await expect(bob.caller.mutation(api.projects.create, { name: "After deletion", description: "" })).rejects.toThrow("NO_ORGANIZATION");
+    expect(await f.t.run((ctx) => ctx.db.query("projects").collect())).toEqual([]);
+  });
+
+  test("a membership left behind in a deleted organization reaches none of its data", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    const acme = await alice.provision();
+    const secret = await alice.caller.mutation(api.projects.create, { name: "Secret", description: "" });
+    const bobsOwn = await bob.provision();
+    await f.addMember(acme, bob.userId, "member");
+    await bob.switchTo(acme);
+    await f.t.mutation(components.betterAuth.adapter.deleteOne, {
+      input: { model: "organization", where: [{ field: "_id", value: acme }] },
+    });
+    expect(await bob.caller.query(api.projects.get, { id: secret })).toBeNull();
+    const id = await bob.caller.mutation(api.projects.create, { name: "Mine", description: "" });
+    expect(await f.t.run((ctx) => ctx.db.get(id))).toMatchObject({ organizationId: bobsOwn });
   });
 
   test("an administrator deleting the organization removes its projects too", async () => {

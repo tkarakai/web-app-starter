@@ -60,11 +60,9 @@ async function fixture() {
 }
 
 describe("joining a deleted organization", () => {
-  test("an invitation accepted while its organization is deleted adds nobody, before or after cleanup", async () => {
+  test("an invitation accepted while its organization is deleted adds nobody", async () => {
     const f = await fixture();
     const invitation = await f.invite(f.acme, "bob@example.test", f.alice.userId);
-    await f.alice.caller.mutation(api.projects.create, { name: "Before deletion", description: "" });
-
     const result = await f.acceptWith(invitation._id, "bob", f.bob.userId, async () => {
       const deleted = await f.post("/organization/delete", { organizationId: f.acme }, "alice");
       expect(deleted.status, await deleted.clone().text()).toBe(200);
@@ -73,17 +71,7 @@ describe("joining a deleted organization", () => {
     expect(result.status, result.body).not.toBe(200);
     expect(await f.organization(f.acme)).toBeNull();
     expect(await f.members(f.acme)).toEqual([]);
-
-    // Bob never reaches the deleted organization: not its old data, not by creating new data.
     expect(await f.bob.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
-    expect(await f.bob.caller.query(api.projects.list, {})).toBeNull();
-    vi.useFakeTimers();
-    try {
-      await f.t.finishAllScheduledFunctions(() => vi.runAllTimers());
-    } finally {
-      vi.useRealTimers();
-    }
-    await expect(f.bob.caller.mutation(api.projects.create, { name: "After deletion", description: "" })).rejects.toThrow("NO_ORGANIZATION");
   });
 
   test("an invitation accepted while its last member's account is deleted adds nobody", async () => {
@@ -109,8 +97,6 @@ describe("joining a deleted organization", () => {
     expect(await f.bob.caller.query(api.platform.organizations.mine, {})).toEqual({
       activeOrganizationId: bobsOwn, organizations: [{ id: bobsOwn, name: "bob", role: "owner" }],
     });
-    const id = await f.bob.caller.mutation(api.projects.create, { name: "Mine", description: "" });
-    expect(await f.t.run((ctx) => ctx.db.get(id))).toMatchObject({ organizationId: bobsOwn });
   });
 });
 
