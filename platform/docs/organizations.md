@@ -225,7 +225,7 @@ Releases before organizations stored app data per user (`ownerId`). The backfill
 creates a private organization when assigning their legacy rows; visiting the app does not
 provision a new one. Their data must move
 into it, so that they keep it and nobody else sees it. Convex refuses to deploy a schema that
-existing rows violate, so this takes two releases
+existing rows violate, so this takes two deployment stages
 ([widen, migrate, narrow](convex-migrations.md)):
 
 1. **Widen and migrate.** Add `organizationId: v.optional(v.string())` and the
@@ -255,10 +255,43 @@ existing rows violate, so this takes two releases
    `null` when the owner's account no longer exists. Those rows stay unassigned and unreachable,
    as they were. Deploys run `convex run migrations` automatically. Until a row is migrated, it
    matches no organization: it is hidden, never exposed.
-2. **Narrow**, in a later release once every deployment has migrated: make `organizationId`
+2. **Narrow**, once the target deployment has migrated: make `organizationId`
    required. Delete or reassign any rows the migration left unassigned first. Convex rejects the
    deploy while any remain.
 
-The sample's `projects` table follows exactly this path. Its migration is
-`projectsToOrganizations` in `convex/sampleMigrations.ts`, and the release after the one that
-introduced organizations narrows it.
+The sample's `projects.organizationId` is now required. Its backfill remains
+`projectsToOrganizations` in `convex/sampleMigrations.ts` for intermediate deployments.
+Tasks and uploads inherit the organization through their project; they need no separate field.
+
+### Deployments that have not migrated yet
+
+The deploy action installs the schema and functions **before** running migrations. If existing
+projects have no organization, deploying the required schema fails before the backfill can be
+installed. Run the following intermediate stage for **each** affected deployment, including
+production; waiting for another release or retrying the same schema is insufficient.
+
+1. Prepare a task branch at your app's intermediate organizations revision: it must include
+   the organization code and `sampleMigrations.projectsToOrganizations`, with
+   `projects.organizationId: v.optional(v.string())` in
+   `packages/backend/convex/sampleTables.ts`. For the unmodified starter, this is commit
+   `b81d0a10` (organizations, #360); run `bun install --frozen-lockfile` in that checkout.
+   For a customized app, first merge that organizations implementation into your own app
+   and deploy the intermediate result before taking the contraction. Preserve the app's
+   tables, functions and configuration; do not deploy the stock starter over a customized app.
+2. Deploy that intermediate revision through your normal deployment process. From
+   `packages/backend`, run `bunx convex run migrations` with the same target credentials
+   (`CONVEX_DEPLOY_KEY`, or `--prod` for an authenticated production target). Automatic deploys
+   already invoke it. It starts scheduled batches: in the Convex dashboard's `migrations` table,
+   wait until `sampleMigrations:projectsToOrganizations` has `isDone: true` and no error.
+3. Inspect `projects` in that target's dashboard for missing `organizationId`. Completion does
+   not imply every row was assigned: deleted creators log `PROJECT_WITHOUT_OWNER_ACCOUNT`
+   and their projects stay unassigned. Explicitly reassign those projects only to an organization
+   whose ownership you have verified, or delete them and their dependent tasks, upload records
+   and stored files under your retention policy. The backfill never guesses an orphan's owner
+   or deletes their data automatically.
+4. Take the contraction revision (`organizationId: v.string()`), run `bun run ci:quick`, and
+   deploy the required schema.
+   **Done when:** every retained project has an organization and the deployment succeeds.
+
+If a required-schema deploy has already failed, use the same intermediate steps and then retry.
+Do not disable schema validation to bypass the migration.

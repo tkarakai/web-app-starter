@@ -52,6 +52,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Changed
 
+- The sample's `projects.organizationId` is required in the Convex schema. Deploys reject
+  unassigned projects; tasks and uploads continue to inherit their organization's access
+  through their project.
+
 - Bun baseline 1.4.2 → 1.4.3 (`packageManager`, the `setup-bun` default and the AWS Dockerfiles), with
   the pending non-major dependency updates: React 19.3.1, Convex 1.47.0, typescript-eslint 8.71.2,
   Radix primitives, lucide-react 1.59.0, Vitest 5.0.5, Playwright 1.64.1 and pinned GitHub Actions.
@@ -62,6 +66,17 @@ version. Release-specific compatibility and deployment steps are listed explicit
   Local CLI/container checks without GitHub registration are unchanged.
 
 ### Action required
+
+- **Apps retaining the sample projects with existing data:** before deploying the required
+  `projects.organizationId`, deploy the intermediate optional-field schema and run
+  `bunx convex run migrations` from `packages/backend` against each target deployment.
+  Review the `migrations` table until `sampleMigrations:projectsToOrganizations` completes.
+  Resolve any projects still missing `organizationId` (deleted creators are logged as
+  `PROJECT_WITHOUT_OWNER_ACCOUNT`) before deploying the required schema. A failed schema
+  deploy cannot install or run the backfill; retrying alone will not repair it. See the
+  [exact intermediate deployment and recovery steps](docs/organizations.md#upgrading-existing-data).
+  **Done when:** every retained project has an organization and the required schema deploys.
+  Apps that removed the sample or have no existing projects need no data migration.
 
 - **Every app:** install Bun 1.4.3 locally (`bun upgrade`, or your version manager). CI installs it
   through the `setup-bun` action; take the release, then run `bun install` and `bun run ci:quick`.

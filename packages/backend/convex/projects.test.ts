@@ -21,6 +21,7 @@ describe("projects", () => {
         return ctx.db.insert("projects", {
           name: "Test Project",
           description: "A test project",
+          organizationId: "test-organization",
           ownerId: mockUser._id,
           createdAt: Date.now(),
         });
@@ -58,6 +59,7 @@ describe("projects", () => {
         await ctx.db.insert("projects", {
           name: "Alice's Project",
           description: "Owned by Alice",
+          organizationId: "test-organization",
           ownerId: "alice",
           createdAt: Date.now(),
         });
@@ -65,6 +67,7 @@ describe("projects", () => {
         await ctx.db.insert("projects", {
           name: "Bob's Project",
           description: "Owned by Bob",
+          organizationId: "test-organization",
           ownerId: "bob",
           createdAt: Date.now(),
         });
@@ -90,6 +93,7 @@ describe("projects", () => {
         return ctx.db.insert("projects", {
           name: "Project to Delete",
           description: "Will be deleted",
+          organizationId: "test-organization",
           ownerId: mockUser._id,
           createdAt: Date.now(),
         });

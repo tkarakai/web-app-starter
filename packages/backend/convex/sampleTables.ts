@@ -15,9 +15,9 @@ export const sampleTables = {
     name: v.string(),
     description: v.string(),
     ownerId: v.string(),
-    // Optional only until `migrations.ts` has backfilled pre-organization rows; the next
-    // release makes it required (platform/docs/organizations.md#upgrading-existing-data).
-    organizationId: v.optional(v.string()),
+    // Existing deployments must backfill before deploying this required field.
+    // See platform/docs/organizations.md#upgrading-existing-data.
+    organizationId: v.string(),
     createdAt: v.number(),
   })
     .index("by_owner", ["ownerId"])

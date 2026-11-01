@@ -169,6 +169,7 @@ describe("projects", () => {
         name: "Test project",
         description: "Description",
         ownerId: "test-user",
+        organizationId: "test-organization",
         createdAt: Date.now(),
       });
     });

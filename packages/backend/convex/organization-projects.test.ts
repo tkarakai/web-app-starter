@@ -1,20 +1,36 @@
 // The reference app's projects in organizations: tenant isolation, sharing, switching, removal
 // and the upgrade migration. Part of the sample: removed with it.
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { defineSchema } from "convex/server";
+import { convexTest } from "convex-test";
+import { registerPlatform } from "@web-app-starter/convex-platform/test";
 
 import { api, components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { activeOrganization, organizationFixture } from "./platform/organizations.test-helpers";
 import authSchema from "./platform/betterAuth/schema";
-import { createTestEnv } from "./test.modules";
+import { requireProjectAccess } from "./projectAccess";
+import schema from "./schema";
+import { createTestEnv, modules } from "./test.modules";
 
-function fixture() {
-  const t = createTestEnv();
+function fixture(legacy = false) {
+  // Only migration tests seed historical documents that predate the required field.
+  const t = legacy ? convexTest(defineSchema(schema.tables, { schemaValidation: false }), modules) : createTestEnv();
+  if (legacy) registerPlatform(t);
   t.registerComponent("betterAuth", authSchema, import.meta.glob("./platform/betterAuth/**/*.*s"));
   return organizationFixture(t);
 }
 
 describe("organization projects", () => {
+  test("the database rejects projects without an organization", async () => {
+    const t = createTestEnv();
+    // @ts-expect-error Deliberately invalid input checks runtime schema enforcement too.
+    await expect(t.run((ctx) => ctx.db.insert("projects", {
+      name: "Unassigned", description: "", ownerId: "alice", createdAt: Date.now(),
+    }))).rejects.toThrow(/organizationId/);
+    expect(await t.run((ctx) => ctx.db.query("projects").collect())).toEqual([]);
+  });
+
   test("a user without an organization stays signed in but cannot write app data or create one implicitly", async () => {
     const f = await fixture();
     const alice = await f.user("alice");
@@ -96,6 +112,7 @@ describe("organization projects", () => {
 
 describe("upgrade migration", () => {
   async function legacyProject(f: Awaited<ReturnType<typeof fixture>>, ownerId: string): Promise<Id<"projects">> {
+    // @ts-expect-error Historical rows lack organizationId; only legacy fixtures accept them.
     return await f.t.run((ctx) => ctx.db.insert("projects", { name: `${ownerId}'s`, description: "", ownerId, createdAt: Date.now() }));
   }
   // Migrations run in scheduled batches, as `npx convex run migrations` does after a deploy.
@@ -106,8 +123,16 @@ describe("upgrade migration", () => {
     await f.t.finishAllScheduledFunctions(vi.runAllTimers);
   }
 
+  test("unassigned legacy projects stay inaccessible even to a caller without an organization", async () => {
+    const f = await fixture(true);
+    const projectId = await legacyProject(f, "deleted-account");
+    await expect(f.t.run((ctx) => requireProjectAccess(
+      { db: ctx.db, organizationId: undefined as unknown as string }, projectId,
+    ))).rejects.toThrow("PROJECT_NOT_FOUND");
+  });
+
   test("moves each pre-organization project into its creator's personal organization, which keeps working", async () => {
-    const f = await fixture();
+    const f = await fixture(true);
     const alice = await f.user("alice");
     const legacy = await f.user("legacy", { userId: "legacy-owner-id" });
     const aliceProject = await legacyProject(f, alice.userId);
@@ -127,7 +152,7 @@ describe("upgrade migration", () => {
   });
 
   test("never moves private data into an organization its creator was only invited to", async () => {
-    const f = await fixture();
+    const f = await fixture(true);
     const alice = await f.user("alice");
     const bob = await f.user("bob");
     const acme = await alice.provision();
@@ -145,7 +170,7 @@ describe("upgrade migration", () => {
   });
 
   test("never moves private data into a shared organization, even one its creator co-owns", async () => {
-    const f = await fixture();
+    const f = await fixture(true);
     const alice = await f.user("alice");
     const bob = await f.user("bob");
     const acme = await alice.provision();
@@ -162,7 +187,7 @@ describe("upgrade migration", () => {
   });
 
   test("never moves private data into an organization someone else can still join", async () => {
-    const f = await fixture();
+    const f = await fixture(true);
     const alice = await f.user("alice");
     const bob = await f.user("bob");
     const acme = await alice.provision();
