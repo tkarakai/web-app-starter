@@ -172,6 +172,7 @@ Administrator enrollment follows the [bound enrollment contract](authentication-
 | `organization.created` | `server:auth-organization-hook` | creator | — |
 | `organization.updated` | `server:auth-organization-hook` | user who renamed it | — |
 | `organization.deleted` | `server:auth-organization-hook` | owner who deleted it | — |
+| `organization.deleted` | `server:account-deletion` | the deleted account (Better Auth deletion) or the administrator who deleted it (`agentUsers.remove`) | `deletedUserId`; `reason`: `last_member_deleted` |
 | `organization.invitation.sent` | `server:auth-organization-hook` | inviter | `invitationId`, `role` |
 | `organization.invitation.canceled` | `server:auth-organization-hook` | user who canceled it | `invitationId` |
 | `organization.invitation.deleted` | `server:organization-mutation` | owner or admin who deleted it | `invitationIds`, `statuses` (all unaccepted invitations to the address in that organization) |
@@ -184,6 +185,10 @@ Administrator enrollment follows the [bound enrollment contract](authentication-
 | `admin.organization.owner_removed` | `server:admin-organizations` | platform administrator | `userId`; `oldValue` `owner`, `newValue` `admin` or `member` |
 | `admin.organization.invitation_canceled` | `server:admin-organizations` | platform administrator | `invitationId` |
 | `admin.organization.deleted` | `server:admin-organizations` | platform administrator | `name` |
+
+The `server:account-deletion` row is written by `removeMemberships`
+(`packages/backend/convex/platform/organizationAccess.ts`) when deleting an account leaves an
+organization with no members.
 
 Personal organizations created at sign-up, by the upgrade migration or for a signed-in user
 with none are not audited separately; `auth.sign_up` covers the sign-up case.

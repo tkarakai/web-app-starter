@@ -120,6 +120,15 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Deleting an account now deletes every organization it leaves with no members, including the
+  personal organization every account gets at sign-up, with its invitations and its app data
+  (through the app's `convex/organizationData.ts` cleanup, as when an owner deletes an
+  organization). Before, the organization row stayed and its projects, tasks, uploads and stored
+  files were kept forever, unreachable. This applies to Better Auth's account deletion and to
+  administrator agents' `agentUsers.remove`; it is audited as `organization.deleted` from
+  `server:account-deletion`. An organization that keeps members still passes ownership on.
+  See [organizations](docs/organizations.md#deleting-an-organization).
+
 - Settings and Organization can be closed back to the original app view, including the sample's
   selected project and tab. Switching account screens and reloading retain that return target;
   direct links fall back to app home. Multiple pending invitations remain a reactive list on

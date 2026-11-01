@@ -808,7 +808,7 @@ export const createAuthOptions = (
           after: async (user) => {
             const userId = (user as Record<string, unknown>).id;
             if (typeof userId !== "string") return;
-            await requireActionCtx(ctx).runMutation(internal.platform.organizations.removeUserMemberships, { userId });
+            await requireActionCtx(ctx).runMutation(internal.platform.organizations.removeUserMemberships, { userId, email: user.email });
           },
         },
       },
