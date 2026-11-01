@@ -124,6 +124,23 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- **Organization context fails closed.** An invitation accepted while its organization was
+  being deleted could still add the member, who could then read its data awaiting cleanup and
+  create new data under the deleted ID. Joining is now checked in the member write's own
+  transaction (the organization must exist and not be deleting), and a membership of a
+  deleted or deleting organization never counts as an active organization.
+- **A create composed for one organization no longer lands in another.** After removal,
+  deletion or a switch in another tab, `orgMutation` silently fell back to another membership,
+  so a draft could become visible to a different organization. Every `orgMutation` now takes an
+  optional `expectedOrganizationId` precondition and refuses a mismatch with
+  `ORGANIZATION_CHANGED`, writing nothing. The sample's new-project dialog passes it and keeps
+  the draft. Pass it from your own creates ([organizations](docs/organizations.md#scoping-your-data)).
+- Membership reads were cut off at 200 rows, so a user in more organizations was shown only
+  some, and deleting their account left memberships behind. Every membership is now read, and
+  the documented limit of 50 organizations per user applies to joining as well as creating
+  (`MEMBERSHIP_LIMIT_REACHED`).
+- Someone who can sign in can no longer join an organization whose owners are all banned
+  (`ORGANIZATION_OWNER_REQUIRED`).
 - Deleting an account now deletes every organization it leaves with no members, including the
   personal organization every account gets at sign-up, with its invitations and its app data
   (through the app's `convex/organizationData.ts` cleanup, as when an owner deletes an

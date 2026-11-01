@@ -105,6 +105,13 @@ export function organizationPlugin(ctx: GenericCtx<DataModel>, siteUrl: string) 
           invitationId: invitation.id,
         });
       },
+      // Refuse with a reason; the member trigger enforces the same in the write's transaction.
+      beforeAcceptInvitation: async ({ invitation, user }) => {
+        const blocker = await requireActionCtx(ctx).runQuery(internal.platform.organizationOwnership.admissionBlocker, {
+          organizationId: invitation.organizationId, userId: user.id, role: invitation.role,
+        });
+        if (blocker) throw new APIError(blocker === "ORGANIZATION_NOT_FOUND" ? "NOT_FOUND" : "CONFLICT", { code: blocker, message: blocker });
+      },
       afterAcceptInvitation: async ({ invitation, user, organization: org }) => {
         await audit("organization.invitation.accepted", user, `organization:${org.id}`, {
           invitationId: invitation.id, role: invitation.role,

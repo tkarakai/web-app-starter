@@ -158,10 +158,18 @@ export function orgQuery<
  * Like `authedMutation`, plus `ctx.organizationId` and `ctx.organizationRole`. Stamp new
  * rows with `ctx.organizationId`. A signed-in user with no membership gets
  * `NO_ORGANIZATION`; ordinary app operations never create an organization.
+ *
+ * Every function built with it also takes an optional `expectedOrganizationId`: the
+ * organization the caller's UI showed when the write was composed. When the active
+ * organization has changed since (the caller was removed, the organization deleted, another
+ * tab switched), the write is refused with `ORGANIZATION_CHANGED` instead of landing where
+ * other people can see it. It is a precondition only, never the organization written to.
+ * Pass it on every write that doesn't name an existing record (creates); a record ID already
+ * pins the organization through its access check.
  */
-export const orgMutation = customMutation(
-  mutation,
-  customCtx(async (ctx) => {
+export const orgMutation = customMutation(mutation, {
+  args: { expectedOrganizationId: v.optional(v.string()) },
+  input: async (ctx, { expectedOrganizationId }) => {
     const auth = await getAuth(ctx);
     if (!auth) throw new Error("NOT_AUTHENTICATED");
 
@@ -173,9 +181,12 @@ export const orgMutation = customMutation(
 
     const organization = await resolveActiveOrganization(ctx, auth.user, auth.session);
     if (!organization) throw new Error("NO_ORGANIZATION");
-    return { ...auth, ...organization };
-  }),
-);
+    if (expectedOrganizationId !== undefined && expectedOrganizationId !== organization.organizationId) {
+      throw new Error("ORGANIZATION_CHANGED");
+    }
+    return { ctx: { ...auth, ...organization }, args: {} };
+  },
+});
 
 /**
  * Builds the app's cleanup for a deleted organization. Export it as `deleteOrganizationData`

@@ -32,7 +32,9 @@ recipe before choosing builders and indexes; read `platform/docs/organizations.m
   every call), `ctx.organizationRole` (`owner`, `admin` or `member`) and `ctx.ownerId`. `orgQuery`
   returns `null` when signed out or without a membership (safe for `useQuery`); `orgMutation`
   throws `NO_ORGANIZATION` for a signed-in user without a membership and `NOT_AUTHENTICATED`
-  when signed out, and applies the global mutation rate limit. Both enforce live session assurance and current
+  when signed out, and applies the global mutation rate limit. Every `orgMutation` takes an
+  optional `expectedOrganizationId`; UI code calling a create passes the active organization
+  the form was opened for, and handles `ORGANIZATION_CHANGED` by keeping the draft. Both enforce live session assurance and current
   verification/MFA/passkey/enrollment policy. `authed*` provides `ctx.user` and `ctx.ownerId`
   without requiring org membership. Use canonical `ctx.ownerId` for app ownership; it may
   differ from the Better Auth user ID on migrated accounts.

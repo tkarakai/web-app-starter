@@ -109,6 +109,7 @@
   "projects": {
     "newProject": "פרויקט חדש",
     "createProject": "צור פרויקט",
+    "organizationChanged": "הארגון שלך השתנה, ולכן הפרויקט לא נוצר. הטיוטה נשמרה: בדוק את הארגון ונסה שוב.",
     "createFirst": "צור את הפרויקט הראשון שלך",
     "noProjects": "אין פרויקטים",
     "editProject": "ערוך פרויקט",
