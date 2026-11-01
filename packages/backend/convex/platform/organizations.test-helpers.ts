@@ -9,12 +9,12 @@ import type schema from "../schema";
  * caller registers it: this file stays free of the test-only module glob).
  */
 export async function organizationFixture(t: TestConvex<typeof schema>) {
-  async function user(name: string, extra: { emailVerified?: boolean; userId?: string } = {}) {
+  async function user(name: string, extra: { emailVerified?: boolean; userId?: string; role?: string } = {}) {
     const now = Date.now();
     const account = await t.mutation(components.betterAuth.adapter.create, {
       input: { model: "user", data: {
         name, email: `${name}@example.test`, emailVerified: extra.emailVerified ?? true,
-        createdAt: now, updatedAt: now, ...(extra.userId ? { userId: extra.userId } : {}),
+        createdAt: now, updatedAt: now, ...(extra.userId ? { userId: extra.userId } : {}), ...(extra.role ? { role: extra.role } : {}),
       } },
     });
     const session = await t.mutation(components.betterAuth.adapter.create, {
@@ -45,7 +45,21 @@ export async function organizationFixture(t: TestConvex<typeof schema>) {
     model: "member", where: [{ field: "organizationId", value: organizationId }], paginationOpts: { numItems: 100, cursor: null },
   })).page as { _id: string; userId: string; role: string }[];
 
-  return { t, user, addMember, members };
+  const invite = (organizationId: string, email: string, inviterId: string, status = "pending") =>
+    t.mutation(components.betterAuth.adapter.create, {
+      input: { model: "invitation", data: {
+        organizationId, email, role: "member", status, inviterId, createdAt: Date.now(), expiresAt: Date.now() + 86_400_000,
+      } },
+    });
+
+  const organization = (organizationId: string) =>
+    t.query(components.betterAuth.adapter.findOne, { model: "organization", where: [{ field: "_id", value: organizationId }] });
+
+  const invitations = async (organizationId: string) => (await t.query(components.betterAuth.adapter.findMany, {
+    model: "invitation", where: [{ field: "organizationId", value: organizationId }], paginationOpts: { numItems: 1000, cursor: null },
+  })).page as { _id: string; email: string; status: string }[];
+
+  return { t, user, addMember, members, invite, organization, invitations };
 }
 
 export type Caller = Awaited<ReturnType<Awaited<ReturnType<typeof organizationFixture>>["user"]>>["caller"];

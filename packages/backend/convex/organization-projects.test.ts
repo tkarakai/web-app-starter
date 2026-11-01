@@ -277,4 +277,45 @@ describe("deleting an organization", () => {
     expect(left.doomedFiles).toEqual([null, null, null]);
     expect(left.keptFiles[0]).not.toBeNull();
   });
+  test("deleting its last member's account removes its projects, tasks and files, through either deletion path", async () => {
+    const f = await fixture();
+    const admin = await f.user("admin", { role: "admin" });
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    const carol = await f.user("carol");
+    await alice.provision();
+    await bob.provision();
+    await carol.provision();
+    const seed = async (who: typeof alice, name: string) => {
+      const projectId = await who.caller.mutation(api.projects.create, { name, description: "" });
+      await who.caller.mutation(api.tasks.create, { projectId, title: "T", description: "", status: "todo" });
+      const storageId = await f.t.run(async (ctx) => {
+        const id = await ctx.storage.store(new Blob(["file"]));
+        await ctx.db.insert("uploads", {
+          storageId: id, name: "f.txt", contentType: "text/plain", size: 4, projectId, ownerId: "x", createdAt: Date.now(), ownershipVersion: 1,
+        });
+        return id;
+      });
+      return { projectId, storageId };
+    };
+    const alices = await seed(alice, "Alice's");
+    const bobs = await seed(bob, "Bob's");
+    const carols = await seed(carol, "Carol's");
+
+    // Better Auth's user.delete hook, and an administrator agent's adapter delete.
+    await f.t.mutation(internal.platform.organizations.removeUserMemberships, { userId: alice.userId, email: "alice@example.test" });
+    await admin.caller.mutation(api.platform.agentUsers.remove, { userId: bob.userId });
+    await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    const left = await f.t.run(async (ctx) => ({
+      projects: (await ctx.db.query("projects").collect()).map((project) => project._id),
+      tasks: (await ctx.db.query("tasks").collect()).map((task) => task.projectId),
+      uploads: (await ctx.db.query("uploads").collect()).map((upload) => upload.projectId),
+      files: await Promise.all([alices, bobs, carols].map(({ storageId }) => ctx.storage.getUrl(storageId))),
+    }));
+    expect(left.projects).toEqual([carols.projectId]);
+    expect(left.tasks).toEqual([carols.projectId]);
+    expect(left.uploads).toEqual([carols.projectId]);
+    expect(left.files.map((url) => url !== null)).toEqual([false, false, true]);
+  });
 });

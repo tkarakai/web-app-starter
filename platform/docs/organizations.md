@@ -54,7 +54,8 @@ An organization always keeps at least one owner. Better Auth refuses to remove, 
 the last owner leave. The page explains that they must invite another owner and wait for the
 invitation to be accepted before leaving; a pending invitation does not count as an owner.
 Someone who is not the last owner may leave even their only organization. When an account is
-deleted, an organization it owned alone passes to its longest-standing admin (or member).
+deleted, an organization it owned alone passes to its longest-standing admin (or member), and
+one it leaves with no members at all is deleted (see [deleting an organization](#deleting-an-organization)).
 Only owners can delete an organization; deleting one never deletes its members' accounts.
 
 All three roles read and write the same sample project data. Your app's private-record checks
@@ -86,7 +87,7 @@ built-in roles; custom roles are not currently supported.
   enrollment sees what is missing on the invitation page instead of the invitation.
 - **Limits:** 10 invitations at once and 30 an hour per inviter (resends included), plus the platform's auth email
   budgets. Up to 100 members per organization and 50 organizations per user.
-- **Audited:** creating, renaming, deleting, invitation sent, canceled, deleted, accepted or rejected,
+- **Audited:** creating, renaming, deleting (including by deleting its last member's account), invitation sent, canceled, deleted, accepted or rejected,
   member removed, member left and role changed (`organization.*` audit actions).
 - **Not included:** teams, custom roles, billing, organization management in the admin app, and
   organization-scoped agent capabilities.
@@ -149,6 +150,15 @@ Delete a bounded batch per call, cover every table that belongs to an organizati
 child rows and stored files), and return `true` only when none remain. The sample's version
 removes projects with their tasks and uploads. Without the file, a deleted organization's rows
 simply stay in the database, unreachable.
+
+**Deleting an account deletes the organizations it leaves empty.** Every account starts with a
+personal organization, so deleting an account (through Better Auth, or an administrator agent's
+`agentUsers.remove`) would otherwise leave that organization and its data behind. When removing
+the account's membership leaves an organization with no members, whatever the account's role in
+it, the platform deletes the organization and its invitations and runs the same
+`organizationData.ts` cleanup. It is audited as `organization.deleted` with
+`source: server:account-deletion` and `reason: last_member_deleted`. An organization that still
+has members keeps them and, if needed, gets a new owner.
 
 ## Scoping your data
 

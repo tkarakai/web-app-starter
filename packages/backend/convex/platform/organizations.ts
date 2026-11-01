@@ -16,6 +16,7 @@ import { evaluateSession, identitySession } from "./sessionPolicy";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { authedQuery, orgMutation, orgQuery } from "./functions";
 import {
+  deleteInvitationBatch,
   ensurePersonalOrganization,
   removeMemberships,
   findById,
@@ -250,8 +251,17 @@ export const hasPendingInvitation = internalQuery({
 
 /** Account deletion through Better Auth (`databaseHooks.user.delete`). */
 export const removeUserMemberships = internalMutation({
-  args: { userId: v.string() },
-  handler: async (ctx, args) => await removeMemberships(ctx, args.userId),
+  args: { userId: v.string(), email: v.string() },
+  handler: async (ctx, args) => await removeMemberships(ctx, args.userId, { email: args.email, userId: args.userId }),
+});
+
+/** The rest of a deleted organization's invitations, a batch per run (`removeMemberships`). */
+export const deleteOrganizationInvitations = internalMutation({
+  args: { organizationId: v.string() },
+  handler: async (ctx, args) => {
+    if (await deleteInvitationBatch(ctx, args.organizationId)) return;
+    await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationInvitations, args);
+  },
 });
 
 /** New sessions start in the organization the user last switched to, if still a member. */

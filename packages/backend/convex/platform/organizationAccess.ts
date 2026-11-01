@@ -4,14 +4,17 @@
  * Organizations, members and invitations are Better Auth organization-plugin rows in the
  * Better Auth component. Writes go through Better Auth's endpoints, which check roles;
  * this file only reads them, plus `ensurePersonalOrganization`, which gives a user with
- * no membership their initial organization at sign-up. See platform/docs/organizations.md.
+ * no membership their initial organization at sign-up, and `removeMemberships`, which
+ * account deletion runs. See platform/docs/organizations.md.
  */
-import { components } from "../_generated/api";
+import { components, internal } from "../_generated/api";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
+import { scheduleAuditEvent } from "./auditTrailHelpers";
 
 type Reader = Pick<QueryCtx, "runQuery">;
 type Writer = Pick<MutationCtx, "runQuery" | "runMutation">;
+type Deleter = Writer & Pick<MutationCtx, "scheduler">;
 
 export type OrganizationRole = "owner" | "admin" | "member";
 
@@ -203,19 +206,27 @@ export async function findUserByOwnerId(ctx: Reader, ownerId: string): Promise<D
   return legacy ?? await findById(ctx, "user", ownerId);
 }
 
+/** Who deleted the account, for the audit event of an organization it leaves empty. */
+export type AccountDeletionActor = { email: string; userId?: string };
+
 /**
  * Account deletion: drop the user's memberships. An organization that would be left with
  * members but no owner passes ownership to its longest-standing admin, else member, so it
- * always stays administrable. Call it from every path that deletes a user.
+ * always stays administrable. One left with no members at all is deleted, as if its owner had
+ * deleted it (every account has a personal organization, so this is the common case).
+ * Call it from every path that deletes a user.
  */
-export async function removeMemberships(ctx: Writer, userId: string): Promise<void> {
+export async function removeMemberships(ctx: Deleter, userId: string, actor: AccountDeletionActor): Promise<void> {
   for (const member of await listMemberships(ctx, userId)) {
     await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
       input: { model: "member", where: [{ field: "_id", value: member._id }] },
     });
-    if (parseRole(member.role) !== "owner") continue;
     const remaining = await listOrganizationMembers(ctx, member.organizationId);
-    if (remaining.length === 0 || remaining.some((m) => parseRole(m.role) === "owner")) continue;
+    if (remaining.length === 0) {
+      await deleteEmptyOrganization(ctx, member.organizationId, userId, actor);
+      continue;
+    }
+    if (parseRole(member.role) !== "owner" || remaining.some((m) => parseRole(m.role) === "owner")) continue;
     const successor = remaining.find((m) => parseRole(m.role) === "admin") ?? remaining[0];
     await ctx.runMutation(components.betterAuth.adapter.updateOne, {
       input: { model: "member", where: [{ field: "_id", value: successor._id }], update: { role: "owner" } },
@@ -223,3 +234,45 @@ export async function removeMemberships(ctx: Writer, userId: string): Promise<vo
   }
 }
 
+/**
+ * Delete an organization nobody belongs to any more, as Better Auth's own deletion does: its
+ * invitations and its row. The app's data is then removed by the same cleanup an owner's
+ * deletion runs (`afterDeleteOrganization`). Sessions and users that still point at it need no
+ * change: `resolveActiveOrganization` and `startingOrganization` only follow memberships.
+ */
+async function deleteEmptyOrganization(
+  ctx: Deleter,
+  organizationId: string,
+  deletedUserId: string,
+  actor: AccountDeletionActor,
+): Promise<void> {
+  if (!(await deleteInvitationBatch(ctx, organizationId))) {
+    await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationInvitations, { organizationId });
+  }
+  await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
+    input: { model: "organization", where: [{ field: "_id", value: organizationId }] },
+  });
+  await scheduleAuditEvent(ctx, {
+    actor: actor.email,
+    authenticatedUserId: actor.userId,
+    sourceDetail: "account-deletion",
+    action: "organization.deleted",
+    resource: `organization:${organizationId}`,
+    status: "succeeded",
+    reason: "last_member_deleted",
+    meta: JSON.stringify({ deletedUserId }),
+  });
+  await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationAppData, { organizationId });
+}
+
+/**
+ * Delete one bounded batch of an organization's invitations, whatever their state. `true`
+ * once none are left; invitation history can grow past what one transaction should delete.
+ */
+export async function deleteInvitationBatch(ctx: Writer, organizationId: string): Promise<boolean> {
+  const result = await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
+    input: { model: "invitation", where: [{ field: "organizationId", value: organizationId }] },
+    paginationOpts: { cursor: null, numItems: MAX_ROWS },
+  });
+  return result.isDone;
+}
