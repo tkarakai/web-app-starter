@@ -164,7 +164,7 @@ Administrator enrollment follows the [bound enrollment contract](authentication-
 
 ### Organizations
 
-`status`: `succeeded` only; a refused request leaves no `organization.*` event. `resource` is
+`status`: `succeeded` only; a refused request leaves no `organization.*` or `admin.organization.*` event. `resource` is
 `organization:<organizationId>`. See [organizations](organizations.md).
 
 | Action | Source | Actor | `meta` |
@@ -181,6 +181,10 @@ Administrator enrollment follows the [bound enrollment contract](authentication-
 | `organization.member.removed` | `server:auth-endpoint-hook` | owner or admin who removed them | `endpoint`, `member` |
 | `organization.member.role_changed` | `server:auth-endpoint-hook` | owner or admin who changed it | `endpoint`, `memberId`, `role` |
 | `organization.member.left` | `server:auth-endpoint-hook` | member who left | `endpoint` |
+| `admin.organization.owner_added` | `server:admin-organizations` | platform administrator | `userId`; `oldValue` previous role, `newValue` `owner` |
+| `admin.organization.owner_removed` | `server:admin-organizations` | platform administrator | `userId`; `oldValue` `owner`, `newValue` `admin` or `member` |
+| `admin.organization.invitation_canceled` | `server:admin-organizations` | platform administrator | `invitationId` |
+| `admin.organization.deleted` | `server:admin-organizations` | platform administrator | `name` |
 
 The `server:account-deletion` row is written by `removeMemberships`
 (`packages/backend/convex/platform/organizationAccess.ts`) when deleting an account leaves an

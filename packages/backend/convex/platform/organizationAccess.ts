@@ -5,11 +5,13 @@
  * Better Auth component. Writes go through Better Auth's endpoints, which check roles;
  * this file only reads them, plus `ensurePersonalOrganization`, which gives a user with
  * no membership their initial organization at sign-up, and `removeMemberships`, which
- * account deletion runs. See platform/docs/organizations.md.
+ * account deletion runs. Membership writes keep every organization owned
+ * (organizationOwnership.ts). See platform/docs/organizations.md.
  */
 import { components, internal } from "../_generated/api";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
+import { deleteMember, setMemberRole } from "./organizationOwnership";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 
 type Reader = Pick<QueryCtx, "runQuery">;
@@ -211,26 +213,20 @@ export type AccountDeletionActor = { email: string; userId?: string };
 
 /**
  * Account deletion: drop the user's memberships. An organization that would be left with
- * members but no owner passes ownership to its longest-standing admin, else member, so it
- * always stays administrable. One left with no members at all is deleted, as if its owner had
- * deleted it (every account has a personal organization, so this is the common case).
- * Call it from every path that deletes a user.
+ * members but no owner first passes ownership to its longest-standing admin, else member, so
+ * it always stays administrable (the ownership guard refuses the deletion otherwise). One left
+ * with no members at all is deleted, as if its owner had deleted it (every account has a
+ * personal organization, so this is the common case). Call it from every path that deletes a user.
  */
 export async function removeMemberships(ctx: Deleter, userId: string, actor: AccountDeletionActor): Promise<void> {
   for (const member of await listMemberships(ctx, userId)) {
-    await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
-      input: { model: "member", where: [{ field: "_id", value: member._id }] },
-    });
-    const remaining = await listOrganizationMembers(ctx, member.organizationId);
-    if (remaining.length === 0) {
-      await deleteEmptyOrganization(ctx, member.organizationId, userId, actor);
-      continue;
+    const others = (await listOrganizationMembers(ctx, member.organizationId)).filter((m) => m._id !== member._id);
+    if (parseRole(member.role) === "owner" && others.length > 0 && !others.some((m) => parseRole(m.role) === "owner")) {
+      const successor = others.find((m) => parseRole(m.role) === "admin") ?? others[0]!;
+      await setMemberRole(ctx, successor._id, "owner");
     }
-    if (parseRole(member.role) !== "owner" || remaining.some((m) => parseRole(m.role) === "owner")) continue;
-    const successor = remaining.find((m) => parseRole(m.role) === "admin") ?? remaining[0];
-    await ctx.runMutation(components.betterAuth.adapter.updateOne, {
-      input: { model: "member", where: [{ field: "_id", value: successor._id }], update: { role: "owner" } },
-    });
+    await deleteMember(ctx, member._id);
+    if (others.length === 0) await deleteEmptyOrganization(ctx, member.organizationId, userId, actor);
   }
 }
 

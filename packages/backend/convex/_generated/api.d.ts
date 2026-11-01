@@ -17,6 +17,7 @@ import type * as platform_adminAuth from "../platform/adminAuth.js";
 import type * as platform_adminEmails from "../platform/adminEmails.js";
 import type * as platform_adminInvitationActions from "../platform/adminInvitationActions.js";
 import type * as platform_adminInvitations from "../platform/adminInvitations.js";
+import type * as platform_adminOrganizations from "../platform/adminOrganizations.js";
 import type * as platform_agentAccess from "../platform/agentAccess.js";
 import type * as platform_agentCapabilities from "../platform/agentCapabilities.js";
 import type * as platform_agentProof from "../platform/agentProof.js";
@@ -34,6 +35,7 @@ import type * as platform_auditTrailHelpers from "../platform/auditTrailHelpers.
 import type * as platform_auth from "../platform/auth.js";
 import type * as platform_authAssurance from "../platform/authAssurance.js";
 import type * as platform_authRateLimits from "../platform/authRateLimits.js";
+import type * as platform_authTriggers from "../platform/authTriggers.js";
 import type * as platform_bootstrap from "../platform/bootstrap.js";
 import type * as platform_componentMigration from "../platform/componentMigration.js";
 import type * as platform_componentMigrationLegacy from "../platform/componentMigrationLegacy.js";
@@ -50,6 +52,7 @@ import type * as platform_meta from "../platform/meta.js";
 import type * as platform_nativeCapabilities from "../platform/nativeCapabilities.js";
 import type * as platform_onboardingType from "../platform/onboardingType.js";
 import type * as platform_organizationAccess from "../platform/organizationAccess.js";
+import type * as platform_organizationOwnership from "../platform/organizationOwnership.js";
 import type * as platform_organizationPlugin from "../platform/organizationPlugin.js";
 import type * as platform_organizations from "../platform/organizations.js";
 import type * as platform_parseUserAgent from "../platform/parseUserAgent.js";
@@ -90,6 +93,7 @@ declare const fullApi: ApiFromModules<{
   "platform/adminEmails": typeof platform_adminEmails;
   "platform/adminInvitationActions": typeof platform_adminInvitationActions;
   "platform/adminInvitations": typeof platform_adminInvitations;
+  "platform/adminOrganizations": typeof platform_adminOrganizations;
   "platform/agentAccess": typeof platform_agentAccess;
   "platform/agentCapabilities": typeof platform_agentCapabilities;
   "platform/agentProof": typeof platform_agentProof;
@@ -107,6 +111,7 @@ declare const fullApi: ApiFromModules<{
   "platform/auth": typeof platform_auth;
   "platform/authAssurance": typeof platform_authAssurance;
   "platform/authRateLimits": typeof platform_authRateLimits;
+  "platform/authTriggers": typeof platform_authTriggers;
   "platform/bootstrap": typeof platform_bootstrap;
   "platform/componentMigration": typeof platform_componentMigration;
   "platform/componentMigrationLegacy": typeof platform_componentMigrationLegacy;
@@ -123,6 +128,7 @@ declare const fullApi: ApiFromModules<{
   "platform/nativeCapabilities": typeof platform_nativeCapabilities;
   "platform/onboardingType": typeof platform_onboardingType;
   "platform/organizationAccess": typeof platform_organizationAccess;
+  "platform/organizationOwnership": typeof platform_organizationOwnership;
   "platform/organizationPlugin": typeof platform_organizationPlugin;
   "platform/organizations": typeof platform_organizations;
   "platform/parseUserAgent": typeof platform_parseUserAgent;

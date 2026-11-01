@@ -83,6 +83,12 @@ export function organizationPlugin(ctx: GenericCtx<DataModel>, siteUrl: string) 
       afterUpdateOrganization: async ({ organization: org, user }) => {
         if (org) await audit("organization.updated", user, `organization:${org.id}`);
       },
+      // Better Auth deletes the members before the organization row; let them go.
+      beforeDeleteOrganization: async ({ organization: org }) => {
+        await requireActionCtx(ctx).runMutation(internal.platform.organizationOwnership.markDeleting, {
+          organizationId: org.id,
+        });
+      },
       afterDeleteOrganization: async ({ organization: org, user }) => {
         await audit("organization.deleted", user, `organization:${org.id}`);
         await requireActionCtx(ctx).scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationAppData, {

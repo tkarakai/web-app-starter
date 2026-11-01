@@ -9,7 +9,8 @@ type UserAction =
   | "delete"
   | "makeAdmin"
   | "removeAdmin"
-  | "sessions";
+  | "sessions"
+  | "organizations";
 
 type UserActionsContextValue = {
   onAction: (action: UserAction, users: AdminUser[]) => void;

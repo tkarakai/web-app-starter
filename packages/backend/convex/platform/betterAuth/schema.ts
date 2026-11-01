@@ -176,6 +176,9 @@ export const tables = {
     logo: v.optional(v.union(v.null(), v.string())),
     createdAt: v.number(),
     metadata: v.optional(v.union(v.null(), v.string())),
+    // Hand-added, platform-only: set while the organization is being deleted, so the
+    // ownership guard lets its members go first (organizationOwnership.ts).
+    deletingAt: v.optional(v.union(v.null(), v.number())),
   })
     .index("name", ["name"])
     .index("slug", ["slug"]),

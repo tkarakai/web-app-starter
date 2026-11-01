@@ -36,6 +36,7 @@ import { UnbanDialog } from "./unban-dialog";
 import { BatchActionDialog } from "./batch-action-dialog";
 import { UserActionsProvider } from "./user-actions-context";
 import { UserSessionsDialog } from "./user-sessions-dialog";
+import { UserOrganizationsDialog, UserOrganizationsList } from "@/components/organizations/user-organizations";
 
 type UserAction =
   | "ban"
@@ -43,7 +44,8 @@ type UserAction =
   | "delete"
   | "makeAdmin"
   | "removeAdmin"
-  | "sessions";
+  | "sessions"
+  | "organizations";
 
 type PendingAction = {
   action: UserAction;
@@ -182,6 +184,7 @@ export function UsersDataTable() {
   // Batch action dialog (unban batch, delete batch)
   const [batchAction, setBatchAction] = React.useState<PendingAction | null>(null);
   const [sessionsTarget, setSessionsTarget] = React.useState<AdminUser | null>(null);
+  const [organizationsTarget, setOrganizationsTarget] = React.useState<AdminUser | null>(null);
 
   // Ban params ref for batch ban execution
   const batchBanParamsRef = React.useRef<{
@@ -204,6 +207,10 @@ export function UsersDataTable() {
       if (action === "sessions") {
         if (actionUsers.length === 1) {
           setSessionsTarget(actionUsers[0]);
+        }
+      } else if (action === "organizations") {
+        if (actionUsers.length === 1) {
+          setOrganizationsTarget(actionUsers[0]);
         }
       } else if (action === "ban") {
         setBanTarget(actionUsers);
@@ -333,6 +340,7 @@ export function UsersDataTable() {
       makeAdmin: "Make admin",
       removeAdmin: "Remove admin",
       sessions: "Sessions",
+      organizations: "Organizations",
     };
     return labels[action];
   };
@@ -370,7 +378,7 @@ export function UsersDataTable() {
         return `Are you sure you want to unban ${totalCount} selected users?`;
       }
       if (action === "delete") {
-        return `Are you sure you want to delete ${totalCount} selected users? This action cannot be undone.`;
+        return `Are you sure you want to delete ${totalCount} selected users? This action cannot be undone. Organizations they are the only owner of pass to another member; organizations with no other members are deleted with their data.`;
       }
       return `Are you sure you want to ${action} ${totalCount} selected users?`;
     },
@@ -510,7 +518,14 @@ export function UsersDataTable() {
           destructive={singleAction.action === "delete"}
           pending={singlePending}
           onConfirm={handleSingleConfirm}
-        />
+        >
+          {singleAction.action === "delete" && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Organizations</p>
+              <UserOrganizationsList userId={singleAction.users[0].id} deletionImpact />
+            </div>
+          )}
+        </ConfirmationDialog>
       )}
 
       {/* Batch action dialog with progress */}
@@ -535,6 +550,14 @@ export function UsersDataTable() {
           if (!open) setSessionsTarget(null);
         }}
         user={sessionsTarget}
+      />
+
+      <UserOrganizationsDialog
+        open={organizationsTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setOrganizationsTarget(null);
+        }}
+        user={organizationsTarget}
       />
     </UserActionsProvider>
   );

@@ -8,6 +8,7 @@ import {
   ArrowUpDown,
   Ban,
   Check,
+  Building2,
   Monitor,
   MoreHorizontal,
   Shield,
@@ -127,6 +128,10 @@ function ActionsCell({
         <DropdownMenuItem onSelect={() => onAction("sessions", [user])}>
           <Monitor className="mr-2 h-4 w-4" />
           Sessions
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => onAction("organizations", [user])}>
+          <Building2 className="mr-2 h-4 w-4" />
+          Organizations
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         {isBanned ? (

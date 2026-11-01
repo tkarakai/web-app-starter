@@ -31,6 +31,13 @@ const ACCESS: Record<string, Access> = {
   "platform/agentCapabilities:browserGateway": "admin",
   "platform/agentCapabilities:browserRead": "admin",
   "platform/agentCapabilities:browserWrite": "admin",
+  "platform/adminOrganizations:list": "admin",
+  "platform/adminOrganizations:get": "admin",
+  "platform/adminOrganizations:forUser": "admin",
+  "platform/adminOrganizations:addOwner": "admin",
+  "platform/adminOrganizations:removeOwner": "admin",
+  "platform/adminOrganizations:cancelInvitation": "admin",
+  "platform/adminOrganizations:remove": "admin",
   "platform/agentUsers:list": "admin",
   "platform/agentUsers:get": "admin",
   "platform/agentUsers:ban": "admin",
@@ -297,9 +304,9 @@ describe("platform endpoint authorization contract", async () => {
 
   // The control: an admin gets real answers from the admin queries, so the refusals above are
   // the functions' own checks, not empty tables or unusable arguments.
-  // Excluded: they answer [] without data the seed can't make (passkeys in the auth component,
-  // tokens of a real waitlist entry). Their non-admin refusals are errors or null, not [].
-  const noControl = ["platform/agentUsers:get", "platform/agentUsers:sessions", "platform/agentTaskAdmin:get", "platform/agentTaskAdmin:list", "platform/agentRegistry:announcement", "platform/agentAccess:listMine","platform/adminAuth:listAdminPasskeyUserIds", "platform/waitlistTokens:listByEntry"];
+  // Excluded: they answer [] without data the seed can't make (passkeys and organizations in the
+  // auth component, tokens of a real waitlist entry). Their non-admin refusals are errors or null, not [].
+  const noControl = ["platform/adminOrganizations:get", "platform/adminOrganizations:list", "platform/adminOrganizations:forUser", "platform/agentUsers:get", "platform/agentUsers:sessions", "platform/agentTaskAdmin:get", "platform/agentTaskAdmin:list", "platform/agentRegistry:announcement", "platform/agentAccess:listMine","platform/adminAuth:listAdminPasskeyUserIds", "platform/waitlistTokens:listByEntry"];
   test.each(withAccess("admin").filter(([path, fn]) => fn.kind === "query" && !noControl.includes(path)))("%s answers an admin", async (_path, fn) => {
     expect(await call(await signIn(await fixture(), "boss", "admin"), fn)).toMatchObject({ refused: false });
   });
