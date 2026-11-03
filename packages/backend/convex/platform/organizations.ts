@@ -15,6 +15,7 @@ import type { Doc } from "./betterAuth/_generated/dataModel";
 import { evaluateSession, identitySession } from "./sessionPolicy";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { authedQuery, orgMutation, orgQuery } from "./functions";
+import { actorOf, provisionOrganizationPlan, readTenancyMode } from "./billingAccess";
 import { needsSuccessor, organizationSeats } from "./organizationOwnership";
 import {
   deleteInvitationBatch,
@@ -267,13 +268,27 @@ export const deleteInvitation = orgMutation({
   },
 });
 
-/** Sign-up hook: every new account starts with its own organization. */
+/**
+ * Sign-up hook: a new user starts with their own organization, on its first plan
+ * (platform/docs/tenancy-and-billing.md). Platform administrators get none. In organizations mode
+ * a user who signed up through an organization invitation gets only the organization they were
+ * invited into. When there is a plan to choose, the user picks it before using the app.
+ */
 export const provisionPersonal = internalMutation({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
     const user = await findById(ctx, "user", args.userId);
     if (!user) return null;
-    return (await ensurePersonalOrganization(ctx, user)).organizationId;
+    if (user.role === "admin" || await ctx.runQuery(components.platform.adminInvitations.requiresEnrollment, { email: user.email })) return null;
+    const mode = await readTenancyMode(ctx);
+    if (mode === "organizations" && (await pendingInvitationsFor(ctx, user.email)).length > 0) return null;
+    const existing = (await listMemberships(ctx, user._id)).length > 0;
+    const { organizationId } = await ensurePersonalOrganization(ctx, user);
+    if (!existing) {
+      const organization = await findById(ctx, "organization", organizationId);
+      await provisionOrganizationPlan(ctx, { id: organizationId, name: organization?.name ?? "" }, mode, actorOf(user), user._id);
+    }
+    return organizationId;
   },
 });
 

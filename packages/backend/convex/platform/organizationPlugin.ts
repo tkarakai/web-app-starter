@@ -8,7 +8,7 @@
  */
 import type { GenericCtx } from "@convex-dev/better-auth";
 import { requireActionCtx } from "@convex-dev/better-auth/utils";
-import { internal } from "../_generated/api";
+import { components, internal } from "../_generated/api";
 import { APIError } from "better-auth/api";
 import { organization } from "better-auth/plugins";
 import { appConfig } from "@web-app-starter/app-config";
@@ -41,7 +41,9 @@ export function organizationPlugin(ctx: GenericCtx<DataModel>, siteUrl: string) 
   };
 
   return organization({
-    allowUserToCreateOrganization: true,
+    // Organizations are created by platform functions, together with their plan
+    // (platform/docs/tenancy-and-billing.md); Better Auth's create route is off.
+    allowUserToCreateOrganization: false,
     organizationLimit: 50,
     membershipLimit: 100,
     invitationLimit: 100,
@@ -85,11 +87,19 @@ export function organizationPlugin(ctx: GenericCtx<DataModel>, siteUrl: string) 
       },
       // Better Auth deletes the members before the organization row; let them go.
       beforeDeleteOrganization: async ({ organization: org }) => {
+        // A billing organization stays while it pays for another organization's plan.
+        if (await requireActionCtx(ctx).runQuery(components.platform.billing.billingInUse, { organizationId: org.id })) {
+          throw new APIError("CONFLICT", { code: "BILLING_ORGANIZATION_IN_USE", message: "BILLING_ORGANIZATION_IN_USE" });
+        }
         await requireActionCtx(ctx).runMutation(internal.platform.organizationOwnership.markDeleting, {
           organizationId: org.id,
         });
       },
       afterDeleteOrganization: async ({ organization: org, user }) => {
+        // Its plan ends and its billing row is marked deleted; both stay as billing history.
+        await requireActionCtx(ctx).runMutation(components.platform.billing.organizationDeleted, {
+          organizationId: org.id, actor: { userId: user.id, email: user.email },
+        });
         await audit("organization.deleted", user, `organization:${org.id}`);
         await requireActionCtx(ctx).scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationAppData, {
           organizationId: org.id,
