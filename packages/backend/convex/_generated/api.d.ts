@@ -80,6 +80,7 @@ import type * as projects from "../projects.js";
 import type * as sampleMigrations from "../sampleMigrations.js";
 import type * as sampleTables from "../sampleTables.js";
 import type * as tasks from "../tasks.js";
+import type * as userData from "../userData.js";
 
 import type {
   ApiFromModules,
@@ -160,6 +161,7 @@ declare const fullApi: ApiFromModules<{
   sampleMigrations: typeof sampleMigrations;
   sampleTables: typeof sampleTables;
   tasks: typeof tasks;
+  userData: typeof userData;
 }>;
 
 /**
