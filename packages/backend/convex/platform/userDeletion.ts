@@ -16,6 +16,7 @@ import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { createAuth } from "./auth";
 import { findById, listMemberships, parseRole } from "./organizationAccess";
 import { needsSuccessor, organizationSeats } from "./organizationOwnership";
+import { deleteUserData } from "../userData";
 import { scheduledDeletion } from "./billingAccess";
 import { sendLimitedAuthEmail } from "./authRateLimits";
 import { userDeletionBlockedEmail, userDeletionScheduledEmail } from "./sendAuthEmail";
@@ -178,8 +179,13 @@ export const markBlocked = internalMutation({
 
 /** Better Auth's `user.delete.after`: the request, if any, is done. */
 export const forget = internalMutation({
-  args: { userId: v.string() },
+  args: { userId: v.string(), ownerId: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    await deleteUserData(ctx, args.userId, args.ownerId ?? args.userId);
+    for (const ownerId of new Set([args.userId, args.ownerId ?? args.userId])) {
+      for (const profile of await ctx.db.query("userProfiles").withIndex("by_owner", q => q.eq("ownerId", ownerId)).collect()) await ctx.db.delete(profile._id);
+    }
+    for (const choice of await ctx.db.query("pendingPlanChoices").withIndex("by_user", q => q.eq("userId", args.userId)).collect()) await ctx.db.delete(choice._id);
     const row = await scheduledDeletion(ctx, args.userId);
     if (!row) return;
     if (row.state === "scheduled") {

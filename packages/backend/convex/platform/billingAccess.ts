@@ -118,15 +118,22 @@ export async function provisionOrganizationPlan(
   await ctx.runMutation(components.platform.billing.startPlan, {
     organizationId: organization.id, organizationName: organization.name, planId, billingOrganizationId, actor,
   });
-  if (pickerFor && mode && (await activePlans(ctx)).length > 1) {
+  const available = await activePlans(ctx);
+  if (pickerFor && mode && (available.length !== 1 || available[0]!._id !== planId || !available[0]!.isFreeForever)) {
     const pending = await ctx.db.query("pendingPlanChoices").withIndex("by_user", (q) => q.eq("userId", pickerFor)).first();
     if (!pending) await ctx.db.insert("pendingPlanChoices", { userId: pickerFor, organizationId: organization.id, createdAt: Date.now() });
   }
 }
 
 /** The plan choice still waiting for this user, if any. */
-export async function pendingPlanChoice(ctx: Pick<QueryCtx, "db">, userId: string) {
-  return await ctx.db.query("pendingPlanChoices").withIndex("by_user", (q) => q.eq("userId", userId)).first();
+export async function pendingPlanChoice(ctx: Pick<QueryCtx, "db" | "runQuery">, userId: string) {
+  const choice = await ctx.db.query("pendingPlanChoices").withIndex("by_user", (q) => q.eq("userId", userId)).first();
+  if (!choice) return null;
+  const member = await findMembership(ctx, userId, choice.organizationId);
+  if (!member || parseRole(member.role) === "member") return null;
+  const current = await ctx.runQuery(components.platform.billing.currentPlan, { organizationId: choice.organizationId });
+  if (current?.billing && !current.billing.deletedAt && !(await billingRole(ctx, userId, current.billing._id))?.canManage) return null;
+  return choice;
 }
 
 /** The user's scheduled deletion, if any. */
@@ -138,7 +145,7 @@ export async function scheduledDeletion(ctx: Pick<QueryCtx, "db">, userId: strin
  * What stops the app for this user before anything else: a scheduled deletion, then a plan still
  * to choose. Every organization-scoped function refuses with it (functions.ts).
  */
-export async function appBlocker(ctx: Pick<QueryCtx, "db">, userId: string): Promise<"USER_DELETION_SCHEDULED" | "PLAN_CHOICE_REQUIRED" | null> {
+export async function appBlocker(ctx: Pick<QueryCtx, "db" | "runQuery">, userId: string): Promise<"USER_DELETION_SCHEDULED" | "PLAN_CHOICE_REQUIRED" | null> {
   if (await scheduledDeletion(ctx, userId)) return "USER_DELETION_SCHEDULED";
   if (await pendingPlanChoice(ctx, userId)) return "PLAN_CHOICE_REQUIRED";
   return null;

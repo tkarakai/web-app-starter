@@ -6,6 +6,7 @@
  * and for organizations on an install with users only, a billing organization and one shared
  * organization with every user are created.
  */
+import { createFunctionHandle } from "convex/server";
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -215,6 +216,7 @@ export const runSetup = internalMutation({
         if (memberships.length >= MAX_MEMBERSHIPS_PER_USER || memberships.some((m) => m.organizationId === sharedOrganizationId)) continue;
         await ctx.runMutation(components.betterAuth.adapter.create, {
           input: { model: "member", data: { organizationId: sharedOrganizationId, userId: user._id, role: "member", createdAt: now } },
+          onCreateHandle: await createFunctionHandle(internal.platform.authTriggers.onCreate),
         });
       }
       await ctx.db.patch(setup._id, { step: result.isDone ? "done" : "shared", cursor: result.isDone ? null : result.continueCursor });

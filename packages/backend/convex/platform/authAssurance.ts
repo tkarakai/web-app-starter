@@ -163,6 +163,7 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
     if (!assurance.allowed) refuse("SECURITY_ENROLLMENT_REQUIRED");
     // Organizations are for application users; administrators cannot use the web app.
     if (policy === "organization") {
+      if (await actionCtx().runQuery(internal.platform.userDeletion.pending, { userId: pair.user._id })) refuse("USER_DELETION_SCHEDULED");
       if (assurance.scope === "admin") refuse("NOT_APPLICATION_USER");
       // Organizations are created with their plan by platform functions (billing.ts).
       if (path === "/organization/create") refuse("ORGANIZATION_CREATION_DISABLED");

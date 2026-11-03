@@ -59,12 +59,12 @@ export function BillingSection() {
   const t = useTranslations("billing");
   const overview = useQuery(api.platform.billing.overview);
   const price = usePlanPrice();
-  if (!overview?.organization || !overview.plan) return null;
+  if (!overview?.organization) return null;
   const individuals = overview.mode === "individuals";
 
   return (
     <div className="space-y-6" data-testid="billing-section">
-      <Card>
+      {overview.plan && <Card>
         <CardHeader>
           <CardTitle className="text-base">{t("title")}</CardTitle>
           <CardDescription>{individuals ? t("individualDescription") : t("description", { organization: overview.organization.name })}</CardDescription>
@@ -103,7 +103,7 @@ export function BillingSection() {
             />
           )}
         </CardContent>
-      </Card>
+      </Card>}
       {!individuals && overview.billing && (
         <BillingOrganizationCard
           billing={overview.billing}

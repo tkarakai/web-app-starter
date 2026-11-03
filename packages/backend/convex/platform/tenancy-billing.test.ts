@@ -127,6 +127,10 @@ describe("signing up", () => {
       .toEqual([["Alice billing", "owner"], ["alice", "owner"]]);
     expect(await alice.caller.query(api.platform.billing.myStatus, {})).toMatchObject({ planChoice: null });
     expect(await alice.caller.query(api.platform.organizations.active, {})).not.toBeNull();
+    await alice.switchTo(now.billing!.organizationId);
+    expect(await alice.caller.query(api.platform.billing.overview, {})).toMatchObject({ plan: null, billing: { id: now.billing!._id, canManage: true } });
+    const created = await alice.caller.mutation(api.platform.billing.createOrganization, { billingOrganizationId: now.billing!._id, name: "Second workspace", planId: pro });
+    expect(await f.current(created.organizationId)).toMatchObject({ plan: { _id: pro }, billing: { _id: now.billing!._id } });
   });
 
   test("individuals: the user's organization is their billing organization", async () => {
@@ -287,6 +291,8 @@ describe("deleting your user", () => {
     await f.t.mutation(components.platform.appSettings.putRaw, { key: "userDeletionGraceDays", value: "3", updatedBy: "test" });
     const alice = await f.user("alice");
     const own = await alice.provision();
+    await alice.caller.mutation(api.platform.userProfiles.upsert, { timezone: "Europe/Budapest" });
+    await f.t.run(ctx => ctx.db.insert("pendingPlanChoices", { userId: alice.userId, organizationId: own, createdAt: Date.now() }));
 
     const { deleteAt } = await alice.caller.mutation(api.platform.userDeletion.request, {});
     expect(deleteAt - Date.now()).toBe(3 * 24 * 60 * 60 * 1000);
@@ -310,6 +316,8 @@ describe("deleting your user", () => {
     // Billing history stays: the organization's plan row is ended, not deleted.
     expect(await f.current(own)).toBeNull();
     expect(await f.t.run((ctx) => ctx.db.query("userDeletions").collect())).toEqual([]);
+    expect(await f.t.run(ctx => ctx.db.query("userProfiles").collect())).toEqual([]);
+    expect(await f.t.run(ctx => ctx.db.query("pendingPlanChoices").collect())).toEqual([]);
   });
 
   test("a stale session must sign in again first", async () => {
@@ -322,4 +330,101 @@ describe("deleting your user", () => {
     });
     await expect(alice.caller.mutation(api.platform.userDeletion.request, {})).rejects.toThrow("RECENT_AUTHENTICATION_REQUIRED");
   });
+});
+
+describe("review regressions", () => {
+  test.each(["individuals", "organizations"] as const)("%s: a sole paid plan still requires payment onboarding", async mode => {
+    const f = await fixture(mode);
+    await f.boss.caller.mutation(api.platform.billing.ensureSeeded, {});
+    const free = (await f.plans()).find(p => p.isSeeded)!;
+    const pro = await f.paidPlan();
+    await f.boss.caller.mutation(api.platform.billing.setDefaultPlan, { planId: pro });
+    await f.boss.caller.mutation(api.platform.billing.updatePlan, { planId: free.id, status: "inactive" });
+    const alice = await f.user("alice");
+    await alice.provision();
+    expect(await alice.caller.query(api.platform.billing.myStatus, {})).toMatchObject({ planChoice: { plans: [{ id: pro }] } });
+    expect(await alice.caller.query(api.platform.organizations.active, {})).toBeNull();
+    await expect(alice.caller.mutation(api.platform.billing.choosePlan, { planId: pro })).rejects.toThrow("PAYMENT_METHOD_REQUIRED");
+  });
+
+  test.each(["removed", "demoted", "payer"])("a pending choice grants no authority after being %s", async change => {
+    const f = await fixture("organizations");
+    const pro = await f.paidPlan();
+    const alice = await f.user("alice");
+    const own = await alice.provision();
+    const bob = await f.user("bob");
+    const bobOwn = await bob.provision();
+    await f.addMember(own, bob.userId, "owner");
+    const member = (await f.members(own)).find(m => m.userId === alice.userId)!;
+    if (change === "removed") await f.t.mutation(components.betterAuth.adapter.deleteOne, { input: { model: "member", where: [{ field: "_id", value: member._id }] } });
+    if (change === "demoted") await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "member", where: [{ field: "_id", value: member._id }], update: { role: "member" } } });
+    if (change === "payer") {
+      const payerOrg = bobOwn;
+      const billingOrganizationId = await f.t.mutation(components.platform.billing.createBilling, { organizationId: payerOrg, organizationName: "Bob", paymentMethod: "cash", actor: { email: "test" } });
+      await f.t.mutation(components.platform.billing.startPlan, { organizationId: own, organizationName: "Alice", planId: pro, billingOrganizationId, actor: { email: "test" } });
+    }
+    const before = await f.current(own);
+    expect(await alice.caller.query(api.platform.billing.myStatus, {})).toMatchObject({ planChoice: null });
+    await expect(alice.caller.mutation(api.platform.billing.choosePlan, { planId: pro, paymentMethod: "cash", billingOrganizationName: "Unauthorized" })).rejects.toThrow("NO_PLAN_CHOICE");
+    expect(await f.current(own)).toEqual(before);
+  });
+
+  test("a fresh session during deletion cannot write billing or use organization HTTP routes", async () => {
+    vi.useFakeTimers();
+    const f = await fixture("organizations");
+    const alice = await f.user("alice");
+    const own = await alice.provision();
+    const free = (await f.plans())[0]!;
+    await alice.caller.mutation(api.platform.userDeletion.request, {});
+    const session = await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "session", data: { assuranceVersion: 1, authMethod: "password", authenticatedAt: Date.now(), primaryVerifiedAt: Date.now(), userId: alice.userId, token: "fresh-session", createdAt: Date.now(), updatedAt: Date.now(), expiresAt: Date.now() + 3600000 } } });
+    const back = f.t.withIdentity({ subject: alice.userId, sessionId: session._id });
+    await expect(back.mutation(api.platform.billing.changePlan, { organizationId: own, planId: free.id })).rejects.toThrow("USER_DELETION_SCHEDULED");
+    const response = await f.post("/organization/set-active", { organizationId: own }, "fresh");
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "USER_DELETION_SCHEDULED" });
+  });
+
+  test("cleanup removes migrated profiles and pending choices even without a deletion request", async () => {
+    const f = await fixture("organizations");
+    await f.paidPlan();
+    const alice = await f.user("alice", { userId: "legacy-owner" });
+    await alice.provision();
+    await alice.caller.mutation(api.platform.userProfiles.upsert, { timezone: "Europe/Budapest" });
+    await f.t.mutation(internal.platform.userDeletion.forget, { userId: alice.userId, ownerId: "legacy-owner" });
+    await f.t.mutation(internal.platform.userDeletion.forget, { userId: alice.userId, ownerId: "legacy-owner" });
+    expect(await f.t.run(ctx => ctx.db.query("userProfiles").collect())).toEqual([]);
+    expect(await f.t.run(ctx => ctx.db.query("pendingPlanChoices").collect())).toEqual([]);
+  });
+});
+
+test("organization creation enforces the 50-membership boundary and rolls back failed creates", async () => {
+  const f = await fixture("organizations");
+  const alice = await f.user("alice");
+  const own = await alice.provision();
+  const billingOrganizationId = await f.t.mutation(components.platform.billing.createBilling, { organizationId: own, organizationName: "Payer", actor: { email: "test" } });
+  const free = (await f.plans())[0]!;
+  const pro = await f.paidPlan();
+  vi.useFakeTimers();
+  for (let i = 1; i < 50; i++) {
+    vi.setSystemTime(Date.now() + 60_000);
+    await alice.caller.mutation(api.platform.billing.createOrganization, { billingOrganizationId, planId: free.id, name: `Org ${i}` });
+  }
+  const before = await alice.caller.query(api.platform.organizations.mine, {});
+  expect(before!.organizations).toHaveLength(50);
+  await expect(alice.caller.mutation(api.platform.billing.createOrganization, { billingOrganizationId, planId: free.id, name: "Too many" })).rejects.toThrow("MEMBERSHIP_LIMIT_REACHED");
+  expect(await alice.caller.query(api.platform.organizations.mine, {})).toEqual(before);
+  await expect(alice.caller.mutation(api.platform.billing.upgrade, { organizationId: own, planId: pro, newBillingOrganizationName: "Another payer", paymentMethod: "cash" })).rejects.toThrow("MEMBERSHIP_LIMIT_REACHED");
+  expect(await alice.caller.query(api.platform.organizations.mine, {})).toEqual(before);
+});
+
+test("admin deletion removes a migrated user's profile and pending picker", async () => {
+  const f = await fixture("organizations");
+  await f.paidPlan();
+  const alice = await f.user("alice", { userId: "legacy-alice" });
+  await alice.provision();
+  await alice.caller.mutation(api.platform.userProfiles.upsert, { timezone: "Europe/Budapest" });
+  const response = await f.post("/admin/remove-user", { userId: alice.userId }, "boss");
+  expect(response.status).toBe(200);
+  expect(await f.t.run(ctx => ctx.db.query("userProfiles").collect())).toEqual([]);
+  expect(await f.t.run(ctx => ctx.db.query("pendingPlanChoices").collect())).toEqual([]);
 });

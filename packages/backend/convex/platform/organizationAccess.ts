@@ -9,6 +9,7 @@
  * (organizationOwnership.ts). See platform/docs/organizations.md.
  */
 import { components, internal } from "../_generated/api";
+import { createFunctionHandle } from "convex/server";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { deleteMember, needsSuccessor, organizationSeats, pickSuccessor, setMemberRole } from "./organizationOwnership";
@@ -192,6 +193,7 @@ export async function createOrganizationWithOwner(ctx: Writer, name: string, own
       model: "member",
       data: { organizationId: organization._id, userId: ownerUserId, role: "owner", createdAt: now },
     },
+    onCreateHandle: await createFunctionHandle(internal.platform.authTriggers.onCreate),
   });
   return organization._id;
 }

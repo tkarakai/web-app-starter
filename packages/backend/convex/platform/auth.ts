@@ -853,7 +853,10 @@ export const createAuthOptions = (
             const userId = (user as Record<string, unknown>).id;
             if (typeof userId !== "string") return;
             await requireActionCtx(ctx).runMutation(internal.platform.organizations.removeUserMemberships, { userId, email: user.email });
-            await requireActionCtx(ctx).runMutation(internal.platform.userDeletion.forget, { userId });
+            const migratedOwnerId = (user as Record<string, unknown>).userId;
+            await requireActionCtx(ctx).runMutation(internal.platform.userDeletion.forget, {
+              userId, ownerId: typeof migratedOwnerId === "string" ? migratedOwnerId : userId,
+            });
           },
         },
       },

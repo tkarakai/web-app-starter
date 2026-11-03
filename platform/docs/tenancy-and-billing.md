@@ -139,3 +139,9 @@ user is the last member of a billing organization that pays for current plans. C
 
 The dev seed and E2E fixtures turn on organizations mode with an inactive paid plan
 (`tenancy.ensureFixtureTenancy`, local backends only), so fixture users never see the plan picker.
+
+Account deletion removes the user's platform profile (including a migrated owner ID), pending
+plan choice and scheduled deletion request. Billing history and audit records remain. The
+idempotent `packages/backend/convex/userData.ts` cleanup hook handles app-owned user data;
+add user-owned table cleanup there. Shared organization data remains governed by
+`organizationData.ts` and is removed only when the organization itself is deleted.
