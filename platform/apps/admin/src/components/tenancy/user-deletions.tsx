@@ -1,0 +1,80 @@
+"use client";
+
+import * as React from "react";
+import { useMutation, useQuery } from "convex/react";
+import { toast } from "sonner";
+
+import { api } from "@repo/backend";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@web-app-starter/design-system";
+import { countdown } from "@/lib/tenancy";
+
+const REASONS: Record<string, string> = {
+  BILLING_ORGANIZATION_IN_USE: "Last member of a billing organization that pays for other organizations",
+  BILLING_OWNER_REQUIRED: "Last owner of a billing organization that pays for other organizations",
+};
+
+/** Users who asked to delete themselves: when it happens, or why it couldn't. */
+export function UserDeletions() {
+  const rows = useQuery(api.platform.userDeletion.list);
+  const cancel = useMutation(api.platform.userDeletion.adminCancel);
+  const [now, setNow] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+  if (!rows || rows.length === 0) return null;
+
+  return (
+    <Card data-testid="user-deletions">
+      <CardHeader>
+        <CardTitle className="text-lg">Scheduled deletions</CardTitle>
+        <CardDescription>Users who asked to delete themselves. Signing in lets them cancel until the date.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>User</TableHead>
+              <TableHead>Deletion</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow key={row.userId}>
+                <TableCell>
+                  <div className="font-medium">{row.name}</div>
+                  <div className="text-sm text-muted-foreground">{row.email}</div>
+                </TableCell>
+                <TableCell>
+                  {row.state === "blocked"
+                    ? <><Badge variant="destructive">Blocked</Badge> <span className="text-sm text-muted-foreground">{REASONS[row.blockedReason ?? ""] ?? row.blockedReason}</span></>
+                    : <span title={new Date(row.deleteAt).toLocaleString()}>Scheduled {countdown(row.deleteAt, now)}</span>}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button size="sm" variant="outline" onClick={() => void cancel({ userId: row.userId }).then(() => toast.success(`Deletion of ${row.email} canceled.`), () => toast.error("Couldn't cancel the deletion."))}>
+                    Cancel deletion
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}

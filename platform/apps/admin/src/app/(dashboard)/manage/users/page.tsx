@@ -1,4 +1,5 @@
 import { UsersDataTable } from "@/components/users/users-data-table";
+import { UserDeletions } from "@/components/tenancy/user-deletions";
 
 export default function UsersPage() {
   return (
@@ -9,6 +10,7 @@ export default function UsersPage() {
           Manage user accounts, session access, and role permissions.
         </p>
       </div>
+      <UserDeletions />
       <UsersDataTable />
     </div>
   );
