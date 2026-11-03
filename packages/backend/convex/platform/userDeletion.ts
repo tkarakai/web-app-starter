@@ -16,7 +16,7 @@ import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { createAuth } from "./auth";
 import { findById, listMemberships, parseRole } from "./organizationAccess";
 import { needsSuccessor, organizationSeats } from "./organizationOwnership";
-import { deleteUserData } from "../userData";
+import { makeFunctionReference } from "convex/server";
 import { scheduledDeletion } from "./billingAccess";
 import { sendLimitedAuthEmail } from "./authRateLimits";
 import { userDeletionBlockedEmail, userDeletionScheduledEmail } from "./sendAuthEmail";
@@ -86,8 +86,9 @@ export const request = authedMutation({
     if (blocker) throw new Error(blocker.code);
     const now = Date.now();
     const deleteAt = now + (await graceDaysSetting(ctx)) * DAY_MS;
-    const jobId = await ctx.scheduler.runAt(deleteAt, internal.platform.userDeletion.execute, { userId: ctx.user._id });
-    await ctx.db.insert("userDeletions", { userId: ctx.user._id, requestedAt: now, deleteAt, jobId, state: "scheduled" });
+    const requestId = `${now}-${Math.random()}`;
+    const jobId = await ctx.scheduler.runAt(deleteAt, internal.platform.userDeletion.execute, { userId: ctx.user._id, requestId });
+    await ctx.db.insert("userDeletions", { userId: ctx.user._id, requestId, requestedAt: now, deleteAt, jobId, state: "scheduled" });
     await revokeSessions(ctx, ctx.user._id);
     await ctx.scheduler.runAfter(0, internal.platform.userDeletion.notify, { userId: ctx.user._id, kind: "scheduled" });
     await scheduleAuditEvent(ctx, {
@@ -101,6 +102,7 @@ export const request = authedMutation({
 async function cancelDeletion(ctx: Pick<MutationCtx, "db" | "scheduler">, userId: string, actor: { email: string; userId: string }) {
   const row = await scheduledDeletion(ctx, userId);
   if (!row) return false;
+  if (row.state === "deleting") throw new Error("USER_DELETION_IN_PROGRESS");
   if (row.state === "scheduled") await ctx.scheduler.cancel(row.jobId);
   await ctx.db.delete(row._id);
   await scheduleAuditEvent(ctx, {
@@ -164,10 +166,10 @@ export const pending = internalQuery({
 });
 
 export const markBlocked = internalMutation({
-  args: { userId: v.string(), reason: v.string() },
+  args: { userId: v.string(), requestId: v.optional(v.string()), reason: v.string() },
   handler: async (ctx, args) => {
     const row = await scheduledDeletion(ctx, args.userId);
-    if (!row) return;
+    if (!row || row.requestId !== args.requestId) return;
     await ctx.db.patch(row._id, { state: "blocked", blockedReason: args.reason });
     const user = await findById(ctx, "user", args.userId);
     await scheduleAuditEvent(ctx, {
@@ -181,7 +183,11 @@ export const markBlocked = internalMutation({
 export const forget = internalMutation({
   args: { userId: v.string(), ownerId: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    await deleteUserData(ctx, args.userId, args.ownerId ?? args.userId);
+    try {
+      await ctx.runMutation(makeFunctionReference<"mutation", { userId: string; ownerId: string }>("userData:deleteUserData"), { userId: args.userId, ownerId: args.ownerId ?? args.userId });
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.includes("userData:deleteUserData") || !/Couldn't resolve|Could not find/i.test(error.message)) throw error;
+    }
     for (const ownerId of new Set([args.userId, args.ownerId ?? args.userId])) {
       for (const profile of await ctx.db.query("userProfiles").withIndex("by_owner", q => q.eq("ownerId", ownerId)).collect()) await ctx.db.delete(profile._id);
     }
@@ -206,27 +212,45 @@ export const recordCompleted = internalMutation({
   },
 });
 
-/** The grace period is over: check again, then delete through Better Auth so every hook runs. */
-export const execute = internalAction({
-  args: { userId: v.string() },
+/** Claim and cancellation serialize on the same row. A claimed request cannot be canceled. */
+export const claim = internalMutation({
+  args: { userId: v.string(), requestId: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const row = await ctx.runQuery(internal.platform.userDeletion.pending, args);
-    if (!row || row.state !== "scheduled") return;
-    const blocker = await ctx.runQuery(internal.platform.userDeletion.blockerFor, args);
+    const row = await scheduledDeletion(ctx, args.userId);
+    if (!row || row.state !== "scheduled" || row.requestId !== args.requestId || row.deleteAt > Date.now()) return false;
+    const blocker = await deletionBlocker(ctx, args.userId);
     if (blocker) {
-      await ctx.runMutation(internal.platform.userDeletion.markBlocked, { userId: args.userId, reason: blocker.code });
-      await ctx.runAction(internal.platform.userDeletion.notify, { userId: args.userId, kind: "blocked", reason: blockerMessage(blocker) });
+      await ctx.runMutation(internal.platform.userDeletion.markBlocked, { userId: args.userId, requestId: args.requestId, reason: blocker.code });
+      return blocker;
+    }
+    await ctx.db.patch(row._id, { state: "deleting" });
+    return true;
+  },
+});
+
+/** The grace period is over: atomically claim this specific request before destructive calls. */
+export const execute = internalAction({
+  args: { userId: v.string(), requestId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const claim = await ctx.runMutation(internal.platform.userDeletion.claim, args);
+    if (claim !== true) {
+      if (claim) await ctx.runAction(internal.platform.userDeletion.notify, { userId: args.userId, kind: "blocked", reason: blockerMessage(claim) });
       return;
     }
-    const auth = createAuth(ctx);
-    const context = await auth.$context;
-    const user = await context.internalAdapter.findUserById(args.userId);
-    if (!user) {
-      await ctx.runMutation(internal.platform.userDeletion.forget, args);
-      return;
+    try {
+      const auth = createAuth(ctx);
+      const context = await auth.$context;
+      const user = await context.internalAdapter.findUserById(args.userId);
+      if (!user) {
+        await ctx.runMutation(internal.platform.userDeletion.forget, { userId: args.userId });
+        return;
+      }
+      await context.internalAdapter.deleteUser(args.userId);
+      await ctx.runMutation(internal.platform.userDeletion.recordCompleted, { userId: args.userId, email: user.email });
+    } catch (error) {
+      await ctx.runMutation(internal.platform.userDeletion.markBlocked, { ...args, reason: error instanceof Error ? error.message.slice(0, 1000) : "Deletion failed" });
+      throw error;
     }
-    await context.internalAdapter.deleteUser(args.userId);
-    await ctx.runMutation(internal.platform.userDeletion.recordCompleted, { userId: args.userId, email: user.email });
   },
 });
 

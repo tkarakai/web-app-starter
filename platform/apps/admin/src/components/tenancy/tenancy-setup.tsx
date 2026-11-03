@@ -49,9 +49,12 @@ const MODE_COPY: Record<Mode, { title: string; description: string }> = {
 export function TenancySetup() {
   const status = useQuery(api.platform.tenancy.status);
   const configure = useMutation(api.platform.tenancy.configure);
+  const retry = useMutation(api.platform.tenancy.retry);
   const [mode, setMode] = React.useState<Mode>("organizations");
   const [billingUserId, setBillingUserId] = React.useState("");
   const [adminUserId, setAdminUserId] = React.useState("");
+  const [replacementBillingUserId, setReplacementBillingUserId] = React.useState("");
+  const [replacementAdminUserId, setReplacementAdminUserId] = React.useState("");
   const [billingName, setBillingName] = React.useState("");
   const [sharedName, setSharedName] = React.useState("");
   const [busy, setBusy] = React.useState(false);
@@ -70,9 +73,27 @@ export function TenancySetup() {
     );
   }
   if (status.running) {
+    const canReplaceOwners = status.running.canReplaceOwners;
     return (
       <Alert data-testid="tenancy-running">
-        <AlertDescription>Turning on {MODE_COPY[status.running.mode].title}… This page updates when it&apos;s done.</AlertDescription>
+        <AlertDescription>
+          {status.running.failed ? <>
+            Setup stopped: {status.running.error}. Correct the reported prerequisite, then retry.
+            {canReplaceOwners && status.running.mode === "organizations" && <div className="my-3 grid gap-3">
+              {(["billing", "admin"] as const).map(role => <div key={role}>
+                <Label htmlFor={`retry-${role}`}>Replacement {role} owner (optional, before organizations are created)</Label>
+                <Select value={role === "billing" ? replacementBillingUserId : replacementAdminUserId} onValueChange={role === "billing" ? setReplacementBillingUserId : setReplacementAdminUserId}>
+                  <SelectTrigger id={`retry-${role}`}><SelectValue placeholder="Keep original owner" /></SelectTrigger>
+                  <SelectContent>{status.eligibility?.candidates.map(user => <SelectItem key={user.id} value={user.id}>{user.name} ({user.email})</SelectItem>)}</SelectContent>
+                </Select>
+              </div>)}
+            </div>}
+            <Button className="ms-2" disabled={busy} onClick={async () => {
+              setBusy(true);
+              try { await retry({ ...(canReplaceOwners && replacementBillingUserId ? { billingUserId: replacementBillingUserId } : {}), ...(canReplaceOwners && replacementAdminUserId ? { adminUserId: replacementAdminUserId } : {}) }); } catch (error) { toast.error(message(error)); } finally { setBusy(false); }
+            }}>Retry setup</Button>
+          </> : <>Turning on {MODE_COPY[status.running.mode].title}… This page updates when it&apos;s done.</>}
+        </AlertDescription>
       </Alert>
     );
   }

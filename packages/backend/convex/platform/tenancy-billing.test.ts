@@ -5,6 +5,7 @@ import { api, components, internal } from "../_generated/api";
 import { createTestEnv } from "../test.modules";
 import authSchema from "./betterAuth/schema";
 import { organizationFixture } from "./organizations.test-helpers";
+import { createOrganizationWithOwner } from "./organizationAccess";
 import { sendAuthEmail } from "./sendAuthEmail";
 
 vi.mock("./sendAuthEmail", async (original) => ({
@@ -427,4 +428,93 @@ test("admin deletion removes a migrated user's profile and pending picker", asyn
   expect(response.status).toBe(200);
   expect(await f.t.run(ctx => ctx.db.query("userProfiles").collect())).toEqual([]);
   expect(await f.t.run(ctx => ctx.db.query("pendingPlanChoices").collect())).toEqual([]);
+});
+
+describe("second review regressions", () => {
+  test("a successful cancellation invalidates a running job's request identity", async () => {
+    const f = await fixture("organizations");
+    const alice = await f.user("alice");
+    await alice.provision();
+    await alice.caller.mutation(api.platform.userDeletion.request, {});
+    const old = (await f.t.query(internal.platform.userDeletion.pending, { userId: alice.userId }))!;
+    await f.boss.caller.mutation(api.platform.userDeletion.adminCancel, { userId: alice.userId });
+    // This is the destructive action resuming after cancellation committed.
+    await f.t.action(internal.platform.userDeletion.execute, { userId: alice.userId, requestId: old.requestId });
+    expect(await f.t.query(internal.platform.userDeletion.userRow, { userId: alice.userId })).not.toBeNull();
+    await f.t.run(ctx => ctx.db.insert("userDeletions", { userId: alice.userId, requestId: "replacement", requestedAt: Date.now(), deleteAt: Date.now(), jobId: old.jobId, state: "scheduled" }));
+    await f.t.action(internal.platform.userDeletion.execute, { userId: alice.userId, requestId: old.requestId });
+    expect(await f.t.query(internal.platform.userDeletion.pending, { userId: alice.userId })).toMatchObject({ requestId: "replacement", state: "scheduled" });
+  });
+
+  test("cancellation refuses once the atomic deletion claim has committed", async () => {
+    const f = await fixture("organizations");
+    const alice = await f.user("alice");
+    await alice.provision();
+    await alice.caller.mutation(api.platform.userDeletion.request, {});
+    const row = (await f.t.query(internal.platform.userDeletion.pending, { userId: alice.userId }))!;
+    await f.t.run(ctx => ctx.db.patch(row._id, { deleteAt: Date.now() }));
+    expect(await f.t.mutation(internal.platform.userDeletion.claim, { userId: alice.userId, requestId: row.requestId })).toBe(true);
+    await expect(f.boss.caller.mutation(api.platform.userDeletion.adminCancel, { userId: alice.userId })).rejects.toThrow("USER_DELETION_IN_PROGRESS");
+    expect(await f.t.query(internal.platform.userDeletion.pending, { userId: alice.userId })).toMatchObject({ state: "deleting" });
+  });
+
+  test("an existing invitation cannot break individuals eligibility after configure", async () => {
+    vi.useFakeTimers();
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    const own = await alice.provision();
+    await bob.provision();
+    const invitation = await f.invite(own, "bob@example.test", alice.userId);
+    await f.paidPlan();
+    await f.boss.caller.mutation(api.platform.tenancy.configure, { mode: "individuals" });
+    const response = await f.post("/organization/accept-invitation", { invitationId: invitation._id }, "bob");
+    expect(response.ok).toBe(false);
+    expect(await f.members(own)).toHaveLength(1);
+    await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await f.t.query(api.platform.tenancy.mode, {})).toEqual({ mode: "individuals" });
+  });
+
+  test("finalization revalidates eligibility; failed batches are visible and retryable", async () => {
+    vi.useFakeTimers();
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    const own = await alice.provision();
+    await bob.provision();
+    await f.paidPlan();
+    await f.boss.caller.mutation(api.platform.tenancy.configure, { mode: "individuals" });
+    // Simulate a legacy/admin adapter path that bypasses membership triggers.
+    const bad = await f.addMember(own, bob.userId, "member");
+    await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await f.boss.caller.query(api.platform.tenancy.status, {})).toMatchObject({ mode: null, running: { failed: true } });
+    await f.t.mutation(components.betterAuth.adapter.deleteOne, { input: { model: "member", where: [{ field: "_id", value: bad._id }] } });
+    await f.boss.caller.mutation(api.platform.tenancy.retry, {});
+    await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await f.t.query(api.platform.tenancy.mode, {})).toEqual({ mode: "individuals" });
+  });
+});
+
+test("setup preflights both memberships for a shared owner and recovers from capacity changes", async () => {
+  vi.useFakeTimers();
+  const f = await fixture();
+  const alice = await f.user("alice");
+  await alice.provision();
+  await f.paidPlan();
+  for (let i = 1; i < 49; i++) await f.t.run(ctx => createOrganizationWithOwner(ctx, `Solo ${i}`, alice.userId));
+  const args = { mode: "organizations" as const, billingUserId: alice.userId, adminUserId: alice.userId, billingOrganizationName: "Payer", sharedOrganizationName: "Shared" };
+  await expect(f.boss.caller.mutation(api.platform.tenancy.configure, args)).rejects.toThrow("MEMBERSHIP_LIMIT_REACHED");
+  expect(await f.t.run(ctx => ctx.db.query("tenancySetups").collect())).toEqual([]);
+  const member = (await f.members((await alice.caller.query(api.platform.organizations.mine, {}))!.organizations[1]!.id))[0]!;
+  await f.t.mutation(components.betterAuth.adapter.deleteOne, { input: { model: "member", where: [{ field: "_id", value: member._id }] } });
+  await f.boss.caller.mutation(api.platform.tenancy.configure, args);
+  const extra = await f.t.run(ctx => createOrganizationWithOwner(ctx, "Capacity consumed after configure", alice.userId));
+  await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+  expect(await f.boss.caller.query(api.platform.tenancy.status, {})).toMatchObject({ running: { failed: true, error: expect.stringContaining("MEMBERSHIP_LIMIT_REACHED") } });
+  const [extraMember] = await f.members(extra);
+  await f.t.mutation(components.betterAuth.adapter.deleteOne, { input: { model: "member", where: [{ field: "_id", value: extraMember!._id }] } });
+  await f.boss.caller.mutation(api.platform.tenancy.retry, {});
+  await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+  expect(await f.t.query(api.platform.tenancy.mode, {})).toEqual({ mode: "organizations" });
+  expect((await alice.caller.query(api.platform.organizations.mine, {}))!.organizations).toHaveLength(50);
 });

@@ -10,7 +10,7 @@ import { createFunctionHandle } from "convex/server";
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { internalMutation, query } from "../_generated/server";
+import { internalAction, internalMutation, internalQuery, query } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { adminMutation, authedQuery } from "./functions";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
@@ -63,6 +63,66 @@ async function currentSetup(ctx: Pick<QueryCtx, "db">) {
   return await ctx.db.query("tenancySetups").order("desc").first();
 }
 
+/** Check enough room for both new owners before starting or resuming a batch. */
+async function requireSetupOwners(ctx: Reader, billingUserId?: string, adminUserId?: string) {
+  const needed = new Map<string, number>();
+  for (const userId of [billingUserId, adminUserId]) {
+    const user = userId ? await findById(ctx, "user", userId) : null;
+    if (!user || !canAct(user)) throw new Error("TENANCY_USER_REQUIRED");
+    needed.set(user._id, (needed.get(user!._id) ?? 0) + 1);
+  }
+  for (const [userId, count] of needed) {
+    if ((await listMemberships(ctx, userId)).length + count > MAX_MEMBERSHIPS_PER_USER) throw new Error("MEMBERSHIP_LIMIT_REACHED");
+  }
+}
+
+/** Membership triggers read this inside the write transaction, including during setup. */
+export const membershipMode = internalQuery({
+  args: {},
+  handler: async ctx => {
+    const mode = await readTenancyMode(ctx);
+    const setup = await currentSetup(ctx);
+    return mode ?? (setup && setup.state !== "done" ? setup.mode : null);
+  },
+});
+
+/** The action records a failed batch in a separate transaction after its writes roll back. */
+export const advanceSetup = internalAction({
+  args: {},
+  handler: async ctx => {
+    try {
+      await ctx.runMutation(internal.platform.tenancy.runSetup, {});
+    } catch (error) {
+      await ctx.runMutation(internal.platform.tenancy.failSetup, { error: error instanceof Error ? error.message : "Setup failed" });
+    }
+  },
+});
+
+export const failSetup = internalMutation({
+  args: { error: v.string() },
+  handler: async (ctx, args) => {
+    const setup = await currentSetup(ctx);
+    if (setup?.state === "running") await ctx.db.patch(setup._id, { state: "failed", error: args.error.slice(0, 1000) });
+  },
+});
+
+/** Retry the same batch after correcting its reported prerequisite; completed work is retained. */
+export const retry = adminMutation({
+  args: { billingUserId: v.optional(v.string()), adminUserId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    requireAdmin(ctx.user);
+    const setup = await currentSetup(ctx);
+    if (!setup || setup.state !== "failed") throw new Error("TENANCY_SETUP_NOT_FAILED");
+    const ownersCreated = !!(setup.billingOrganizationId || setup.sharedOrganizationId);
+    if (ownersCreated && (args.billingUserId || args.adminUserId)) throw new Error("TENANCY_SETUP_OWNERS_FIXED");
+    const billingUserId = args.billingUserId ?? setup.billingUserId;
+    const adminUserId = args.adminUserId ?? setup.adminUserId;
+    if (billingUserId && !ownersCreated) await requireSetupOwners(ctx, billingUserId, adminUserId);
+    await ctx.db.patch(setup._id, { state: "running", error: undefined, billingUserId, adminUserId });
+    await ctx.scheduler.runAfter(0, internal.platform.tenancy.advanceSetup, {});
+  },
+});
+
 /** What the platform admin needs to decide, and whether each mode can be turned on now. */
 async function eligibility(ctx: Reader) {
   const users = await readAll<Doc<"user">>(ctx, "user");
@@ -106,9 +166,9 @@ export const status = authedQuery({
     requireAdmin(ctx.user);
     const mode = await readTenancyMode(ctx);
     const setup = await currentSetup(ctx);
-    const running = setup?.state === "running" ? { mode: setup.mode, step: setup.step, startedAt: setup.startedAt } : null;
+    const running = setup && setup.state !== "done" ? { mode: setup.mode, step: setup.step, startedAt: setup.startedAt, failed: setup.state === "failed", canReplaceOwners: !setup.billingOrganizationId && !setup.sharedOrganizationId, error: setup.error ?? null } : null;
     if (mode) return { mode, running: null, eligibility: null };
-    return { mode: null, running, eligibility: running ? null : await eligibility(ctx) };
+    return { mode: null, running, eligibility: running && !running.failed ? null : await eligibility(ctx) };
   },
 });
 
@@ -129,7 +189,8 @@ export const configure = adminMutation({
   handler: async (ctx, args) => {
     requireAdmin(ctx.user);
     if (await readTenancyMode(ctx)) throw new Error("TENANCY_ALREADY_CONFIGURED");
-    if ((await currentSetup(ctx))?.state === "running") throw new Error("TENANCY_SETUP_RUNNING");
+    const previous = await currentSetup(ctx);
+    if (previous && previous.state !== "done") throw new Error("TENANCY_SETUP_RUNNING");
     await ctx.runMutation(components.platform.billing.ensureSeeded, {});
     const check = await eligibility(ctx);
     if (!check.complete) throw new Error("TENANCY_INSTALL_TOO_LARGE");
@@ -138,10 +199,7 @@ export const configure = adminMutation({
     const shared = args.mode === "organizations" && check.sharedStep;
     const names: { billingOrganizationName?: string; sharedOrganizationName?: string } = {};
     if (shared) {
-      for (const userId of [args.billingUserId, args.adminUserId]) {
-        const user = userId ? await findById(ctx, "user", userId) : null;
-        if (!user || user.role === "admin" || !canAct(user)) throw new Error("TENANCY_USER_REQUIRED");
-      }
+      await requireSetupOwners(ctx, args.billingUserId, args.adminUserId);
       for (const key of ["billingOrganizationName", "sharedOrganizationName"] as const) {
         const name = args[key]?.trim();
         if (!name) throw new Error("ORGANIZATION_NAME_REQUIRED");
@@ -158,7 +216,7 @@ export const configure = adminMutation({
       startedAt: Date.now(),
       startedBy: ctx.user._id,
     });
-    await ctx.scheduler.runAfter(0, internal.platform.tenancy.runSetup, {});
+    await ctx.scheduler.runAfter(0, internal.platform.tenancy.advanceSetup, {});
   },
 });
 
@@ -184,6 +242,9 @@ export const runSetup = internalMutation({
   handler: async (ctx) => {
     const setup = await currentSetup(ctx);
     if (!setup || setup.state !== "running") return;
+    if (setup.billingUserId && (!setup.billingOrganizationId || !setup.sharedOrganizationId)) await requireSetupOwners(ctx, setup.billingUserId, setup.adminUserId);
+    const plans = await ctx.runQuery(components.platform.billing.listPlans, {});
+    if (!plans.some(plan => !plan.isSeeded) || !plans.some(plan => plan.isDefault && plan.isFreeForever && plan.status === "active")) throw new Error("TENANCY_PLANS_REQUIRED");
     const actor = setup.startedBy ? { userId: setup.startedBy, email: (await findById(ctx, "user", setup.startedBy))?.email ?? "admin" } : SYSTEM_ACTOR;
     const planId = await initialPlanId(ctx);
 
@@ -221,6 +282,7 @@ export const runSetup = internalMutation({
       }
       await ctx.db.patch(setup._id, { step: result.isDone ? "done" : "shared", cursor: result.isDone ? null : result.continueCursor });
     } else {
+      if (setup.mode === "individuals" && !(await eligibility(ctx)).individualsAllowed) throw new Error("TENANCY_INDIVIDUALS_NOT_ALLOWED");
       await ctx.runMutation(components.platform.appSettings.putRaw, { key: TENANCY_MODE_KEY, value: setup.mode, updatedBy: setup.startedBy });
       await ctx.db.patch(setup._id, { state: "done", finishedAt: Date.now() });
       await scheduleAuditEvent(ctx, {
@@ -230,7 +292,7 @@ export const runSetup = internalMutation({
       });
       return;
     }
-    await ctx.scheduler.runAfter(0, internal.platform.tenancy.runSetup, {});
+    await ctx.scheduler.runAfter(0, internal.platform.tenancy.advanceSetup, {});
   },
 });
 

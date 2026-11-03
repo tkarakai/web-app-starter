@@ -127,6 +127,10 @@ async function joinBlocker(
   if (!user) return "USER_NOT_FOUND";
   const memberships = (await listMemberships(ctx, row.userId)).length + (joined ? 0 : 1);
   if (memberships > MAX_MEMBERSHIPS_PER_USER) return MEMBERSHIP_LIMIT_REACHED;
+  if (await ctx.runQuery(internal.platform.tenancy.membershipMode, {}) === "individuals") {
+    const seats = await listOrganizationMembers(ctx, row.organizationId);
+    if (memberships > 1 || seats.length + (joined ? 0 : 1) > 1) return "TENANCY_INDIVIDUALS_NOT_ALLOWED";
+  }
   if (parseRole(row.role) === "owner" || !canAct(user)) return null;
   const seats = await organizationSeats(ctx, row.organizationId);
   return seats.some((s) => s.active && s.role === "owner") ? null : OWNER_REQUIRED;
@@ -150,6 +154,10 @@ export const memberTriggers = {
     await assertOrganizationHasOwner(ctx, doc.organizationId);
   },
   onUpdate: async (ctx: Reader, doc: MemberRow, old: MemberRow) => {
+    if (doc.organizationId !== old.organizationId || doc.userId !== old.userId) {
+      const blocker = await joinBlocker(ctx, doc, true);
+      if (blocker) throw new Error(blocker);
+    }
     const demoted = parseRole(doc.role) !== "owner" || old.organizationId !== doc.organizationId;
     const removedActiveOwner = demoted && await activeOwner(ctx, old);
     await assertOrganizationHasOwner(ctx, old.organizationId, { removedActiveOwner });

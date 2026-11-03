@@ -260,9 +260,10 @@ function BillingOrganizationCard({ billing, name, plans, canCreate }: {
             : (
               <ul className="divide-y rounded-md border">
                 {billing.organizations.map((organization) => (
-                  <li key={organization.organizationId} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                  <li key={organization.organizationId} className="space-y-3 px-3 py-2 text-sm">
                     <span className="truncate">{organization.name}</span>
-                    <span className="text-muted-foreground">{organization.plan.name} · {price(organization.plan)}</span>
+                    <span className="ms-2 text-muted-foreground">{organization.plan.name} · {price(organization.plan)}</span>
+                    {billing.canManage && <ChangePlan organizationId={organization.organizationId} currentPlanId={organization.plan.id} plans={plans} />}
                   </li>
                 ))}
               </ul>

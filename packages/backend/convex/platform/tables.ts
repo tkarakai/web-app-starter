@@ -48,7 +48,7 @@ export const platformTables = {
   // Turning on a tenancy mode: progress of the batched setup (tenancy.ts).
   tenancySetups: defineTable({
     mode: v.union(v.literal("individuals"), v.literal("organizations")),
-    state: v.union(v.literal("running"), v.literal("done")),
+    state: v.union(v.literal("running"), v.literal("failed"), v.literal("done")),
     step: v.union(v.literal("plans"), v.literal("shared"), v.literal("done")),
     cursor: v.union(v.string(), v.null()),
     billingUserId: v.optional(v.string()),
@@ -60,15 +60,17 @@ export const platformTables = {
     startedAt: v.number(),
     startedBy: v.string(),
     finishedAt: v.optional(v.number()),
+    error: v.optional(v.string()),
   }),
 
   // A user's own deletion request during its grace period (userDeletion.ts).
   userDeletions: defineTable({
     userId: v.string(),
+    requestId: v.optional(v.string()),
     requestedAt: v.number(),
     deleteAt: v.number(),
     jobId: v.id("_scheduled_functions"),
-    state: v.union(v.literal("scheduled"), v.literal("blocked")),
+    state: v.union(v.literal("scheduled"), v.literal("deleting"), v.literal("blocked")),
     blockedReason: v.optional(v.string()),
   }).index("by_user", ["userId"]).index("by_deleteAt", ["deleteAt"]),
 

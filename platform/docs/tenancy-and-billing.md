@@ -142,6 +142,18 @@ The dev seed and E2E fixtures turn on organizations mode with an inactive paid p
 
 Account deletion removes the user's platform profile (including a migrated owner ID), pending
 plan choice and scheduled deletion request. Billing history and audit records remain. The
-idempotent `packages/backend/convex/userData.ts` cleanup hook handles app-owned user data;
-add user-owned table cleanup there. Shared organization data remains governed by
+optional, idempotent `userData:deleteUserData` internal mutation handles app-owned user data.
+It receives `{userId, ownerId}`. Existing apps without `packages/backend/convex/userData.ts`
+continue to bundle and delete platform-owned records; no adoption action is required unless
+the app has user-owned data to remove. Add that cleanup in the optional mutation. Shared organization data remains governed by
 `organizationData.ts` and is removed only when the organization itself is deleted.
+
+Deletion cancellation and execution serialize on the request row. A scheduled job carries its
+request identity; a canceled or superseded job cannot delete a later request. Once execution
+atomically claims the request (`deleting`), cancellation refuses with `USER_DELETION_IN_PROGRESS`.
+
+Tenancy setup checks owner membership capacity before accepting configuration and again before
+each batch that creates owners. Failed batches roll back and appear as stopped in the admin
+tenancy page. Correct the prerequisite and use Retry setup; replacement owners can be selected
+before the billing/shared organizations are created. Completed batches are retained. Individuals
+mode constrains membership writes during setup and revalidates eligibility before committing.

@@ -125,6 +125,7 @@ const ACCESS: Record<string, Access> = {
   "platform/billing:updatePlan": "admin",
   "platform/billing:upgrade": "user",
   "platform/tenancy:configure": "admin",
+  "platform/tenancy:retry": "admin",
   "platform/tenancy:mode": "public",
   "platform/tenancy:status": "admin",
   "platform/userDeletion:adminCancel": "admin",
