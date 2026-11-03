@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Building2, Check, ChevronsUpDown, Plus } from "lucide-react";
+import { Building2, Check, ChevronsUpDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { authClient } from "@web-app-starter/auth/client";
@@ -10,7 +10,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
   SidebarMenu,
   SidebarMenuButton,
@@ -19,7 +18,7 @@ import {
 } from "@web-app-starter/design-system";
 
 import { organizationErrorKey, useOrganizations } from "../lib/organization";
-import { CreateOrganizationDialog } from "./create-organization-dialog";
+import { useTenancyMode } from "../lib/billing";
 
 interface OrganizationSwitcherProps {
   /** The product mark shown at the start of the button (it is all that shows when collapsed). */
@@ -31,13 +30,14 @@ interface OrganizationSwitcherProps {
 
 /**
  * The sidebar header: product name and the active organization. It opens a menu to switch
- * between the user's organizations or create one. Switching updates the session; every
- * organization-scoped query then refreshes by itself.
+ * between the user's organizations. Switching updates the session; every organization-scoped
+ * query then refreshes by itself. Organizations are created from a billing organization's
+ * page (`BillingSection`); individuals have one organization, so there is nothing to switch.
  */
 export function OrganizationSwitcher({ logo, productName, onSwitch }: OrganizationSwitcherProps) {
   const t = useTranslations("organization");
   const data = useOrganizations();
-  const [createOpen, setCreateOpen] = React.useState(false);
+  const mode = useTenancyMode();
 
   const active = data?.organizations.find((organization) => organization.id === data.activeOrganizationId);
   const label = (
@@ -54,7 +54,7 @@ export function OrganizationSwitcher({ logo, productName, onSwitch }: Organizati
     </>
   );
 
-  if (!data) {
+  if (!data || mode === "individuals") {
     return (
       <SidebarMenu>
         <SidebarMenuItem>
@@ -100,16 +100,10 @@ export function OrganizationSwitcher({ logo, productName, onSwitch }: Organizati
                   {organization.id === data.activeOrganizationId && <Check className="ms-2 size-4" />}
                 </DropdownMenuItem>
               ))}
-              {data.organizations.length > 0 && <DropdownMenuSeparator />}
-              <DropdownMenuItem onSelect={() => setCreateOpen(true)}>
-                <Plus className="me-2 size-4" />
-                {t("switcher.create")}
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
-      <CreateOrganizationDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={onSwitch} />
     </>
   );
 }

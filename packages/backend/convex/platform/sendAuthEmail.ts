@@ -193,6 +193,45 @@ export function organizationInvitationEmail(opts: {
   });
 }
 
+/**
+ * A user's own deletion request: when it happens, and how to stop it. Sent with
+ * `type: "custom"`, so the sign-in link stays a link without a token.
+ */
+export function userDeletionScheduledEmail(opts: { productName: string; deleteOn: string; signInUrl: string }): { subject: string; html: string; text: string } {
+  const { productName, deleteOn, signInUrl } = opts;
+  const lead = `Your ${productName} user is scheduled for deletion on ${deleteOn}. You have been signed out everywhere.`;
+  const note = "If you didn't ask for this, sign in and cancel the deletion before then.";
+  return withTextFooter({
+    subject: `Your ${productName} user will be deleted on ${deleteOn}`,
+    html: wrapHtml(
+      "Deletion scheduled",
+      `<p style="${pStyle}">${escapeHtml(lead)}</p>` +
+        ctaButton("Sign in", signInUrl) +
+        `<p style="${smallStyle}">${escapeHtml(note)}</p>` +
+        fallbackUrl(signInUrl),
+    ),
+    text: `Deletion scheduled\n\n${lead}\n\n${note}\n\n${signInUrl}`,
+  });
+}
+
+/** The scheduled deletion couldn't run: something must change first. */
+export function userDeletionBlockedEmail(opts: { productName: string; reason: string; signInUrl: string }): { subject: string; html: string; text: string } {
+  const { productName, reason, signInUrl } = opts;
+  const lead = `Your ${productName} user wasn't deleted: ${reason}`;
+  const note = "Sign in to fix this and request the deletion again, or cancel it.";
+  return withTextFooter({
+    subject: `Your ${productName} user wasn't deleted`,
+    html: wrapHtml(
+      "Deletion on hold",
+      `<p style="${pStyle}">${escapeHtml(lead)}</p>` +
+        ctaButton("Sign in", signInUrl) +
+        `<p style="${smallStyle}">${escapeHtml(note)}</p>` +
+        fallbackUrl(signInUrl),
+    ),
+    text: `Deletion on hold\n\n${lead}\n\n${note}\n\n${signInUrl}`,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // HTML helpers — minimal inline-styled email template
 // ---------------------------------------------------------------------------

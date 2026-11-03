@@ -106,6 +106,23 @@ export const AUDIT_ACTIONS = [
   "organization.member.left",
   "organization.member.role_changed",
 
+  "organization.plan_changed",
+
+  // plan.*, billing.*, tenancy.*
+  "plan.created",
+  "plan.updated",
+  "plan.default_changed",
+  "billing.organization_created",
+  "billing.payment_method_changed",
+  "billing.organization_deleted",
+  "tenancy.configured",
+
+  // user.deletion.*
+  "user.deletion.requested",
+  "user.deletion.canceled",
+  "user.deletion.completed",
+  "user.deletion.blocked",
+
   // waitlist.*
   "waitlist.joined",
   "waitlist.invitation.sent",

@@ -15,6 +15,7 @@ import type * as appSettings from "../appSettings.js";
 import type * as auditTrail from "../auditTrail.js";
 import type * as auditTrailConstants from "../auditTrailConstants.js";
 import type * as auditTrailHelpers from "../auditTrailHelpers.js";
+import type * as billing from "../billing.js";
 import type * as functions from "../functions.js";
 import type * as inputLimits from "../inputLimits.js";
 import type * as invitationFixtures from "../invitationFixtures.js";
@@ -48,6 +49,7 @@ const fullApi: ApiFromModules<{
   auditTrail: typeof auditTrail;
   auditTrailConstants: typeof auditTrailConstants;
   auditTrailHelpers: typeof auditTrailHelpers;
+  billing: typeof billing;
   functions: typeof functions;
   inputLimits: typeof inputLimits;
   invitationFixtures: typeof invitationFixtures;

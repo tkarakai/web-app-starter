@@ -18,6 +18,8 @@ import {
   SlidersHorizontal,
   UserCog,
   Building2,
+  CreditCard,
+  Network,
   Users,
 } from "lucide-react";
 
@@ -61,6 +63,7 @@ const manageItems = [
     : []),
   { label: "Onboarding", href: "/manage/onboarding", icon: ListChecks },
   { label: "Organizations", href: "/manage/organizations", icon: Building2 },
+  { label: "Plans", href: "/manage/plans", icon: CreditCard },
   { label: "Users", href: "/manage/users", icon: Users },
 ];
 
@@ -69,6 +72,7 @@ const observabilityItems = [
 ];
 
 const configureItems = [
+  { label: "Tenancy", href: "/configure/tenancy", icon: Network },
   { label: "Features", href: "/configure/features", icon: SlidersHorizontal },
   { label: "Security", href: "/configure/security", icon: ShieldCheck },
   { label: "Integrations", href: "/configure/integrations", icon: PlugZap },

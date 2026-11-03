@@ -637,6 +637,235 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         Name
       >;
     };
+    billing: {
+      billingByOrganization: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string },
+        {
+          _creationTime: number;
+          _id: string;
+          createdAt: number;
+          deletedAt?: number;
+          organizationId: string;
+          organizationName: string;
+          paymentMethod?: "cash" | "check";
+        } | null,
+        Name
+      >;
+      billingInUse: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string },
+        boolean,
+        Name
+      >;
+      createBilling: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          actor: { email: string; userId?: string };
+          organizationId: string;
+          organizationName: string;
+          paymentMethod?: "cash" | "check";
+        },
+        string,
+        Name
+      >;
+      createPlan: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          actor: { email: string; userId?: string };
+          isFreeForever: boolean;
+          name: string;
+          priceMonthlyUsdCents: number;
+        },
+        string,
+        Name
+      >;
+      currentPlan: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string },
+        {
+          billing: {
+            _creationTime: number;
+            _id: string;
+            createdAt: number;
+            deletedAt?: number;
+            organizationId: string;
+            organizationName: string;
+            paymentMethod?: "cash" | "check";
+          } | null;
+          plan: {
+            _creationTime: number;
+            _id: string;
+            createdAt: number;
+            createdBy: string;
+            isDefault: boolean;
+            isFreeForever: boolean;
+            isSeeded: boolean;
+            name: string;
+            priceMonthlyUsdCents: number;
+            status: "active" | "inactive" | "archived";
+            updatedAt: number;
+            updatedBy?: string;
+          };
+          row: {
+            _creationTime: number;
+            _id: string;
+            billingOrganizationId?: string;
+            createdAt: number;
+            endedAt?: number;
+            organizationId: string;
+            organizationName: string;
+            planId: string;
+          };
+        } | null,
+        Name
+      >;
+      ensureSeeded: FunctionReference<"mutation", "internal", {}, string, Name>;
+      getBilling: FunctionReference<
+        "query",
+        "internal",
+        { billingOrganizationId: string },
+        {
+          _creationTime: number;
+          _id: string;
+          createdAt: number;
+          deletedAt?: number;
+          organizationId: string;
+          organizationName: string;
+          paymentMethod?: "cash" | "check";
+        } | null,
+        Name
+      >;
+      getPlan: FunctionReference<
+        "query",
+        "internal",
+        { planId: string },
+        {
+          _creationTime: number;
+          _id: string;
+          createdAt: number;
+          createdBy: string;
+          isDefault: boolean;
+          isFreeForever: boolean;
+          isSeeded: boolean;
+          name: string;
+          priceMonthlyUsdCents: number;
+          status: "active" | "inactive" | "archived";
+          updatedAt: number;
+          updatedBy?: string;
+        } | null,
+        Name
+      >;
+      listPlans: FunctionReference<
+        "query",
+        "internal",
+        {},
+        Array<{
+          _creationTime: number;
+          _id: string;
+          createdAt: number;
+          createdBy: string;
+          inUse: boolean;
+          isDefault: boolean;
+          isFreeForever: boolean;
+          isSeeded: boolean;
+          name: string;
+          priceMonthlyUsdCents: number;
+          status: "active" | "inactive" | "archived";
+          updatedAt: number;
+          updatedBy?: string;
+        }>,
+        Name
+      >;
+      organizationDeleted: FunctionReference<
+        "mutation",
+        "internal",
+        { actor: { email: string; userId?: string }; organizationId: string },
+        null,
+        Name
+      >;
+      paidBy: FunctionReference<
+        "query",
+        "internal",
+        { billingOrganizationId: string },
+        Array<{
+          plan: {
+            _creationTime: number;
+            _id: string;
+            createdAt: number;
+            createdBy: string;
+            isDefault: boolean;
+            isFreeForever: boolean;
+            isSeeded: boolean;
+            name: string;
+            priceMonthlyUsdCents: number;
+            status: "active" | "inactive" | "archived";
+            updatedAt: number;
+            updatedBy?: string;
+          };
+          row: {
+            _creationTime: number;
+            _id: string;
+            billingOrganizationId?: string;
+            createdAt: number;
+            endedAt?: number;
+            organizationId: string;
+            organizationName: string;
+            planId: string;
+          };
+        }>,
+        Name
+      >;
+      setDefaultPlan: FunctionReference<
+        "mutation",
+        "internal",
+        { actor: { email: string; userId?: string }; planId: string },
+        null,
+        Name
+      >;
+      setPaymentMethod: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          actor: { email: string; userId?: string };
+          billingOrganizationId: string;
+          paymentMethod: "cash" | "check";
+        },
+        null,
+        Name
+      >;
+      startPlan: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          actor: { email: string; userId?: string };
+          billingOrganizationId?: string;
+          organizationId: string;
+          organizationName: string;
+          planId: string;
+        },
+        string,
+        Name
+      >;
+      updatePlan: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          actor: { email: string; userId?: string };
+          name?: string;
+          planId: string;
+          priceMonthlyUsdCents?: number;
+          status?: "active" | "inactive" | "archived";
+        },
+        null,
+        Name
+      >;
+    };
     invitationFixtures: {
       finalize: FunctionReference<
         "mutation",
