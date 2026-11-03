@@ -1,7 +1,4 @@
-# Tenancy, plans and billing organizations — agreed design
-
-Status: agreed design (2026-11-02), being implemented. Sections describe the target behaviour;
-they become the feature guide as each part lands.
+# Tenancy, plans and billing organizations
 
 Terms: **user** (a person who signs in), **organization** (Better Auth organization), **billing
 organization** (an organization with a `billingOrganization` row: the payer), **plan**, **organization
@@ -11,12 +8,24 @@ plan** (`organizationPlan` row). There is no "account", "workspace" or seat-base
 
 | Table | Where | Purpose |
 |---|---|---|
-| `plan` | platform component | Plan catalog, managed by the platform admin |
-| `billingOrganization` | platform component | Marks an organization as a payer; payment method |
-| `organizationPlan` | platform component | Which plan an organization uses and which billing organization pays; history via `endedAt` |
+| `plans` | platform component | Plan catalog, managed by the platform admin |
+| `billingOrganizations` | platform component | Marks an organization as a payer; payment method |
+| `organizationPlans` | platform component | Which plan an organization uses and which billing organization pays; history via `endedAt` |
+| `pendingPlanChoices` | platform tables | A user who must pick a plan before using the app |
+| `tenancySetups` | platform tables | Progress of turning a tenancy mode on (batched) |
 | `userDeletions` | platform tables | A user's own deletion request during its grace period |
 | `organization` (Better Auth) | Better Auth component | Unchanged |
 | `appSettings` keys | platform component | `tenancyMode`, `userDeletionGraceDays` |
+
+Code: `components.platform.billing` (rows and their rules), `convex/platform/billingAccess.ts`
+(shared helpers), `billing.ts` (users and the plan catalog), `tenancy.ts` (setup) and
+`userDeletion.ts`. UI: `TenancyGate` (protected layout), `BillingSection`, `DeleteUserSection`
+and `CreateOrganizationDialog` from `@web-app-starter/auth-ui`; the admin app's **Manage → Plans**,
+**Configure → Tenancy**, the Users page's scheduled deletions and the Features page's grace period.
+
+Error codes: `TENANCY_NOT_CONFIGURED`, `PLAN_CHOICE_REQUIRED`, `USER_DELETION_SCHEDULED`,
+`ORGANIZATION_CREATION_DISABLED`, `NOT_AVAILABLE_FOR_INDIVIDUALS`, `PAYER_REQUIRED`,
+`PAYMENT_METHOD_REQUIRED`, `PLAN_IN_USE`, `BILLING_ORGANIZATION_IN_USE`, `BILLING_OWNER_REQUIRED`.
 
 `organizationId` fields are strings into Better Auth's component: every write that sets one checks
 that the organization exists. `planId` and `billingOrganizationId` are real `v.id` references.
@@ -37,8 +46,8 @@ that the organization exists. `planId` and `billingOrganizationId` are real `v.i
 - Every organization without a `billingOrganization` row has exactly one current `organizationPlan`
   (no `endedAt`); a billing organization has 0 or 1.
 - The payer of an `organizationPlan` is the `billingOrganization` row it names, nothing else.
-- `billingOrganizationId` is empty only on free-forever plans. A downgrade to free-forever always
-  clears it.
+- `billingOrganizationId` is empty only on free-forever plans. A downgrade to free-forever clears
+  it, except an individual's own billing organization, which stays their payer.
 - `planId` and `billingOrganizationId` are never edited: a change ends the row and starts a new one.
 - Plan changes: owners and admins of the billing organization named in the current row.
 - Changing the payer directly isn't supported this release; downgrade then upgrade achieves it.
@@ -94,7 +103,7 @@ step. **Existing deployment:** the upgrade's migration gives every organization 
   plan; that billing organization pays (shown in the dialog); the creator becomes owner.
 
 ### Sign-up plan picker
-A required step after sign-up (like email verification), shown when sign-up creates a personal
+Shown only while more than one plan is active. A required step after sign-up (like email verification), shown when sign-up creates a personal
 organization. The organization sits on free-forever until the user picks; the default is
 pre-selected. A non-free-forever plan needs a payment method, and is handled as an upgrade (below):
 in organizations mode it creates a new billing organization the user owns. Organization-invited
@@ -126,7 +135,7 @@ user is the last member of a billing organization that pays for current plans. C
 - **Platform admin's delete**: immediate, same checks.
 - Audit: `user.deletion.requested`, `.canceled`, `.completed`, `.blocked`.
 
-## Assumptions
+## Local development and E2E
 
-- `plan`, `billingOrganization` and `organizationPlan` live in the platform component;
-  `userDeletions` in platform tables (it stores a scheduler job id).
+The dev seed and E2E fixtures turn on organizations mode with an inactive paid plan
+(`tenancy.ensureFixtureTenancy`, local backends only), so fixture users never see the plan picker.
