@@ -111,9 +111,9 @@ describe("signing up", () => {
     const alice = await f.user("alice");
     const acme = await alice.provision();
     expect(await alice.caller.query(api.platform.billing.myStatus, {})).toMatchObject({ mode: "organizations", planChoice: { organizationId: acme } });
-    // App data stays closed until a plan is picked.
-    expect(await alice.caller.query(api.projects.list, {})).toBeNull();
-    await expect(alice.caller.mutation(api.projects.create, { name: "P", description: "" })).rejects.toThrow("PLAN_CHOICE_REQUIRED");
+    // Organization-scoped functions stay closed until a plan is picked.
+    expect(await alice.caller.query(api.platform.organizations.active, {})).toBeNull();
+    await expect(alice.caller.mutation(api.platform.organizations.deleteInvitation, { invitationId: "x" })).rejects.toThrow("PLAN_CHOICE_REQUIRED");
 
     await expect(alice.caller.mutation(api.platform.billing.choosePlan, { planId: pro })).rejects.toThrow("PAYMENT_METHOD_REQUIRED");
     await expect(alice.caller.mutation(api.platform.billing.choosePlan, { planId: pro, paymentMethod: "check" })).rejects.toThrow("ORGANIZATION_NAME_REQUIRED");
@@ -126,7 +126,7 @@ describe("signing up", () => {
     expect((await alice.caller.query(api.platform.organizations.mine, {}))!.organizations.map((o) => [o.name, o.role]).sort())
       .toEqual([["Alice billing", "owner"], ["alice", "owner"]]);
     expect(await alice.caller.query(api.platform.billing.myStatus, {})).toMatchObject({ planChoice: null });
-    expect(await alice.caller.query(api.projects.list, {})).toEqual([]);
+    expect(await alice.caller.query(api.platform.organizations.active, {})).not.toBeNull();
   });
 
   test("individuals: the user's organization is their billing organization", async () => {
