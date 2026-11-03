@@ -618,8 +618,70 @@
     },
     "empty": {
       "title": "Não pertence a nenhuma organização",
-      "description": "Crie uma organização ou aceite um convite para começar.",
-      "createDescription": "Crie uma organização para começar."
+      "description": "Aceite um convite para começar.",
+      "createDescription": "Peça ao proprietário ou a um administrador de uma organização que o convide."
     }
+  },
+  "billing": {
+    "title": "Plano e faturação",
+    "description": "O plano usado por {organization} e quem o paga.",
+    "individualDescription": "O seu plano e como o paga.",
+    "plan": "Plano",
+    "free": "Grátis",
+    "perMonth": "{price} por mês",
+    "paidBy": "Pago por {name}",
+    "noPayer": "Não precisa de pagador",
+    "paymentMethod": "Método de pagamento",
+    "paymentMethods": {
+      "cash": "Dinheiro",
+      "check": "Cheque"
+    },
+    "changePlan": "Mudar de plano",
+    "planChanged": "Plano alterado para {plan}.",
+    "managedByPayer": "Só os proprietários e administradores de {name} podem mudar este plano.",
+    "upgradeTitle": "Mudar para um plano pago",
+    "upgradeDescription": "Escolha um plano pago e quem o paga.",
+    "payer": "Pago por",
+    "newPayer": "Uma nova organização de faturação",
+    "payerName": "Nome da organização de faturação",
+    "upgradeAction": "Mudar de plano agora",
+    "upgraded": "{organization} usa agora {plan}.",
+    "billingTitle": "Organização de faturação",
+    "billingDescription": "{name} paga pelas organizações abaixo. Os seus proprietários e administradores gerem planos e pagamentos; os membros só podem ver.",
+    "paysFor": "Paga por",
+    "paysForNone": "Ainda não paga por nenhuma organização.",
+    "savePaymentMethod": "Guardar método de pagamento",
+    "paymentMethodSaved": "Método de pagamento guardado.",
+    "createAction": "Criar organização",
+    "createTitle": "Nova organização",
+    "createDescription": "{billing} paga por ela. Será o proprietário.",
+    "createNameLabel": "Nome",
+    "created": "{name} criada. Está agora a trabalhar nela.",
+    "pickerTitle": "Escolha o seu plano",
+    "pickerDescription": "Pode alterá-lo mais tarde nas definições.",
+    "pickerContinue": "Continuar",
+    "errors": {
+      "generic": "Algo correu mal. Tente novamente.",
+      "paymentMethodRequired": "Escolha um método de pagamento.",
+      "nameRequired": "Introduza um nome.",
+      "notAllowed": "Não tem permissão para fazer isso.",
+      "inUse": "Esta organização de faturação ainda paga por outras organizações."
+    }
+  },
+  "userDeletion": {
+    "title": "Eliminar utilizador",
+    "description": "O seu utilizador é eliminado {days, plural, one {# dia} other {# dias}} depois do pedido. A sessão é terminada em todo o lado de imediato e pode cancelar iniciando sessão antes disso.",
+    "action": "Eliminar utilizador",
+    "confirmTitle": "Eliminar o seu utilizador?",
+    "confirmDescription": "A sessão vai ser terminada em todo o lado agora. A eliminação acontece daqui a {days, plural, one {# dia} other {# dias}}, a menos que inicie sessão e a cancele.",
+    "scheduledTitle": "O seu utilizador está agendado para eliminação",
+    "scheduledDescription": "Será eliminado a {date}. Cancele para continuar a usá-lo.",
+    "blockedTitle": "Não foi possível eliminar o seu utilizador",
+    "blockedInUse": "É o último membro de uma organização de faturação que paga por outras organizações. Convide outro proprietário ou baixe o plano dessas organizações e volte a pedir.",
+    "blockedOwnerRequired": "É o último proprietário de uma organização de faturação que paga por outras organizações. Torne outro membro proprietário e volte a pedir.",
+    "cancel": "Cancelar a eliminação",
+    "continue": "Continuar com a eliminação e terminar sessão",
+    "canceled": "Eliminação cancelada.",
+    "reauthenticate": "Inicie sessão novamente para confirmar que é você e tente outra vez."
   }
 }

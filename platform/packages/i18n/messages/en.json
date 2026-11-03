@@ -618,8 +618,70 @@
     },
     "empty": {
       "title": "You don't belong to an organization",
-      "description": "Create an organization or accept an invitation to get started.",
-      "createDescription": "Create an organization to get started."
+      "description": "Accept an invitation to get started.",
+      "createDescription": "Ask an organization's owner or admin to invite you."
     }
+  },
+  "billing": {
+    "title": "Plan and billing",
+    "description": "The plan {organization} uses and who pays for it.",
+    "individualDescription": "Your plan and how you pay for it.",
+    "plan": "Plan",
+    "free": "Free",
+    "perMonth": "{price} per month",
+    "paidBy": "Paid by {name}",
+    "noPayer": "No payer needed",
+    "paymentMethod": "Payment method",
+    "paymentMethods": {
+      "cash": "Cash",
+      "check": "Check"
+    },
+    "changePlan": "Change plan",
+    "planChanged": "Plan changed to {plan}.",
+    "managedByPayer": "Only owners and admins of {name} change this plan.",
+    "upgradeTitle": "Upgrade",
+    "upgradeDescription": "Choose a paid plan and who pays for it.",
+    "payer": "Paid by",
+    "newPayer": "A new billing organization",
+    "payerName": "Billing organization name",
+    "upgradeAction": "Upgrade",
+    "upgraded": "{organization} is now on {plan}.",
+    "billingTitle": "Billing organization",
+    "billingDescription": "{name} pays for the organizations below. Its owners and admins manage plans and payment; members can only view.",
+    "paysFor": "Pays for",
+    "paysForNone": "It doesn't pay for any organization yet.",
+    "savePaymentMethod": "Save payment method",
+    "paymentMethodSaved": "Payment method saved.",
+    "createAction": "Create organization",
+    "createTitle": "New organization",
+    "createDescription": "{billing} pays for it. You'll be its owner.",
+    "createNameLabel": "Name",
+    "created": "{name} created. You're now working in it.",
+    "pickerTitle": "Choose your plan",
+    "pickerDescription": "You can change it later in your settings.",
+    "pickerContinue": "Continue",
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "paymentMethodRequired": "Choose a payment method.",
+      "nameRequired": "Enter a name.",
+      "notAllowed": "You don't have permission to do that.",
+      "inUse": "This billing organization still pays for other organizations."
+    }
+  },
+  "userDeletion": {
+    "title": "Delete user",
+    "description": "Your user is deleted {days, plural, one {# day} other {# days}} after you ask. You're signed out everywhere right away, and you can cancel by signing in before then.",
+    "action": "Delete user",
+    "confirmTitle": "Delete your user?",
+    "confirmDescription": "You'll be signed out everywhere now. The deletion happens in {days, plural, one {# day} other {# days}} unless you sign in and cancel it.",
+    "scheduledTitle": "Your user is scheduled for deletion",
+    "scheduledDescription": "It will be deleted on {date}. Cancel to keep using it.",
+    "blockedTitle": "Your user couldn't be deleted",
+    "blockedInUse": "You're the last member of a billing organization that pays for other organizations. Invite another owner or downgrade those organizations, then ask again.",
+    "blockedOwnerRequired": "You're the last owner of a billing organization that pays for other organizations. Make another member an owner, then ask again.",
+    "cancel": "Cancel deletion",
+    "continue": "Continue with deletion and sign out",
+    "canceled": "Deletion canceled.",
+    "reauthenticate": "Sign in again to confirm it's you, then try again."
   }
 }

@@ -618,8 +618,70 @@
     },
     "empty": {
       "title": "Je bent geen lid van een organisatie",
-      "description": "Maak een organisatie aan of accepteer een uitnodiging om te beginnen.",
-      "createDescription": "Maak een organisatie aan om te beginnen."
+      "description": "Accepteer een uitnodiging om te beginnen.",
+      "createDescription": "Vraag de eigenaar of een beheerder van een organisatie om je uit te nodigen."
     }
+  },
+  "billing": {
+    "title": "Abonnement en facturering",
+    "description": "Het abonnement van {organization} en wie ervoor betaalt.",
+    "individualDescription": "Je abonnement en hoe je ervoor betaalt.",
+    "plan": "Abonnement",
+    "free": "Gratis",
+    "perMonth": "{price} per maand",
+    "paidBy": "Betaald door {name}",
+    "noPayer": "Geen betaler nodig",
+    "paymentMethod": "Betaalmethode",
+    "paymentMethods": {
+      "cash": "Contant",
+      "check": "Cheque"
+    },
+    "changePlan": "Abonnement wijzigen",
+    "planChanged": "Abonnement gewijzigd in {plan}.",
+    "managedByPayer": "Alleen eigenaren en beheerders van {name} kunnen dit abonnement wijzigen.",
+    "upgradeTitle": "Upgraden",
+    "upgradeDescription": "Kies een betaald abonnement en wie ervoor betaalt.",
+    "payer": "Betaald door",
+    "newPayer": "Een nieuwe factureringsorganisatie",
+    "payerName": "Naam van de factureringsorganisatie",
+    "upgradeAction": "Nu upgraden",
+    "upgraded": "{organization} gebruikt nu {plan}.",
+    "billingTitle": "Factureringsorganisatie",
+    "billingDescription": "{name} betaalt voor de organisaties hieronder. De eigenaren en beheerders beheren abonnementen en betaling; leden kunnen alleen kijken.",
+    "paysFor": "Betaalt voor",
+    "paysForNone": "Ze betaalt nog voor geen enkele organisatie.",
+    "savePaymentMethod": "Betaalmethode opslaan",
+    "paymentMethodSaved": "Betaalmethode opgeslagen.",
+    "createAction": "Organisatie aanmaken",
+    "createTitle": "Nieuwe organisatie",
+    "createDescription": "{billing} betaalt ervoor. Jij wordt de eigenaar.",
+    "createNameLabel": "Naam",
+    "created": "{name} aangemaakt. Je werkt er nu in.",
+    "pickerTitle": "Kies je abonnement",
+    "pickerDescription": "Je kunt het later wijzigen in je instellingen.",
+    "pickerContinue": "Doorgaan",
+    "errors": {
+      "generic": "Er ging iets mis. Probeer het opnieuw.",
+      "paymentMethodRequired": "Kies een betaalmethode.",
+      "nameRequired": "Vul een naam in.",
+      "notAllowed": "Je hebt geen toestemming om dat te doen.",
+      "inUse": "Deze factureringsorganisatie betaalt nog voor andere organisaties."
+    }
+  },
+  "userDeletion": {
+    "title": "Gebruiker verwijderen",
+    "description": "Je gebruiker wordt {days, plural, one {# dag} other {# dagen}} na je verzoek verwijderd. Je wordt meteen overal afgemeld en kunt annuleren door je vóór die tijd aan te melden.",
+    "action": "Gebruiker verwijderen",
+    "confirmTitle": "Je gebruiker verwijderen?",
+    "confirmDescription": "Je wordt nu overal afgemeld. De verwijdering gebeurt over {days, plural, one {# dag} other {# dagen}}, tenzij je je aanmeldt en annuleert.",
+    "scheduledTitle": "Je gebruiker staat gepland voor verwijdering",
+    "scheduledDescription": "Hij wordt verwijderd op {date}. Annuleer om hem te blijven gebruiken.",
+    "blockedTitle": "Je gebruiker kon niet worden verwijderd",
+    "blockedInUse": "Je bent het laatste lid van een factureringsorganisatie die voor andere organisaties betaalt. Nodig een andere eigenaar uit of downgrade die organisaties en vraag het daarna opnieuw.",
+    "blockedOwnerRequired": "Je bent de laatste eigenaar van een factureringsorganisatie die voor andere organisaties betaalt. Maak een ander lid eigenaar en vraag het daarna opnieuw.",
+    "cancel": "Verwijdering annuleren",
+    "continue": "Doorgaan met verwijderen en afmelden",
+    "canceled": "Verwijdering geannuleerd.",
+    "reauthenticate": "Meld je opnieuw aan om te bevestigen dat jij het bent en probeer het nog eens."
   }
 }

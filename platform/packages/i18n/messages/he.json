@@ -618,8 +618,70 @@
     },
     "empty": {
       "title": "אינך חבר באף ארגון",
-      "description": "צור ארגון או קבל הזמנה כדי להתחיל.",
-      "createDescription": "צור ארגון כדי להתחיל."
+      "description": "קבל הזמנה כדי להתחיל.",
+      "createDescription": "בקש מהבעלים או ממנהל של ארגון להזמין אותך."
     }
+  },
+  "billing": {
+    "title": "תוכנית וחיוב",
+    "description": "התוכנית של {organization} ומי משלם עליה.",
+    "individualDescription": "התוכנית שלכם ואופן התשלום.",
+    "plan": "תוכנית",
+    "free": "חינם",
+    "perMonth": "{price} לחודש",
+    "paidBy": "משלם: {name}",
+    "noPayer": "אין צורך במשלם",
+    "paymentMethod": "אמצעי תשלום",
+    "paymentMethods": {
+      "cash": "מזומן",
+      "check": "צ׳ק"
+    },
+    "changePlan": "שינוי תוכנית",
+    "planChanged": "התוכנית שונתה ל-{plan}.",
+    "managedByPayer": "רק הבעלים והמנהלים של {name} יכולים לשנות את התוכנית הזו.",
+    "upgradeTitle": "שדרוג לתוכנית בתשלום",
+    "upgradeDescription": "בחרו תוכנית בתשלום ומי ישלם עליה.",
+    "payer": "משלם",
+    "newPayer": "ארגון חיוב חדש",
+    "payerName": "שם ארגון החיוב",
+    "upgradeAction": "שדרוג עכשיו",
+    "upgraded": "{organization} משתמש עכשיו בתוכנית {plan}.",
+    "billingTitle": "ארגון חיוב",
+    "billingDescription": "{name} משלם על הארגונים שלמטה. הבעלים והמנהלים שלו מנהלים תוכניות ותשלום; חברים יכולים רק לצפות.",
+    "paysFor": "משלם עבור",
+    "paysForNone": "עדיין לא משלם על אף ארגון.",
+    "savePaymentMethod": "שמירת אמצעי התשלום",
+    "paymentMethodSaved": "אמצעי התשלום נשמר.",
+    "createAction": "יצירת ארגון",
+    "createTitle": "ארגון חדש",
+    "createDescription": "{billing} משלם עליו. אתם תהיו הבעלים שלו.",
+    "createNameLabel": "שם",
+    "created": "{name} נוצר. אתם עובדים בו עכשיו.",
+    "pickerTitle": "בחרו תוכנית",
+    "pickerDescription": "אפשר לשנות אותה מאוחר יותר בהגדרות.",
+    "pickerContinue": "המשך",
+    "errors": {
+      "generic": "משהו השתבש. נסו שוב.",
+      "paymentMethodRequired": "בחרו אמצעי תשלום.",
+      "nameRequired": "הזינו שם.",
+      "notAllowed": "אין לכם הרשאה לעשות זאת.",
+      "inUse": "ארגון החיוב הזה עדיין משלם על ארגונים אחרים."
+    }
+  },
+  "userDeletion": {
+    "title": "מחיקת המשתמש",
+    "description": "המשתמש שלכם יימחק {days, plural, one {יום אחד} two {יומיים} other {# ימים}} אחרי הבקשה. תנותקו מכל מקום מיד, ותוכלו לבטל על ידי התחברות לפני כן.",
+    "action": "מחיקת המשתמש",
+    "confirmTitle": "למחוק את המשתמש שלכם?",
+    "confirmDescription": "תנותקו עכשיו מכל מקום. המחיקה תתבצע בעוד {days, plural, one {יום אחד} two {יומיים} other {# ימים}}, אלא אם תתחברו ותבטלו אותה.",
+    "scheduledTitle": "המשתמש שלכם מתוזמן למחיקה",
+    "scheduledDescription": "הוא יימחק ב-{date}. בטלו כדי להמשיך להשתמש בו.",
+    "blockedTitle": "לא ניתן היה למחוק את המשתמש שלכם",
+    "blockedInUse": "אתם החברים האחרונים בארגון חיוב שמשלם על ארגונים אחרים. הזמינו בעלים נוסף או הורידו את התוכניות של אותם ארגונים, ואז בקשו שוב.",
+    "blockedOwnerRequired": "אתם הבעלים האחרונים של ארגון חיוב שמשלם על ארגונים אחרים. הפכו חבר אחר לבעלים, ואז בקשו שוב.",
+    "cancel": "ביטול המחיקה",
+    "continue": "המשך במחיקה והתנתקות",
+    "canceled": "המחיקה בוטלה.",
+    "reauthenticate": "התחברו שוב כדי לאשר שזה אתם, ונסו שוב."
   }
 }

@@ -48,7 +48,7 @@ function blockerMessage(blocker: Pick<DeletionBlocker, "code" | "organizationNam
     : `you are the last owner of ${blocker.organizationName}, which pays for other organizations' plans. Make another member an owner first.`;
 }
 
-async function graceDays(ctx: Reader): Promise<number> {
+async function graceDaysSetting(ctx: Reader): Promise<number> {
   const value = await ctx.runQuery(components.platform.appSettings.get, { key: "userDeletionGraceDays" });
   return typeof value === "number" && Number.isInteger(value) && value >= 1 ? value : DEFAULT_GRACE_DAYS;
 }
@@ -84,7 +84,7 @@ export const request = authedMutation({
     const blocker = await deletionBlocker(ctx, ctx.user._id);
     if (blocker) throw new Error(blocker.code);
     const now = Date.now();
-    const deleteAt = now + (await graceDays(ctx)) * DAY_MS;
+    const deleteAt = now + (await graceDaysSetting(ctx)) * DAY_MS;
     const jobId = await ctx.scheduler.runAt(deleteAt, internal.platform.userDeletion.execute, { userId: ctx.user._id });
     await ctx.db.insert("userDeletions", { userId: ctx.user._id, requestedAt: now, deleteAt, jobId, state: "scheduled" });
     await revokeSessions(ctx, ctx.user._id);
@@ -108,6 +108,12 @@ async function cancelDeletion(ctx: Pick<MutationCtx, "db" | "scheduler">, userId
   });
   return true;
 }
+
+/** How many days a self-deletion waits, for the settings page. */
+export const graceDays = authedQuery({
+  args: {},
+  handler: async (ctx) => await graceDaysSetting(ctx),
+});
 
 /** Keep the caller: cancel their scheduled (or blocked) deletion. */
 export const cancel = authedMutation({

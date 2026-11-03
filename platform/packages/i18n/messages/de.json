@@ -618,8 +618,70 @@
     },
     "empty": {
       "title": "Du gehörst keiner Organisation an",
-      "description": "Erstelle eine Organisation oder nimm eine Einladung an, um loszulegen.",
-      "createDescription": "Erstelle eine Organisation, um loszulegen."
+      "description": "Nimm eine Einladung an, um loszulegen.",
+      "createDescription": "Bitte den Inhaber oder einen Admin einer Organisation, dich einzuladen."
     }
+  },
+  "billing": {
+    "title": "Tarif und Abrechnung",
+    "description": "Der Tarif von {organization} und wer dafür bezahlt.",
+    "individualDescription": "Ihr Tarif und wie Sie dafür bezahlen.",
+    "plan": "Tarif",
+    "free": "Kostenlos",
+    "perMonth": "{price} pro Monat",
+    "paidBy": "Bezahlt von {name}",
+    "noPayer": "Kein Zahler nötig",
+    "paymentMethod": "Zahlungsart",
+    "paymentMethods": {
+      "cash": "Bar",
+      "check": "Scheck"
+    },
+    "changePlan": "Tarif ändern",
+    "planChanged": "Tarif auf {plan} geändert.",
+    "managedByPayer": "Nur Inhaber und Admins von {name} können diesen Tarif ändern.",
+    "upgradeTitle": "Upgrade",
+    "upgradeDescription": "Wählen Sie einen kostenpflichtigen Tarif und wer dafür bezahlt.",
+    "payer": "Bezahlt von",
+    "newPayer": "Eine neue Abrechnungsorganisation",
+    "payerName": "Name der Abrechnungsorganisation",
+    "upgradeAction": "Upgrade durchführen",
+    "upgraded": "{organization} nutzt jetzt {plan}.",
+    "billingTitle": "Abrechnungsorganisation",
+    "billingDescription": "{name} bezahlt für die folgenden Organisationen. Inhaber und Admins verwalten Tarife und Zahlung; Mitglieder können nur ansehen.",
+    "paysFor": "Bezahlt für",
+    "paysForNone": "Sie bezahlt noch für keine Organisation.",
+    "savePaymentMethod": "Zahlungsart speichern",
+    "paymentMethodSaved": "Zahlungsart gespeichert.",
+    "createAction": "Organisation erstellen",
+    "createTitle": "Neue Organisation",
+    "createDescription": "{billing} bezahlt dafür. Sie werden ihr Inhaber.",
+    "createNameLabel": "Name",
+    "created": "{name} erstellt. Sie arbeiten jetzt darin.",
+    "pickerTitle": "Wählen Sie Ihren Tarif",
+    "pickerDescription": "Sie können ihn später in den Einstellungen ändern.",
+    "pickerContinue": "Weiter",
+    "errors": {
+      "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+      "paymentMethodRequired": "Wählen Sie eine Zahlungsart.",
+      "nameRequired": "Geben Sie einen Namen ein.",
+      "notAllowed": "Dazu fehlt Ihnen die Berechtigung.",
+      "inUse": "Diese Abrechnungsorganisation bezahlt noch für andere Organisationen."
+    }
+  },
+  "userDeletion": {
+    "title": "Benutzer löschen",
+    "description": "Ihr Benutzer wird {days, plural, one {# Tag} other {# Tage}} nach Ihrer Anfrage gelöscht. Sie werden sofort überall abgemeldet und können bis dahin abbrechen, indem Sie sich anmelden.",
+    "action": "Benutzer löschen",
+    "confirmTitle": "Ihren Benutzer löschen?",
+    "confirmDescription": "Sie werden jetzt überall abgemeldet. Die Löschung erfolgt in {days, plural, one {# Tag} other {# Tagen}}, wenn Sie sich nicht anmelden und sie abbrechen.",
+    "scheduledTitle": "Ihr Benutzer ist zur Löschung vorgemerkt",
+    "scheduledDescription": "Er wird am {date} gelöscht. Brechen Sie ab, um ihn weiter zu nutzen.",
+    "blockedTitle": "Ihr Benutzer konnte nicht gelöscht werden",
+    "blockedInUse": "Sie sind das letzte Mitglied einer Abrechnungsorganisation, die für andere Organisationen bezahlt. Laden Sie einen weiteren Inhaber ein oder stufen Sie diese Organisationen herab und fragen Sie dann erneut.",
+    "blockedOwnerRequired": "Sie sind der letzte Inhaber einer Abrechnungsorganisation, die für andere Organisationen bezahlt. Machen Sie ein anderes Mitglied zum Inhaber und fragen Sie dann erneut.",
+    "cancel": "Löschung abbrechen",
+    "continue": "Löschung fortsetzen und abmelden",
+    "canceled": "Löschung abgebrochen.",
+    "reauthenticate": "Melden Sie sich erneut an, um zu bestätigen, dass Sie es sind, und versuchen Sie es dann noch einmal."
   }
 }

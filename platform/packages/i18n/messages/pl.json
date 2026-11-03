@@ -618,8 +618,70 @@
     },
     "empty": {
       "title": "Nie należysz do żadnej organizacji",
-      "description": "Utwórz organizację lub przyjmij zaproszenie, aby rozpocząć.",
-      "createDescription": "Utwórz organizację, aby rozpocząć."
+      "description": "Przyjmij zaproszenie, aby rozpocząć.",
+      "createDescription": "Poproś właściciela lub administratora organizacji o zaproszenie."
     }
+  },
+  "billing": {
+    "title": "Plan i rozliczenia",
+    "description": "Plan organizacji {organization} i kto za niego płaci.",
+    "individualDescription": "Twój plan i sposób płatności.",
+    "plan": "Plan",
+    "free": "Bezpłatny",
+    "perMonth": "{price} miesięcznie",
+    "paidBy": "Płaci {name}",
+    "noPayer": "Płatnik niepotrzebny",
+    "paymentMethod": "Metoda płatności",
+    "paymentMethods": {
+      "cash": "Gotówka",
+      "check": "Czek"
+    },
+    "changePlan": "Zmień plan",
+    "planChanged": "Zmieniono plan na {plan}.",
+    "managedByPayer": "Ten plan mogą zmieniać tylko właściciele i administratorzy organizacji {name}.",
+    "upgradeTitle": "Przejdź na płatny plan",
+    "upgradeDescription": "Wybierz płatny plan i kto będzie za niego płacić.",
+    "payer": "Płaci",
+    "newPayer": "Nowa organizacja rozliczeniowa",
+    "payerName": "Nazwa organizacji rozliczeniowej",
+    "upgradeAction": "Zmień na płatny",
+    "upgraded": "Organizacja {organization} korzysta teraz z planu {plan}.",
+    "billingTitle": "Organizacja rozliczeniowa",
+    "billingDescription": "{name} płaci za poniższe organizacje. Jej właściciele i administratorzy zarządzają planami i płatnościami; członkowie mogą tylko przeglądać.",
+    "paysFor": "Płaci za",
+    "paysForNone": "Nie płaci jeszcze za żadną organizację.",
+    "savePaymentMethod": "Zapisz metodę płatności",
+    "paymentMethodSaved": "Zapisano metodę płatności.",
+    "createAction": "Utwórz organizację",
+    "createTitle": "Nowa organizacja",
+    "createDescription": "Płaci za nią {billing}. Zostaniesz jej właścicielem.",
+    "createNameLabel": "Nazwa",
+    "created": "Utworzono {name}. Pracujesz teraz w tej organizacji.",
+    "pickerTitle": "Wybierz swój plan",
+    "pickerDescription": "Możesz go później zmienić w ustawieniach.",
+    "pickerContinue": "Dalej",
+    "errors": {
+      "generic": "Coś poszło nie tak. Spróbuj ponownie.",
+      "paymentMethodRequired": "Wybierz metodę płatności.",
+      "nameRequired": "Wpisz nazwę.",
+      "notAllowed": "Nie masz uprawnień, aby to zrobić.",
+      "inUse": "Ta organizacja rozliczeniowa nadal płaci za inne organizacje."
+    }
+  },
+  "userDeletion": {
+    "title": "Usuń użytkownika",
+    "description": "Twój użytkownik zostanie usunięty {days, plural, one {# dzień} few {# dni} many {# dni} other {# dnia}} po prośbie. Od razu zostaniesz wszędzie wylogowany, a do tego czasu możesz anulować, logując się.",
+    "action": "Usuń użytkownika",
+    "confirmTitle": "Usunąć twojego użytkownika?",
+    "confirmDescription": "Zostaniesz teraz wszędzie wylogowany. Usunięcie nastąpi za {days, plural, one {# dzień} few {# dni} many {# dni} other {# dnia}}, chyba że się zalogujesz i je anulujesz.",
+    "scheduledTitle": "Twój użytkownik jest zaplanowany do usunięcia",
+    "scheduledDescription": "Zostanie usunięty {date}. Anuluj, aby dalej z niego korzystać.",
+    "blockedTitle": "Nie udało się usunąć twojego użytkownika",
+    "blockedInUse": "Jesteś ostatnim członkiem organizacji rozliczeniowej, która płaci za inne organizacje. Zaproś innego właściciela lub obniż plan tych organizacji, a potem poproś ponownie.",
+    "blockedOwnerRequired": "Jesteś ostatnim właścicielem organizacji rozliczeniowej, która płaci za inne organizacje. Mianuj innego członka właścicielem, a potem poproś ponownie.",
+    "cancel": "Anuluj usunięcie",
+    "continue": "Kontynuuj usuwanie i wyloguj się",
+    "canceled": "Anulowano usunięcie.",
+    "reauthenticate": "Zaloguj się ponownie, aby potwierdzić tożsamość, i spróbuj jeszcze raz."
   }
 }

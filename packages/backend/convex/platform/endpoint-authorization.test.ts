@@ -129,6 +129,7 @@ const ACCESS: Record<string, Access> = {
   "platform/tenancy:status": "admin",
   "platform/userDeletion:adminCancel": "admin",
   "platform/userDeletion:cancel": "user",
+  "platform/userDeletion:graceDays": "user",
   "platform/userDeletion:list": "admin",
   "platform/userDeletion:request": "user",
   "platform/organizations:active": "user",
