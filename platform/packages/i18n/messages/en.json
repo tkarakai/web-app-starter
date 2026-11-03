@@ -666,7 +666,9 @@
       "nameRequired": "Enter a name.",
       "notAllowed": "You don't have permission to do that.",
       "inUse": "This billing organization still pays for other organizations."
-    }
+    },
+    "activationPending": "{name} was created. Open it to start working in it.",
+    "retryActivation": "Open organization"
   },
   "userDeletion": {
     "title": "Delete user",

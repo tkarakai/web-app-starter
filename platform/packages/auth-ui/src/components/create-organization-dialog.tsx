@@ -47,18 +47,26 @@ export function CreateOrganizationDialog({
   const create = useMutation(api.platform.billing.createOrganization);
   const { planId, plan, setPlanId } = useSelectedPlan(plans);
   const [name, setName] = React.useState("");
+  const [created, setCreated] = React.useState<{ organizationId: string; name: string } | null>(null);
   const [pending, setPending] = React.useState(false);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     const trimmed = name.trim();
-    if (!trimmed || !plan) return;
+    if (!created && (!trimmed || !plan)) return;
     setPending(true);
     try {
-      const { organizationId } = await create({ billingOrganizationId, name: trimmed, planId });
-      onCreated?.();
-      await authClient.organization.setActive({ organizationId });
-      toast.success(t("created", { name: trimmed }));
+      let target = created;
+      if (!target) {
+        const { organizationId } = await create({ billingOrganizationId, name: trimmed, planId });
+        target = { organizationId, name: trimmed };
+        setCreated(target);
+        onCreated?.();
+      }
+      const result = await authClient.organization.setActive({ organizationId: target.organizationId });
+      if (result.error) throw new Error(result.error.message ?? "Activation failed");
+      toast.success(t("created", { name: target.name }));
+      setCreated(null);
       setName("");
       onOpenChange(false);
     } catch (error) {
@@ -82,14 +90,16 @@ export function CreateOrganizationDialog({
               id="new-organization-name"
               value={name}
               maxLength={100}
+              disabled={created !== null}
               onChange={(event) => setName(event.target.value)}
               required
               autoFocus
             />
           </div>
-          <PlanChoice plans={plans} value={planId} onChange={setPlanId} idPrefix="new-organization-plan" />
-          <Button type="submit" className="w-full" disabled={pending || !name.trim() || !plan}>
-            {pending ? tc("creating") : t("createAction")}
+          {created && <p role="status" className="text-sm">{t("activationPending", { name: created.name })}</p>}
+          {!created && <PlanChoice plans={plans} value={planId} onChange={setPlanId} idPrefix="new-organization-plan" />}
+          <Button type="submit" className="w-full" disabled={pending || (!created && (!name.trim() || !plan))}>
+            {pending ? tc("loading") : created ? t("retryActivation") : t("createAction")}
           </Button>
         </form>
       </DialogContent>

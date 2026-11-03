@@ -666,7 +666,9 @@
       "nameRequired": "Zadejte název.",
       "notAllowed": "K tomu nemáte oprávnění.",
       "inUse": "Tato fakturační organizace stále platí za jiné organizace."
-    }
+    },
+    "activationPending": "Organizace {name} byla vytvořena. Otevřete ji a začněte pracovat.",
+    "retryActivation": "Otevřít organizaci"
   },
   "userDeletion": {
     "title": "Smazat uživatele",

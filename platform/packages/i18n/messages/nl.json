@@ -666,7 +666,9 @@
       "nameRequired": "Vul een naam in.",
       "notAllowed": "Je hebt geen toestemming om dat te doen.",
       "inUse": "Deze factureringsorganisatie betaalt nog voor andere organisaties."
-    }
+    },
+    "activationPending": "{name} is aangemaakt. Open de organisatie om erin te werken.",
+    "retryActivation": "Organisatie openen"
   },
   "userDeletion": {
     "title": "Gebruiker verwijderen",

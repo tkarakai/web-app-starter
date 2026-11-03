@@ -13,7 +13,22 @@ vi.mock("./sendAuthEmail", async (original) => ({
   sendAuthEmail: vi.fn(),
 }));
 
+const cleanupMock = vi.hoisted(() => ({ failures: 0, owners: [] as string[] }));
+vi.mock("../userData", async () => {
+  const { internalMutation } = await import("../_generated/server");
+  const { v } = await import("convex/values");
+  return { deleteUserData: internalMutation({
+    args: { userId: v.string(), ownerId: v.string() },
+    handler: async (_ctx, args) => {
+      cleanupMock.owners.push(args.ownerId);
+      if (args.ownerId === "legacy-cleanup-owner" && cleanupMock.failures > 0) { cleanupMock.failures--; throw new Error("App cleanup unavailable"); }
+    },
+  }) };
+});
+
 beforeEach(() => {
+  cleanupMock.failures = 0;
+  cleanupMock.owners = [];
   vi.stubEnv("BETTER_AUTH_SECRET", "tenancy-billing-test-secret-at-least-32-characters");
   vi.stubEnv("SITE_URL", "http://localhost:3001");
   vi.stubEnv("CONVEX_SITE_URL", "http://localhost:3211");
@@ -517,4 +532,60 @@ test("setup preflights both memberships for a shared owner and recovers from cap
   await f.t.finishAllScheduledFunctions(vi.runAllTimers);
   expect(await f.t.query(api.platform.tenancy.mode, {})).toEqual({ mode: "organizations" });
   expect((await alice.caller.query(api.platform.organizations.mine, {}))!.organizations).toHaveLength(50);
+});
+
+describe("third review regressions", () => {
+  test.each(["sponsorship-first", "deletion-first"])("payer deletion serializes with sponsorship: %s", async order => {
+    const f = await fixture("organizations");
+    const alice = await f.user("alice");
+    const own = await alice.provision();
+    const payer = await f.t.mutation(components.platform.billing.createBilling, { organizationId: own, organizationName: "Payer", paymentMethod: "cash", actor: { email: "test" } });
+    const free = (await f.plans())[0]!;
+    const sponsor = () => alice.caller.mutation(api.platform.billing.createOrganization, { billingOrganizationId: payer, name: "Child", planId: free.id });
+    const mark = () => f.t.mutation(internal.platform.organizationOwnership.markDeleting, { organizationId: own });
+    if (order === "sponsorship-first") {
+      await sponsor();
+      await expect(mark()).rejects.toThrow("BILLING_ORGANIZATION_IN_USE");
+      expect((await f.organization(own))!.deletingAt).toBeUndefined();
+    } else {
+      await mark();
+      await expect(sponsor()).rejects.toThrow("BILLING_ORGANIZATION_NOT_FOUND");
+      await expect(alice.caller.mutation(api.platform.billing.setPaymentMethod, { billingOrganizationId: payer, paymentMethod: "check" })).rejects.toThrow("BILLING_ORGANIZATION_NOT_FOUND");
+      expect(await f.t.query(components.platform.billing.paidBy, { billingOrganizationId: payer })).toEqual([]);
+    }
+    expect(await f.organization(own)).not.toBeNull();
+  });
+
+  test.each([false, true])("post-auth deletion cleanup retains migrated inputs and recovers (admin retry: %s)", async manual => {
+    vi.useFakeTimers();
+    const f = await fixture("organizations");
+    await f.paidPlan();
+    const alice = await f.user("alice", { userId: "legacy-cleanup-owner" });
+    await alice.provision();
+    await alice.caller.mutation(api.platform.userProfiles.upsert, { timezone: "Europe/Budapest" });
+    await alice.caller.mutation(api.platform.userDeletion.request, {});
+    const row = (await f.t.query(internal.platform.userDeletion.pending, { userId: alice.userId }))!;
+    await f.t.run(async ctx => { await ctx.db.patch(row._id, { deleteAt: Date.now() }); await ctx.scheduler.cancel(row.jobId); });
+    cleanupMock.failures = manual ? 10 : 1;
+    const failure = await f.t.action(internal.platform.userDeletion.execute, { userId: alice.userId, requestId: row.requestId }).then(() => null, error => error);
+    if (manual) expect(failure).toBeInstanceOf(Error);
+    expect(await f.t.query(internal.platform.userDeletion.userRow, { userId: alice.userId })).toBeNull();
+    if (manual) {
+      expect(await f.t.query(internal.platform.userDeletion.cleanupStatus, { userId: alice.userId })).toMatchObject({ ownerId: "legacy-cleanup-owner", state: "failed" });
+      expect(await f.boss.caller.query(api.platform.userDeletion.list, {})).toMatchObject([{ email: "alice@example.test", state: "cleanup_pending" }]);
+      await expect(f.boss.caller.mutation(api.platform.userDeletion.adminCancel, { userId: alice.userId })).rejects.toThrow("USER_CLEANUP_PENDING");
+    }
+    await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+    if (manual) {
+      expect(await f.t.query(internal.platform.userDeletion.cleanupStatus, { userId: alice.userId })).toMatchObject({ attempts: 5, state: "failed" });
+      cleanupMock.failures = 0;
+      const recoveryAdmin = await f.user("recovery-admin", { role: "admin" });
+      await recoveryAdmin.caller.mutation(api.platform.userDeletion.adminRetryCleanup, { userId: alice.userId });
+      await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+    }
+    expect(await f.t.query(internal.platform.userDeletion.cleanupStatus, { userId: alice.userId })).toBeNull();
+    expect(await f.t.run(ctx => ctx.db.query("userProfiles").collect())).toEqual([]);
+    expect(await f.t.run(ctx => ctx.db.query("pendingPlanChoices").collect())).toEqual([]);
+    expect(cleanupMock.owners.every(owner => owner === "legacy-cleanup-owner")).toBe(true);
+  });
 });

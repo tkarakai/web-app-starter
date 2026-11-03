@@ -28,6 +28,7 @@ import {
   createOrganizationWithOwner,
   findById,
   findMembership,
+  isDeleting,
   parseRole,
   resolveActiveOrganization,
 } from "./organizationAccess";
@@ -60,7 +61,7 @@ async function activePlan(ctx: Pick<MutationCtx, "runQuery">, planId: string) {
 
 async function organizationOrThrow(ctx: Pick<MutationCtx, "runQuery">, organizationId: string) {
   const organization = await findById(ctx, "organization", organizationId);
-  if (!organization) throw new Error("ORGANIZATION_NOT_FOUND");
+  if (!organization || isDeleting(organization)) throw new Error("ORGANIZATION_NOT_FOUND");
   return organization;
 }
 

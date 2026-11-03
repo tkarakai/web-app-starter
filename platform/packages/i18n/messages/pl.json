@@ -666,7 +666,9 @@
       "nameRequired": "Wpisz nazwę.",
       "notAllowed": "Nie masz uprawnień, aby to zrobić.",
       "inUse": "Ta organizacja rozliczeniowa nadal płaci za inne organizacje."
-    }
+    },
+    "activationPending": "Organizacja {name} została utworzona. Otwórz ją, aby rozpocząć pracę.",
+    "retryActivation": "Otwórz organizację"
   },
   "userDeletion": {
     "title": "Usuń użytkownika",

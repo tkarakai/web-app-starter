@@ -666,7 +666,9 @@
       "nameRequired": "名前を入力してください。",
       "notAllowed": "この操作を行う権限がありません。",
       "inUse": "この請求組織はまだ他の組織の料金を支払っています。"
-    }
+    },
+    "activationPending": "{name} が作成されました。開いて作業を開始してください。",
+    "retryActivation": "組織を開く"
   },
   "userDeletion": {
     "title": "ユーザーを削除",

@@ -99,12 +99,15 @@ export const request = authedMutation({
   },
 });
 
-async function cancelDeletion(ctx: Pick<MutationCtx, "db" | "scheduler">, userId: string, actor: { email: string; userId: string }) {
+async function cancelDeletion(ctx: Pick<MutationCtx, "db" | "scheduler" | "runQuery">, userId: string, actor: { email: string; userId: string }) {
   const row = await scheduledDeletion(ctx, userId);
   if (!row) return false;
   if (row.state === "deleting") throw new Error("USER_DELETION_IN_PROGRESS");
+  if (row.state === "cleanup_pending" || (!(await findById(ctx, "user", userId)) && await cleanupFor(ctx, userId))) throw new Error("USER_CLEANUP_PENDING");
   if (row.state === "scheduled") await ctx.scheduler.cancel(row.jobId);
   await ctx.db.delete(row._id);
+  const cleanup = await cleanupFor(ctx, userId);
+  if (cleanup) await ctx.db.delete(cleanup._id);
   await scheduleAuditEvent(ctx, {
     actor: actor.email, authenticatedUserId: actor.userId, sourceDetail: "user-deletion", action: "user.deletion.canceled",
     resource: `user:${userId}`, status: "succeeded",
@@ -136,9 +139,16 @@ export const list = authedQuery({
   handler: async (ctx) => {
     if (ctx.user.role !== "admin") throw new Error("NOT_ADMIN");
     const rows = await ctx.db.query("userDeletions").withIndex("by_deleteAt").take(500);
-    return await Promise.all(rows.map(async (row) => {
+    const cleanups = await ctx.db.query("userDeletionCleanups").take(500);
+    const orphaned = [];
+    for (const cleanup of cleanups) if (!(await findById(ctx, "user", cleanup.userId))) orphaned.push(cleanup);
+    const all = [...rows, ...orphaned.filter(cleanup => !rows.some(row => row.userId === cleanup.userId)).map(cleanup => ({ userId: cleanup.userId, requestedAt: cleanup.createdAt, deleteAt: cleanup.createdAt, state: "cleanup_pending" as const, blockedReason: cleanup.error }))];
+    return await Promise.all(all.map(async row => {
       const user = await findById(ctx, "user", row.userId);
-      return { userId: row.userId, email: user?.email ?? "", name: user?.name ?? "", requestedAt: row.requestedAt, deleteAt: row.deleteAt, state: row.state, blockedReason: row.blockedReason ?? null };
+      const cleanup = cleanups.find(entry => entry.userId === row.userId);
+      return { userId: row.userId, email: user?.email ?? cleanup?.email ?? "", name: user?.name ?? cleanup?.name ?? "", requestedAt: row.requestedAt, deleteAt: row.deleteAt,
+        state: !user && cleanup ? "cleanup_pending" as const : row.state,
+        blockedReason: !user && cleanup ? cleanup.error ?? null : row.blockedReason ?? null };
     }));
   },
 });
@@ -181,17 +191,22 @@ export const markBlocked = internalMutation({
 
 /** Better Auth's `user.delete.after`: the request, if any, is done. */
 export const forget = internalMutation({
-  args: { userId: v.string(), ownerId: v.optional(v.string()) },
+  args: { userId: v.string(), ownerId: v.optional(v.string()), cleanupOnly: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
+    const cleanup = await cleanupFor(ctx, args.userId);
+    if (args.cleanupOnly && !cleanup) return;
+    const ownerId = cleanup?.ownerId ?? args.ownerId ?? args.userId;
+    if (cleanup && !(await findById(ctx, "user", args.userId))) await ctx.runMutation(internal.platform.organizations.removeUserMemberships, { userId: args.userId, email: cleanup.email });
     try {
-      await ctx.runMutation(makeFunctionReference<"mutation", { userId: string; ownerId: string }>("userData:deleteUserData"), { userId: args.userId, ownerId: args.ownerId ?? args.userId });
+      await ctx.runMutation(makeFunctionReference<"mutation", { userId: string; ownerId: string }>("userData:deleteUserData"), { userId: args.userId, ownerId });
     } catch (error) {
       if (!(error instanceof Error) || !error.message.includes("userData:deleteUserData") || !/Couldn't resolve|Could not find/i.test(error.message)) throw error;
     }
-    for (const ownerId of new Set([args.userId, args.ownerId ?? args.userId])) {
-      for (const profile of await ctx.db.query("userProfiles").withIndex("by_owner", q => q.eq("ownerId", ownerId)).collect()) await ctx.db.delete(profile._id);
+    for (const profileOwnerId of new Set([args.userId, ownerId])) {
+      for (const profile of await ctx.db.query("userProfiles").withIndex("by_owner", q => q.eq("ownerId", profileOwnerId)).collect()) await ctx.db.delete(profile._id);
     }
     for (const choice of await ctx.db.query("pendingPlanChoices").withIndex("by_user", q => q.eq("userId", args.userId)).collect()) await ctx.db.delete(choice._id);
+    if (cleanup) await ctx.db.delete(cleanup._id);
     const row = await scheduledDeletion(ctx, args.userId);
     if (!row) return;
     if (row.state === "scheduled") {
@@ -232,6 +247,11 @@ export const claim = internalMutation({
 export const execute = internalAction({
   args: { userId: v.string(), requestId: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const pendingCleanup = await ctx.runQuery(internal.platform.userDeletion.cleanupStatus, { userId: args.userId });
+    if (pendingCleanup && !(await ctx.runQuery(internal.platform.userDeletion.userRow, { userId: args.userId }))) {
+      await ctx.runAction(internal.platform.userDeletion.runCleanup, { userId: args.userId });
+      return;
+    }
     const claim = await ctx.runMutation(internal.platform.userDeletion.claim, args);
     if (claim !== true) {
       if (claim) await ctx.runAction(internal.platform.userDeletion.notify, { userId: args.userId, kind: "blocked", reason: blockerMessage(claim) });
@@ -248,7 +268,12 @@ export const execute = internalAction({
       await context.internalAdapter.deleteUser(args.userId);
       await ctx.runMutation(internal.platform.userDeletion.recordCompleted, { userId: args.userId, email: user.email });
     } catch (error) {
-      await ctx.runMutation(internal.platform.userDeletion.markBlocked, { ...args, reason: error instanceof Error ? error.message.slice(0, 1000) : "Deletion failed" });
+      const reason = error instanceof Error ? error.message.slice(0, 1000) : "Deletion failed";
+      if (await ctx.runQuery(internal.platform.userDeletion.userRow, { userId: args.userId })) {
+        await ctx.runMutation(internal.platform.userDeletion.markBlocked, { ...args, reason });
+      } else {
+        await ctx.runMutation(internal.platform.userDeletion.cleanupFailed, { userId: args.userId, error: reason });
+      }
       throw error;
     }
   },
@@ -275,5 +300,73 @@ export const notify = internalAction({
     } catch (error) {
       console.error("User deletion email failed", error instanceof Error ? error.message : error);
     }
+  },
+});
+
+async function cleanupFor(ctx: Pick<QueryCtx, "db">, userId: string) {
+  return await ctx.db.query("userDeletionCleanups").withIndex("by_user", q => q.eq("userId", userId)).first();
+}
+
+/** Persist recovery inputs before Better Auth removes its user row, including admin deletes. */
+export const prepareCleanup = internalMutation({
+  args: { userId: v.string(), ownerId: v.string(), email: v.string(), name: v.string() },
+  handler: async (ctx, args) => {
+    if (await cleanupFor(ctx, args.userId)) return;
+    await ctx.db.insert("userDeletionCleanups", { ...args, state: "pending", attempts: 0, createdAt: Date.now() });
+    await ctx.scheduler.runAfter(1000, internal.platform.userDeletion.runCleanup, { userId: args.userId });
+  },
+});
+
+export const cleanupStatus = internalQuery({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => await cleanupFor(ctx, args.userId),
+});
+
+export const cleanupFailed = internalMutation({
+  args: { userId: v.string(), error: v.string() },
+  handler: async (ctx, args) => {
+    const cleanup = await cleanupFor(ctx, args.userId);
+    if (!cleanup) return;
+    const attempts = cleanup.state === "pending" ? cleanup.attempts + 1 : cleanup.attempts;
+    await ctx.db.patch(cleanup._id, { state: "failed", attempts, error: args.error.slice(0, 1000) });
+    const request = await scheduledDeletion(ctx, args.userId);
+    if (request) await ctx.db.patch(request._id, { state: "cleanup_pending", blockedReason: args.error.slice(0, 1000) });
+    if (attempts < 5) await ctx.scheduler.runAfter(1000 * 2 ** attempts, internal.platform.userDeletion.runCleanup, { userId: args.userId });
+  },
+});
+
+/** Cleanup has its own durable lifecycle and never claims or deletes an authenticated user. */
+export const runCleanup = internalAction({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    if (!(await ctx.runMutation(internal.platform.userDeletion.claimCleanup, args))) return;
+    try {
+      await ctx.runMutation(internal.platform.userDeletion.forget, { ...args, cleanupOnly: true });
+    } catch (error) {
+      await ctx.runMutation(internal.platform.userDeletion.cleanupFailed, { userId: args.userId, error: error instanceof Error ? error.message : "Cleanup failed" });
+    }
+  },
+});
+
+export const adminRetryCleanup = adminMutation({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    if (ctx.user.role !== "admin") throw new Error("NOT_ADMIN");
+    const cleanup = await cleanupFor(ctx, args.userId);
+    if (!cleanup) throw new Error("USER_CLEANUP_NOT_FOUND");
+    if (await findById(ctx, "user", args.userId)) throw new Error("USER_STILL_EXISTS");
+    await ctx.db.patch(cleanup._id, { state: "pending", attempts: 0, error: undefined });
+    await ctx.scheduler.runAfter(0, internal.platform.userDeletion.runCleanup, args);
+  },
+});
+
+/** Serialize cleanup attempts; a crashed lease can be reset by the administrator. */
+export const claimCleanup = internalMutation({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const cleanup = await cleanupFor(ctx, args.userId);
+    if (!cleanup || cleanup.state === "running" || cleanup.attempts >= 5 || await findById(ctx, "user", args.userId)) return false;
+    await ctx.db.patch(cleanup._id, { state: "running", attempts: cleanup.attempts + 1 });
+    return true;
   },
 });

@@ -666,7 +666,9 @@
       "nameRequired": "Introduza um nome.",
       "notAllowed": "Não tem permissão para fazer isso.",
       "inUse": "Esta organização de faturação ainda paga por outras organizações."
-    }
+    },
+    "activationPending": "{name} foi criada. Abra-a para começar a trabalhar nela.",
+    "retryActivation": "Abrir organização"
   },
   "userDeletion": {
     "title": "Eliminar utilizador",

@@ -157,3 +157,13 @@ each batch that creates owners. Failed batches roll back and appear as stopped i
 tenancy page. Correct the prerequisite and use Retry setup; replacement owners can be selected
 before the billing/shared organizations are created. Completed batches are retained. Individuals
 mode constrains membership writes during setup and revalidates eligibility before committing.
+
+Before auth deletion, the platform stores cleanup inputs (including a migrated profile owner ID)
+in `userDeletionCleanups`. Cleanup retries are independent of the deleted account and of the
+original destructive job. Failed cleanup is shown as Cleanup pending in the admin deletion list;
+it retries automatically up to five attempts, after which an administrator can use Retry cleanup.
+Cancellation cannot discard cleanup after auth deletion. The recovery record is removed only
+when membership, app-owned and platform-owned cleanup has completed.
+
+A payer's dependency check and deletion marker commit together. Billing authorization reads that
+marker, so sponsorship and payer deletion serialize before Better Auth removes any members.

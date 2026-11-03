@@ -666,7 +666,9 @@
       "nameRequired": "Adjon meg egy nevet.",
       "notAllowed": "Ehhez nincs jogosultsága.",
       "inUse": "Ez a számlázási szervezet még más szervezetekért is fizet."
-    }
+    },
+    "activationPending": "A(z) {name} szervezet létrejött. Nyisd meg a munka megkezdéséhez.",
+    "retryActivation": "Szervezet megnyitása"
   },
   "userDeletion": {
     "title": "Felhasználó törlése",

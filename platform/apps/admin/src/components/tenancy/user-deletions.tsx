@@ -31,6 +31,7 @@ const REASONS: Record<string, string> = {
 export function UserDeletions() {
   const rows = useQuery(api.platform.userDeletion.list);
   const cancel = useMutation(api.platform.userDeletion.adminCancel);
+  const retry = useMutation(api.platform.userDeletion.adminRetryCleanup);
   const [now, setNow] = React.useState(() => Date.now());
   React.useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 60_000);
@@ -61,14 +62,14 @@ export function UserDeletions() {
                   <div className="text-sm text-muted-foreground">{row.email}</div>
                 </TableCell>
                 <TableCell>
-                  {row.state === "blocked"
+                  {row.state === "cleanup_pending" ? <><Badge variant="destructive">Cleanup pending</Badge> <span>{row.blockedReason}</span></> : row.state === "blocked"
                     ? <><Badge variant="destructive">Blocked</Badge> <span className="text-sm text-muted-foreground">{REASONS[row.blockedReason ?? ""] ?? row.blockedReason}</span></>
                     : <span title={new Date(row.deleteAt).toLocaleString()}>Scheduled {countdown(row.deleteAt, now)}</span>}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button size="sm" variant="outline" onClick={() => void cancel({ userId: row.userId }).then(() => toast.success(`Deletion of ${row.email} canceled.`), () => toast.error("Couldn't cancel the deletion."))}>
+                  {row.state === "cleanup_pending" ? <Button size="sm" variant="outline" onClick={() => void retry({ userId: row.userId }).then(() => toast.success("Cleanup retry scheduled."), () => toast.error("Couldn't retry cleanup."))}>Retry cleanup</Button> : <Button disabled={row.state === "deleting"} size="sm" variant="outline" onClick={() => void cancel({ userId: row.userId }).then(() => toast.success(`Deletion of ${row.email} canceled.`), () => toast.error("Couldn't cancel the deletion."))}>
                     Cancel deletion
-                  </Button>
+                  </Button>}
                 </TableCell>
               </TableRow>
             ))}

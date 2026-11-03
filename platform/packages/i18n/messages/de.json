@@ -666,7 +666,9 @@
       "nameRequired": "Geben Sie einen Namen ein.",
       "notAllowed": "Dazu fehlt Ihnen die Berechtigung.",
       "inUse": "Diese Abrechnungsorganisation bezahlt noch für andere Organisationen."
-    }
+    },
+    "activationPending": "{name} wurde erstellt. Öffne die Organisation, um darin zu arbeiten.",
+    "retryActivation": "Organisation öffnen"
   },
   "userDeletion": {
     "title": "Benutzer löschen",

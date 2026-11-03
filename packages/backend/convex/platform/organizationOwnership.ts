@@ -286,6 +286,7 @@ export async function setMemberRole(ctx: Writer, memberId: string, role: Organiz
 
 /** Exempt an organization from the guard while it is deleted (members go before the row). */
 export async function markOrganizationDeleting(ctx: Writer, organizationId: string): Promise<void> {
+  if (await ctx.runQuery(components.platform.billing.billingInUse, { organizationId })) throw new Error("BILLING_ORGANIZATION_IN_USE");
   await ctx.runMutation(components.betterAuth.adapter.updateOne, {
     input: { model: "organization", where: [{ field: "_id", value: organizationId }], update: { deletingAt: Date.now() } },
   });

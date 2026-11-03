@@ -666,7 +666,9 @@
       "nameRequired": "请输入名称。",
       "notAllowed": "你没有执行此操作的权限。",
       "inUse": "此账单组织仍在为其他组织付款。"
-    }
+    },
+    "activationPending": "已创建 {name}。打开组织以开始工作。",
+    "retryActivation": "打开组织"
   },
   "userDeletion": {
     "title": "删除用户",

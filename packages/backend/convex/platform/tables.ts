@@ -70,9 +70,15 @@ export const platformTables = {
     requestedAt: v.number(),
     deleteAt: v.number(),
     jobId: v.id("_scheduled_functions"),
-    state: v.union(v.literal("scheduled"), v.literal("deleting"), v.literal("blocked")),
+    state: v.union(v.literal("scheduled"), v.literal("deleting"), v.literal("cleanup_pending"), v.literal("blocked")),
     blockedReason: v.optional(v.string()),
   }).index("by_user", ["userId"]).index("by_deleteAt", ["deleteAt"]),
+
+  userDeletionCleanups: defineTable({
+    userId: v.string(), ownerId: v.string(), email: v.string(), name: v.string(),
+    state: v.union(v.literal("pending"), v.literal("running"), v.literal("failed")),
+    attempts: v.number(), createdAt: v.number(), error: v.optional(v.string()),
+  }).index("by_user", ["userId"]),
 
   userProfiles: defineTable({
     ownerId: v.string(),

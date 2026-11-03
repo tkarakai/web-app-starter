@@ -88,12 +88,12 @@ export function organizationPlugin(ctx: GenericCtx<DataModel>, siteUrl: string) 
       // Better Auth deletes the members before the organization row; let them go.
       beforeDeleteOrganization: async ({ organization: org }) => {
         // A billing organization stays while it pays for another organization's plan.
-        if (await requireActionCtx(ctx).runQuery(components.platform.billing.billingInUse, { organizationId: org.id })) {
-          throw new APIError("CONFLICT", { code: "BILLING_ORGANIZATION_IN_USE", message: "BILLING_ORGANIZATION_IN_USE" });
+        try {
+          await requireActionCtx(ctx).runMutation(internal.platform.organizationOwnership.markDeleting, { organizationId: org.id });
+        } catch (error) {
+          if (error instanceof Error && error.message.includes("BILLING_ORGANIZATION_IN_USE")) throw new APIError("CONFLICT", { code: "BILLING_ORGANIZATION_IN_USE", message: "BILLING_ORGANIZATION_IN_USE" });
+          throw error;
         }
-        await requireActionCtx(ctx).runMutation(internal.platform.organizationOwnership.markDeleting, {
-          organizationId: org.id,
-        });
       },
       afterDeleteOrganization: async ({ organization: org, user }) => {
         // Its plan ends and its billing row is marked deleted; both stay as billing history.

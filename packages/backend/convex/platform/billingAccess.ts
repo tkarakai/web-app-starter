@@ -6,7 +6,7 @@
 import { components } from "../_generated/api";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
-import { findById, findMembership, listMemberships, parseRole } from "./organizationAccess";
+import { findById, findMembership, isDeleting, listMemberships, parseRole } from "./organizationAccess";
 
 type Reader = Pick<QueryCtx, "runQuery" | "db">;
 type Writer = Pick<MutationCtx, "runQuery" | "runMutation" | "db">;
@@ -67,6 +67,8 @@ export async function initialPlanId(ctx: Writer): Promise<string> {
 export async function billingRole(ctx: Pick<QueryCtx, "runQuery">, userId: string, billingOrganizationId: string) {
   const billing = await ctx.runQuery(components.platform.billing.getBilling, { billingOrganizationId });
   if (!billing || billing.deletedAt) return null;
+  const organization = await findById(ctx, "organization", billing.organizationId);
+  if (!organization || isDeleting(organization)) return null;
   const member = await findMembership(ctx, userId, billing.organizationId);
   if (!member) return null;
   const role = parseRole(member.role);
@@ -87,7 +89,7 @@ export async function myBillingOrganizations(ctx: Pick<QueryCtx, "runQuery">, us
     const billing = await ctx.runQuery(components.platform.billing.billingByOrganization, { organizationId: member.organizationId });
     if (!billing || billing.deletedAt) return null;
     const organization = await findById(ctx, "organization", member.organizationId);
-    if (!organization) return null;
+    if (!organization || isDeleting(organization)) return null;
     const role = parseRole(member.role);
     return { id: billing._id, organizationId: organization._id, name: organization.name, paymentMethod: billing.paymentMethod ?? null, role, canManage: role !== "member" };
   }));
