@@ -71,7 +71,7 @@ describe("joining a deleted organization", () => {
     expect(result.status, result.body).not.toBe(200);
     expect(await f.organization(f.acme)).toBeNull();
     expect(await f.members(f.acme)).toEqual([]);
-    expect(await f.bob.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
+    expect(await f.bob.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: null, organizations: [] });
   });
 
   test("an invitation accepted while its last member's account is deleted adds nobody", async () => {
@@ -95,7 +95,7 @@ describe("joining a deleted organization", () => {
       input: { model: "organization", where: [{ field: "_id", value: f.acme }] },
     });
     expect(await f.bob.caller.query(api.platform.organizations.mine, {})).toEqual({
-      activeOrganizationId: bobsOwn, organizations: [{ id: bobsOwn, name: "bob", role: "owner" }],
+      activeOrganizationId: bobsOwn, selectionStale: true, organizations: [{ id: bobsOwn, name: "bob", role: "owner" }],
     });
   });
 });

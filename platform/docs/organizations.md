@@ -105,9 +105,14 @@ built-in roles; custom roles are not currently supported.
 ## How it works
 
 - **Active organization.** Better Auth stores it on the session (`session.activeOrganizationId`).
-  On every request, the backend checks that the user is still a member of it, and otherwise falls
-  back to their oldest membership. Removing someone takes effect on their next request. A
-  membership of an organization that is deleted, or being deleted, never counts.
+  On every request, the backend checks that the user is still a member of it. A membership of
+  an organization that is deleted, or being deleted, never counts. When the selection is no
+  longer valid (they were removed, or it was deleted), **reads** move to the user's oldest
+  membership, so removal takes effect on the next request, but **writes are refused**
+  (`ORGANIZATION_CHANGED`): a write is never sent to an organization the user didn't select.
+  `mine` reports `selectionStale: true` meanwhile, and `OrganizationAccessNotice` (in
+  `ProtectedLayout`) switches the session to the organization the page now shows. Only a
+  session that never selected an organization starts in the oldest membership for writes.
 - **Reads are Convex queries** over Better Auth's tables, so the UI updates live:
   `api.platform.organizations.mine` (memberships and active), `.active` (settings view),
   `.myInvitations`, `.invitation`.
@@ -253,12 +258,13 @@ Choose shared or member-private audience explicitly using the [data access recip
   `ctx.user` and `ctx.ownerId`). It returns `null` when signed out or without an organization.
 - `orgMutation` adds the same to `authedMutation`. A signed-in user with no membership gets
   `NO_ORGANIZATION`; the mutation never creates an organization as a side effect. Every
-  `orgMutation` also takes an optional `expectedOrganizationId`: the organization the UI showed
-  when the user composed the write. If the active organization has changed since (they were
-  removed, it was deleted, another tab switched), the write is refused with
-  `ORGANIZATION_CHANGED` and nothing is written. It is a precondition, never the organization
-  written to.
+  `orgMutation` refuses with `ORGANIZATION_CHANGED` while the session's selected organization is
+  no longer valid, and writes nothing. It also takes an optional `expectedOrganizationId`: the
+  organization the UI showed when the user composed the write. If the active organization has
+  changed since (for example, another tab switched), the write is refused the same way. It is a
+  precondition, never the organization written to.
 - `getOrgAuth(ctx)` resolves the same thing inside an internal function called from an action.
+  Pass `{ write: true }` when that function writes, to get `orgMutation`'s rule.
 
 The rules:
 
@@ -274,9 +280,10 @@ The rules:
    uploads have no `organizationId`, and every access goes through
    `requireProjectAccess(ctx, projectId)`.
 7. **Pass `expectedOrganizationId` on every create** (any write that doesn't name an existing
-   record): the active organization from `useOrganizations()` when the form opened. Otherwise
-   a draft composed for one organization can land in another the user falls back to, where
-   other people read it. On `ORGANIZATION_CHANGED`, keep the draft and ask the user to check
+   record): the active organization from `useOrganizations()` when the form opened. The backend
+   already refuses writes after the selected organization is lost; this also catches a switch
+   made in another tab while the form was open, which would otherwise put the draft where other
+   people read it. On `ORGANIZATION_CHANGED`, keep the draft and ask the user to check
    the organization, as the sample's new-project dialog does. Writes to an existing record need
    nothing extra: rule 4 already pins them.
 

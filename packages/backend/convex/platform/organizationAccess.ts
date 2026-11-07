@@ -123,28 +123,42 @@ async function inLiveOrganization(ctx: Reader, member: Doc<"member"> | null): Pr
 }
 
 /**
- * The caller's organization: the session's active organization while they are still a
- * member of it, otherwise their oldest membership. Removal from an organization therefore
- * takes effect on the next request. Memberships of a deleted organization, or one being
- * deleted, never count. `null` only when the user belongs to no live organization.
+ * The organization the session selected, if it is still a live membership; otherwise the
+ * oldest live membership, with `stale` set when the session had selected one that no longer
+ * counts (the user was removed, or it was deleted). Memberships of a deleted organization, or
+ * one being deleted, never count. `active` is `null` only when the user belongs to no live
+ * organization.
+ *
+ * Reads follow `active`, so removal takes effect on the next request. Writes refuse a stale
+ * selection (`orgMutation`): the user composed them for the organization they had selected,
+ * and must not find them in another. The UI switches the session explicitly instead
+ * (`OrganizationAccessNotice`).
  */
+export async function resolveOrganizationSelection(
+  ctx: Reader,
+  user: Pick<Doc<"user">, "_id">,
+  session: Pick<Doc<"session">, "activeOrganizationId">,
+): Promise<{ active: ActiveOrganization | null; stale: boolean }> {
+  const requested = session.activeOrganizationId;
+  const selected = requested ? await findMembership(ctx, user._id, requested) : null;
+  if (selected && await inLiveOrganization(ctx, selected)) {
+    return { active: { organizationId: selected.organizationId, organizationRole: parseRole(selected.role) }, stale: false };
+  }
+  for (const candidate of await listMemberships(ctx, user._id)) {
+    if (await inLiveOrganization(ctx, candidate)) {
+      return { active: { organizationId: candidate.organizationId, organizationRole: parseRole(candidate.role) }, stale: !!requested };
+    }
+  }
+  return { active: null, stale: !!requested };
+}
+
+/** The organization reads use: the session's selection while valid, otherwise the oldest live membership. */
 export async function resolveActiveOrganization(
   ctx: Reader,
   user: Pick<Doc<"user">, "_id">,
   session: Pick<Doc<"session">, "activeOrganizationId">,
 ): Promise<ActiveOrganization | null> {
-  const requested = session.activeOrganizationId;
-  let member = requested ? await findMembership(ctx, user._id, requested) : null;
-  if (!(await inLiveOrganization(ctx, member))) {
-    member = null;
-    for (const candidate of await listMemberships(ctx, user._id)) {
-      if (await inLiveOrganization(ctx, candidate)) {
-        member = candidate;
-        break;
-      }
-    }
-  }
-  return member ? { organizationId: member.organizationId, organizationRole: parseRole(member.role) } : null;
+  return (await resolveOrganizationSelection(ctx, user, session)).active;
 }
 
 /** A new personal organization is named after its user; they can rename it. */

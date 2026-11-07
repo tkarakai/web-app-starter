@@ -28,7 +28,7 @@ import {
   listOrganizationMembers,
   parseRole,
   pendingInvitationsFor,
-  resolveActiveOrganization,
+  resolveOrganizationSelection,
   type OrganizationRole,
 } from "./organizationAccess";
 
@@ -40,16 +40,22 @@ function present<T>(value: T | null | undefined): value is T {
 export const mine = authedQuery({
   args: {},
   handler: async (ctx) => {
-    const [memberships, active] = await Promise.all([
+    const [memberships, selection] = await Promise.all([
       listMemberships(ctx, ctx.user._id),
-      resolveActiveOrganization(ctx, ctx.user, ctx.session),
+      resolveOrganizationSelection(ctx, ctx.user, ctx.session),
     ]);
+    const active = selection.active;
     const organizations = await Promise.all(memberships.map(async (member) => {
       const organization = await findById(ctx, "organization", member.organizationId);
       return organization && !isDeleting(organization) ? { id: organization._id, name: organization.name, role: parseRole(member.role) } : null;
     }));
     return {
       activeOrganizationId: active?.organizationId ?? null,
+      /**
+       * The session still selects an organization the user can no longer use: reads show
+       * `activeOrganizationId`, but writes are refused until the session switches to it.
+       */
+      selectionStale: selection.stale,
       organizations: organizations.filter(present),
     };
   },
