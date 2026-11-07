@@ -1,56 +1,28 @@
 import { rememberNative, captureNativeBuilder } from "./nativeCapabilities";
-import { components } from "../_generated/api";
 import {
   customCtx,
   customMutation,
 } from "convex-helpers/server/customFunctions";
 import { v, type ObjectType, type PropertyValidators } from "convex/values";
 
-import { authorizedSession } from "./sessionPolicy";
+import { authorizedSession, emailVerificationRequired } from "./sessionPolicy";
 import { resolveActiveOrganization, resolveOrganizationSelection, type ActiveOrganization } from "./organizationAccess";
 import { appBlocker } from "./billingAccess";
 import { rateLimit } from "./rateLimits";
-import {
-  LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
-  getEmailVerificationRequiredKey,
-  getPolicyScopeFromRole,
-} from "./securityPolicies";
+import { getPolicyScopeFromRole } from "./securityPolicies";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, mutation, query } from "../_generated/server";
 
-async function getBooleanSetting(
-  ctx: QueryCtx,
-  key: string,
-  defaultValue: boolean,
-): Promise<boolean> {
-  const setting = await ctx.runQuery(components.platform.appSettings.getRaw, { key: key });
-
-  if (!setting) return defaultValue;
-
-  try {
-    return JSON.parse(setting.value) === true;
-  } catch {
-    return defaultValue;
-  }
-}
-
+/**
+ * Whether email verification is required for this user's platform role. The same reader the
+ * session policy enforces with: unset falls back to the legacy key, then `true`; any value other
+ * than `false` counts as required.
+ */
 export async function isEmailVerificationRequired(
   ctx: QueryCtx,
   user: Record<string, unknown>,
 ): Promise<boolean> {
-  const scope = getPolicyScopeFromRole(user.role);
-  const scopedKey = getEmailVerificationRequiredKey(scope);
-  const scoped = await ctx.runQuery(components.platform.appSettings.getRaw, { key: scopedKey });
-
-  if (scoped) {
-    try {
-      return JSON.parse(scoped.value) === true;
-    } catch {
-      return true;
-    }
-  }
-
-  return await getBooleanSetting(ctx, LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY, true);
+  return await emailVerificationRequired(ctx, user.role);
 }
 
 /**

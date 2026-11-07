@@ -26,8 +26,14 @@ export function isPasskeyPolicy(value: string): value is PasskeyPolicy {
   return (PASSKEY_POLICIES as readonly string[]).includes(value);
 }
 
+/**
+ * A stored passkey policy as enforcement reads it (`sessionPolicy.ts`): unset is `optional`, an
+ * invalid value fails closed as `required`, so admin pages never show a weaker policy than the
+ * one in force.
+ */
 export function parsePasskeyPolicy(value: unknown): PasskeyPolicy {
-  return isPasskeyPolicy(String(value)) ? (value as PasskeyPolicy) : "optional";
+  if (value === undefined) return "optional";
+  return isPasskeyPolicy(String(value)) ? (value as PasskeyPolicy) : "required";
 }
 
 export function getPolicyScopeFromRole(role: unknown): PolicyScope {

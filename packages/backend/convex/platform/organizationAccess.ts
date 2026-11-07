@@ -99,20 +99,35 @@ export async function findMembership(
   }) as Doc<"member"> | null;
 }
 
-/** Look up a row by a caller-supplied ID; a malformed ID is simply not found. */
+/** A field every row of the model has, to tell its rows from another table's (`db.get` takes any table's ID). */
+const MODEL_FIELD = { organization: "slug", invitation: "inviterId", user: "email" } as const;
+
+/** Convex's refusal of a string that isn't an ID at all. */
+export function isMalformedIdError(error: unknown): boolean {
+  return error instanceof Error && /Unable to decode ID|not a valid ID|Invalid argument `id`/i.test(error.message);
+}
+
+/**
+ * Look up a row by a caller-supplied ID. A malformed ID, or the ID of a row in another table, is
+ * simply not found; any other failure is an error, never a quiet `null` that a caller could
+ * mistake for "gone".
+ */
 export async function findById<M extends "organization" | "invitation" | "user">(
   ctx: Reader,
   model: M,
   id: string,
 ): Promise<Doc<M> | null> {
+  let row: Doc<M> | null;
   try {
-    return await ctx.runQuery(components.betterAuth.adapter.findOne, {
+    row = await ctx.runQuery(components.betterAuth.adapter.findOne, {
       model,
       where: [{ field: "_id", value: id }],
     }) as Doc<M> | null;
-  } catch {
-    return null;
+  } catch (error) {
+    if (isMalformedIdError(error)) return null;
+    throw error;
   }
+  return row && MODEL_FIELD[model] in row ? row : null;
 }
 
 /** A membership counts only while its organization exists and isn't being deleted. */
