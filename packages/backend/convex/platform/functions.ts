@@ -8,6 +8,7 @@ import { v, type ObjectType, type PropertyValidators } from "convex/values";
 
 import { authorizedSession } from "./sessionPolicy";
 import { resolveActiveOrganization, resolveOrganizationSelection, type ActiveOrganization } from "./organizationAccess";
+import { appBlocker } from "./billingAccess";
 import { rateLimit } from "./rateLimits";
 import {
   LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
@@ -85,6 +86,8 @@ async function writeOrganization(ctx: QueryCtx, auth: AuthInfo): Promise<ActiveO
 export async function getOrgAuth(ctx: QueryCtx, options: { write?: boolean } = {}): Promise<(AuthInfo & ActiveOrganization) | null> {
   const auth = await getAuth(ctx);
   if (!auth || getPolicyScopeFromRole(auth.user.role) === "admin") return null;
+  // A scheduled deletion or a plan still to choose keeps the app closed (billingAccess.ts).
+  if (await appBlocker(ctx, auth.user._id)) return null;
   if (options.write) {
     const selection = await resolveOrganizationSelection(ctx, auth.user, auth.session);
     if (!selection.active) return null;
@@ -203,6 +206,8 @@ export const orgMutation = customMutation(mutation, {
       throws: true,
     });
 
+    const blocker = await appBlocker(ctx, auth.user._id);
+    if (blocker) throw new Error(blocker);
     const organization = await writeOrganization(ctx, auth);
     if (expectedOrganizationId !== undefined && expectedOrganizationId !== organization.organizationId) {
       throw new Error("ORGANIZATION_CHANGED");

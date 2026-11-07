@@ -151,3 +151,21 @@ test("newer advisory metadata remains pinned and gates an older selected target"
     finally { fs.rmSync(rebuiltCache.directory, { recursive: true, force: true }); }
   } finally { fs.rmSync(cache.directory, { recursive: true, force: true }); }
 });
+
+test("an upgrade without an app-owned userData module still bundles account deletion", async () => {
+  const f = fixture();
+  const root = path.resolve(import.meta.dirname, "../../..");
+  const convex = "packages/backend/convex";
+  // Existing adopted backend has no new cleanup seam; the release includes an example.
+  fs.cpSync(path.join(root, convex), path.join(f.app, convex), { recursive: true, filter: file => !file.endsWith("/userData.ts") });
+  fs.cpSync(path.join(root, convex), path.join(f.source, convex), { recursive: true });
+  git(f.app, "add", "-A"); git(f.app, "commit", "-qm", "existing backend without user cleanup");
+  f.publish("2.0.1");
+  const { payloads } = await f.plan("2.0.1");
+  const { materializePayloads } = await import("./files.ts");
+  materializePayloads(f.app, payloads);
+  assert(!fs.existsSync(path.join(f.app, convex, "userData.ts")));
+  const { execute } = await import("./commands.ts");
+  const result = await execute(["bun", "build", path.join(convex, "platform/userDeletion.ts"), "--packages", "external", "--target", "node", "--outfile", path.join(f.app, "deletion.mjs")], f.app);
+  assert.equal(result.exitCode, 0, result.log);
+});

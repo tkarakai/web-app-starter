@@ -618,8 +618,72 @@
     },
     "empty": {
       "title": "Nejste členem žádné organizace",
-      "description": "Začněte vytvořením organizace nebo přijetím pozvánky.",
-      "createDescription": "Začněte vytvořením organizace."
+      "description": "Začněte přijetím pozvánky.",
+      "createDescription": "Požádejte vlastníka nebo správce některé organizace o pozvánku."
     }
+  },
+  "billing": {
+    "title": "Tarif a fakturace",
+    "description": "Tarif organizace {organization} a kdo ho platí.",
+    "individualDescription": "Váš tarif a způsob platby.",
+    "plan": "Tarif",
+    "free": "Zdarma",
+    "perMonth": "{price} měsíčně",
+    "paidBy": "Platí {name}",
+    "noPayer": "Plátce není potřeba",
+    "paymentMethod": "Způsob platby",
+    "paymentMethods": {
+      "cash": "Hotově",
+      "check": "Šek"
+    },
+    "changePlan": "Změnit tarif",
+    "planChanged": "Tarif změněn na {plan}.",
+    "managedByPayer": "Tento tarif mohou měnit jen vlastníci a správci organizace {name}.",
+    "upgradeTitle": "Přejít na placený tarif",
+    "upgradeDescription": "Vyberte placený tarif a kdo ho bude platit.",
+    "payer": "Platí",
+    "newPayer": "Nová fakturační organizace",
+    "payerName": "Název fakturační organizace",
+    "upgradeAction": "Přejít na tarif",
+    "upgraded": "Organizace {organization} teď používá tarif {plan}.",
+    "billingTitle": "Fakturační organizace",
+    "billingDescription": "{name} platí za níže uvedené organizace. Její vlastníci a správci spravují tarify a platby; členové je mohou jen zobrazit.",
+    "paysFor": "Platí za",
+    "paysForNone": "Zatím neplatí za žádnou organizaci.",
+    "savePaymentMethod": "Uložit způsob platby",
+    "paymentMethodSaved": "Způsob platby uložen.",
+    "createAction": "Vytvořit organizaci",
+    "createTitle": "Nová organizace",
+    "createDescription": "Platí ji {billing}. Stanete se jejím vlastníkem.",
+    "createNameLabel": "Název",
+    "created": "Organizace {name} vytvořena. Teď v ní pracujete.",
+    "pickerTitle": "Vyberte si tarif",
+    "pickerDescription": "Později ho můžete změnit v nastavení.",
+    "pickerContinue": "Pokračovat",
+    "errors": {
+      "generic": "Něco se pokazilo. Zkuste to prosím znovu.",
+      "paymentMethodRequired": "Vyberte způsob platby.",
+      "nameRequired": "Zadejte název.",
+      "notAllowed": "K tomu nemáte oprávnění.",
+      "inUse": "Tato fakturační organizace stále platí za jiné organizace."
+    },
+    "activationPending": "Organizace {name} byla vytvořena. Otevřete ji a začněte pracovat.",
+    "retryActivation": "Otevřít organizaci"
+  },
+  "userDeletion": {
+    "title": "Smazat uživatele",
+    "description": "Váš uživatel bude smazán {days, plural, one {# den} few {# dny} many {# dne} other {# dní}} po žádosti. Hned budete všude odhlášeni a do té doby to můžete zrušit přihlášením.",
+    "action": "Smazat uživatele",
+    "confirmTitle": "Smazat vašeho uživatele?",
+    "confirmDescription": "Nyní budete všude odhlášeni. Smazání proběhne za {days, plural, one {# den} few {# dny} many {# dne} other {# dní}}, pokud se nepřihlásíte a nezrušíte ho.",
+    "scheduledTitle": "Váš uživatel je naplánován ke smazání",
+    "scheduledDescription": "Bude smazán {date}. Zrušte to, pokud ho chcete dál používat.",
+    "blockedTitle": "Vašeho uživatele se nepodařilo smazat",
+    "blockedInUse": "Jste posledním členem fakturační organizace, která platí za jiné organizace. Pozvěte dalšího vlastníka nebo těmto organizacím snižte tarif a požádejte znovu.",
+    "blockedOwnerRequired": "Jste posledním vlastníkem fakturační organizace, která platí za jiné organizace. Udělejte vlastníkem jiného člena a požádejte znovu.",
+    "cancel": "Zrušit smazání",
+    "continue": "Pokračovat ve smazání a odhlásit se",
+    "canceled": "Smazání zrušeno.",
+    "reauthenticate": "Znovu se přihlaste, abyste potvrdili svou totožnost, a zkuste to znovu."
   }
 }

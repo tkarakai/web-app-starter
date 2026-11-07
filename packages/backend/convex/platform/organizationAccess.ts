@@ -9,6 +9,7 @@
  * (organizationOwnership.ts). See platform/docs/organizations.md.
  */
 import { components, internal } from "../_generated/api";
+import { createFunctionHandle } from "convex/server";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { deleteMember, needsSuccessor, organizationSeats, pickSuccessor, setMemberRole } from "./organizationOwnership";
@@ -184,19 +185,29 @@ async function createPersonalOrganization(
   ctx: Writer,
   user: Pick<Doc<"user">, "_id" | "name" | "email">,
 ): Promise<string> {
+  return await createOrganizationWithOwner(ctx, personalOrganizationName(user), user._id);
+}
+
+/**
+ * Create an organization with its owner, in the caller's transaction. Every organization the
+ * platform creates goes through here, so it can be given its plan in the same transaction
+ * (Better Auth's own create route is turned off).
+ */
+export async function createOrganizationWithOwner(ctx: Writer, name: string, ownerUserId: string): Promise<string> {
   const now = Date.now();
   const organization = await ctx.runMutation(components.betterAuth.adapter.create, {
     input: {
       model: "organization",
       // The slug is internal (Better Auth requires one); the UI never shows it.
-      data: { name: personalOrganizationName(user), slug: `${user._id}-${now.toString(36)}`, createdAt: now },
+      data: { name: name.trim().slice(0, 100), slug: `${ownerUserId}-${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`, createdAt: now },
     },
   });
   await ctx.runMutation(components.betterAuth.adapter.create, {
     input: {
       model: "member",
-      data: { organizationId: organization._id, userId: user._id, role: "owner", createdAt: now },
+      data: { organizationId: organization._id, userId: ownerUserId, role: "owner", createdAt: now },
     },
+    onCreateHandle: await createFunctionHandle(internal.platform.authTriggers.onCreate),
   });
   return organization._id;
 }
@@ -295,6 +306,8 @@ async function deleteEmptyOrganization(
   if (!(await deleteInvitationBatch(ctx, organizationId))) {
     await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationInvitations, { organizationId });
   }
+  // Its plan ends and its billing row is marked deleted; both stay as billing history.
+  await ctx.runMutation(components.platform.billing.organizationDeleted, { organizationId, actor });
   await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
     input: { model: "organization", where: [{ field: "_id", value: organizationId }] },
   });

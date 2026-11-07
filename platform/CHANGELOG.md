@@ -15,6 +15,23 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- **Tenancy modes, plans and billing organizations.** The platform admin chooses, once,
+  **Plans for Individuals** (each user's organization is also their billing organization, shown
+  as Billing details) or **Plans for Organizations** (billing organizations pay for shared
+  organizations and create them) under **Configure → Tenancy**, after defining plans under
+  **Manage → Plans** (a free-forever plan is seeded; USD monthly prices; a price is fixed once a
+  plan is in use). Until then sign-ups are refused (`TENANCY_NOT_CONFIGURED`). New users pick a
+  plan after sign-up when there is a choice; a paid plan needs a payment method (cash or check,
+  a stand-in for a payment provider). Plan and payer history is kept in
+  `organizationPlans`; billing rows survive deleted organizations. See
+  [tenancy and billing](docs/tenancy-and-billing.md).
+
+- **Users can delete themselves.** Settings has **Delete user**: it runs after a grace period the
+  admin sets (default 14 days), signs the user out everywhere, and signing in before the date
+  offers cancelling it. The admin app lists scheduled and blocked deletions. A user who is the
+  last member or owner of a billing organization paying for other organizations can't be deleted
+  until someone else takes it over.
+
 - **Organizations in the admin app.** **Manage → Organizations** lists every organization with
   its owners, members and invitations. Administrators can make a member an owner, remove an
   owner who is not the only one, cancel pending invitations and delete an organization (its app
@@ -74,6 +91,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Changed
 
+- **Organizations are created only by billing organizations.** Better Auth's
+  `/organization/create` is refused (`ORGANIZATION_CREATION_DISABLED`); the switcher and the
+  no-organization state no longer offer **Create organization**, and `CreateOrganizationDialog`
+  now takes a billing organization and its plans. In organizations mode, a sign-up through an
+  organization invitation no longer gets a personal organization.
+
 - The sample's `projects.organizationId` is required in the Convex schema. Deploys reject
   unassigned projects; tasks and uploads continue to inherit their organization's access
   through their project.
@@ -88,6 +111,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
   Local CLI/container checks without GitHub registration are unchanged.
 
 ### Action required
+
+- After deploying, a platform admin must create a plan and choose a tenancy mode under
+  **Configure → Tenancy** before anyone can sign up. Existing organizations get the free plan
+  when the mode is turned on. Apps that compose `CreateOrganizationDialog` or rely on users
+  creating organizations must move that to a billing organization's page (`BillingSection`).
 
 - **Apps retaining the sample projects with existing data:** before deploying the required
   `projects.organizationId`, deploy the intermediate optional-field schema and run

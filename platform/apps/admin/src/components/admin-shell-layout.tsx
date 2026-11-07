@@ -16,6 +16,7 @@ import {
 } from "@web-app-starter/design-system";
 import { useAuthUser } from "@/components/auth/auth-guard";
 import { AdminSidebar } from "@/components/admin-sidebar";
+import { TenancyRequired } from "@/components/tenancy/tenancy-required";
 
 const segmentLabels: Record<string, string> = {
   announcements: "Announcements",
@@ -63,6 +64,7 @@ export function AdminShellLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
+      <TenancyRequired />
       <AdminSidebar
         displayName={user?.name ?? "Admin"}
         displayEmail={user?.email}

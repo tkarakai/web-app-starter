@@ -10,16 +10,21 @@ memberships. Organization management is built on Better Auth's
 
 ## What users get
 
-- **A personal organization at sign-up**, named after them (they can rename it). Someone who never
-  invites anyone never has to think about organizations.
+- **A personal organization at sign-up**, named after them (they can rename it), on its first plan.
+  Someone who never invites anyone never has to think about organizations. In organizations mode,
+  a sign-up through an organization invitation gets only the organization it was invited into;
+  platform administrators get none. Tenancy modes, plans and billing organizations are in
+  [tenancy and billing](tenancy-and-billing.md).
 - **Invitations by email.** Owners and admins invite an address with a role. The email links to
   `/accept-invitation/<id>`. An existing user also sees the invitation as a banner on the
   dashboard. A new user creates an account from the link, even when public sign-up is closed
   (waitlist or invite-only). Invitations expire after 7 days; inviting the same address again
   replaces the pending invitation.
 - **Several organizations per user.** The sidebar header shows the active organization and opens
-  a menu to switch between the user's organizations or create one. A new sign-in starts in the
-  organization the user last switched to.
+  a menu to switch between the user's organizations. A new sign-in starts in the organization the
+  user last switched to. Organizations are created only by the owners and admins of a billing
+  organization, from its organization page (`BillingSection`), together with their plan;
+  Better Auth's `/organization/create` is refused (`ORGANIZATION_CREATION_DISABLED`).
 - **An organization page** (the account menu's **Organization** entry, `/dashboard/organization`
   in the reference app): rename; members and roles; invite; the invitations sent, each pending,
   expired or declined, with resend or invite again, and delete (with confirmation); leave (from your own row); and for
@@ -32,12 +37,12 @@ memberships. Organization management is built on Better Auth's
   app home. In the sample, the selected project and its tab are part of the URL and restored
   only if that project still belongs to the active organization.
 - **No organization is a supported account state.** After losing or deleting the last
-  organization, the account stays signed in. The selector shows **No organization** and its
-  menu contains only **Create organization**. The empty app header has no organization
+  organization, the account stays signed in. The selector shows **No organization**. The empty
+  app header has no organization
   breadcrumb. Empty-state guidance mentions accepting an invitation only when one is pending.
   Organization navigation and app workspace controls disappear; Profile, Security, Theme,
   Sign out and pending invitations remain.
-  Creating an organization or accepting an invitation restores the workspace. Reloading,
+  Accepting an invitation restores the workspace. Reloading,
   signing in again and ordinary backend operations never create a replacement organization.
 
 ### Roles
