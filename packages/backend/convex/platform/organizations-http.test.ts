@@ -150,9 +150,11 @@ describe("deleting an organization", () => {
     expect(await bob.caller.query(api.platform.organizations.active, {})).toBeNull();
     expect((await bob.caller.query(api.platform.organizations.mine, {}))!.organizations).toEqual([]);
 
+    // Organizations are created with their plan by platform functions, never through Better Auth.
     const created = await f.post("/organization/create", { name: "Chosen", slug: "chosen" }, f.token("bob"));
-    expect(created.status, await created.clone().text()).toBe(200);
-    expect((await bob.caller.query(api.platform.organizations.mine, {}))!.organizations).toMatchObject([{ name: "Chosen", role: "owner" }]);
+    expect(created.status).toBe(403);
+    expect(await created.json()).toMatchObject({ code: "ORGANIZATION_CREATION_DISABLED" });
+    expect((await bob.caller.query(api.platform.organizations.mine, {}))!.organizations).toEqual([]);
   });
 
   test("the last owner cannot leave until an invited owner accepts; either owner can then leave their last organization", async () => {

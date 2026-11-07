@@ -14,7 +14,7 @@ import {
   SidebarInset,
   SidebarProvider,
 } from "@web-app-starter/design-system";
-import { AccountPageCloseButton, OrganizationInvitations, OrganizationSection, useAuthUser } from "@web-app-starter/auth-ui";
+import { AccountPageCloseButton, BillingSection, OrganizationInvitations, OrganizationSection, useAuthUser, useTenancyMode } from "@web-app-starter/auth-ui";
 import { AppSidebar } from "@/components/projects/app-sidebar";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 
@@ -24,6 +24,7 @@ export function OrganizationClient() {
   const authUser = useAuthUser();
   const tc = useTranslations("common");
   const to = useTranslations("organization");
+  const mode = useTenancyMode();
 
   return (
     <SidebarProvider>
@@ -67,6 +68,7 @@ export function OrganizationClient() {
             <Separator />
 
             <OrganizationSection />
+            {mode === "organizations" && <BillingSection />}
           </div>
         </div>
         <footer className="sticky bottom-0 shrink-0 h-5 border-t border-border/40 bg-background" />

@@ -8,6 +8,7 @@ import { v, type ObjectType, type PropertyValidators } from "convex/values";
 
 import { authorizedSession } from "./sessionPolicy";
 import { resolveActiveOrganization, type ActiveOrganization } from "./organizationAccess";
+import { appBlocker } from "./billingAccess";
 import { rateLimit } from "./rateLimits";
 import {
   LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY,
@@ -71,6 +72,8 @@ type AuthInfo = NonNullable<Awaited<ReturnType<typeof getAuth>>>;
 export async function getOrgAuth(ctx: QueryCtx): Promise<(AuthInfo & ActiveOrganization) | null> {
   const auth = await getAuth(ctx);
   if (!auth || getPolicyScopeFromRole(auth.user.role) === "admin") return null;
+  // A scheduled deletion or a plan still to choose keeps the app closed (billingAccess.ts).
+  if (await appBlocker(ctx, auth.user._id)) return null;
   const organization = await resolveActiveOrganization(ctx, auth.user, auth.session);
   return organization ? { ...auth, ...organization } : null;
 }
@@ -183,6 +186,8 @@ export const orgMutation = customMutation(mutation, {
       throws: true,
     });
 
+    const blocker = await appBlocker(ctx, auth.user._id);
+    if (blocker) throw new Error(blocker);
     const organization = await resolveActiveOrganization(ctx, auth.user, auth.session);
     if (!organization) throw new Error("NO_ORGANIZATION");
     if (expectedOrganizationId !== undefined && expectedOrganizationId !== organization.organizationId) {

@@ -171,21 +171,19 @@ describe("organization page", () => {
 });
 
 describe("organization switcher", () => {
-  it("shows No organization and only Create organization when memberships are empty", async () => {
+  it("shows No organization when memberships are empty", () => {
     mocks.mine = { activeOrganizationId: null, organizations: [] };
     render(wrap(<SidebarProvider><OrganizationSwitcher logo={null} productName="Product" /></SidebarProvider>));
     expect(screen.getByTestId("active-organization")).toHaveTextContent(t.switcher.none);
-    fireEvent.pointerDown(screen.getByRole("button", { name: t.switcher.label }), { button: 0, ctrlKey: false });
-    expect(await screen.findAllByRole("menuitem")).toHaveLength(1);
-    expect(screen.getByRole("menuitem", { name: t.switcher.create })).toBeVisible();
   });
 
-  it("opens a menu to create an organization even with only one, and has no settings entry", async () => {
+  it("opens a menu to switch even with only one, with no create or settings entry (billing organizations create them)", async () => {
     mocks.mine = { ...two, organizations: two.organizations.slice(0, 1) };
     render(wrap(<SidebarProvider><OrganizationSwitcher logo={null} productName="Product" /></SidebarProvider>));
     const trigger = screen.getByRole("button", { name: t.switcher.label });
     fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
-    expect(await screen.findByRole("menuitem", { name: t.switcher.create })).toBeInTheDocument();
+    expect(await screen.findAllByRole("menuitem")).toHaveLength(1);
+    expect(screen.queryByRole("menuitem", { name: t.switcher.create })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: /settings/i })).not.toBeInTheDocument();
   });
 });
@@ -219,12 +217,12 @@ describe("lost access", () => {
     expect(mocks.ensure).not.toHaveBeenCalled();
   });
 
-  it("shows an actionable empty state on a saved organization-settings URL", () => {
+  it("shows the empty state on a saved organization-settings URL, without creating one", () => {
     mocks.mine = { activeOrganizationId: null, organizations: [] };
     mocks.active = null;
     render(wrap(<OrganizationSection />));
     expect(screen.getByTestId("no-organization")).toHaveTextContent(t.empty.title);
-    expect(screen.getByRole("button", { name: t.create.action })).toBeVisible();
+    expect(screen.queryByRole("button", { name: t.create.action })).not.toBeInTheDocument();
   });
 
   it("only suggests accepting an invitation while one is actually pending", () => {

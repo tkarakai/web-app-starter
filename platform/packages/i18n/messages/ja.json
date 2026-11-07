@@ -618,8 +618,72 @@
     },
     "empty": {
       "title": "所属している組織はありません",
-      "description": "組織を作成するか、招待を承認して始めましょう。",
-      "createDescription": "組織を作成して始めましょう。"
+      "description": "招待を承認して始めましょう。",
+      "createDescription": "組織のオーナーまたは管理者に招待を依頼してください。"
     }
+  },
+  "billing": {
+    "title": "プランと請求",
+    "description": "{organization} のプランと支払い担当。",
+    "individualDescription": "あなたのプランと支払い方法。",
+    "plan": "プラン",
+    "free": "無料",
+    "perMonth": "月額 {price}",
+    "paidBy": "支払い: {name}",
+    "noPayer": "支払い担当は不要です",
+    "paymentMethod": "支払い方法",
+    "paymentMethods": {
+      "cash": "現金",
+      "check": "小切手"
+    },
+    "changePlan": "プランを変更",
+    "planChanged": "プランを {plan} に変更しました。",
+    "managedByPayer": "このプランを変更できるのは {name} のオーナーと管理者だけです。",
+    "upgradeTitle": "有料プランにアップグレード",
+    "upgradeDescription": "有料プランと支払い担当を選んでください。",
+    "payer": "支払い担当",
+    "newPayer": "新しい請求組織",
+    "payerName": "請求組織の名前",
+    "upgradeAction": "アップグレード",
+    "upgraded": "{organization} は {plan} を利用中です。",
+    "billingTitle": "請求組織",
+    "billingDescription": "{name} は以下の組織の料金を支払います。オーナーと管理者がプランと支払いを管理し、メンバーは閲覧のみできます。",
+    "paysFor": "支払い対象",
+    "paysForNone": "まだどの組織の料金も支払っていません。",
+    "savePaymentMethod": "支払い方法を保存",
+    "paymentMethodSaved": "支払い方法を保存しました。",
+    "createAction": "組織を作成",
+    "createTitle": "新しい組織",
+    "createDescription": "料金は {billing} が支払います。あなたがオーナーになります。",
+    "createNameLabel": "名前",
+    "created": "{name} を作成しました。現在この組織で作業しています。",
+    "pickerTitle": "プランを選択",
+    "pickerDescription": "後で設定から変更できます。",
+    "pickerContinue": "続ける",
+    "errors": {
+      "generic": "問題が発生しました。もう一度お試しください。",
+      "paymentMethodRequired": "支払い方法を選択してください。",
+      "nameRequired": "名前を入力してください。",
+      "notAllowed": "この操作を行う権限がありません。",
+      "inUse": "この請求組織はまだ他の組織の料金を支払っています。"
+    },
+    "activationPending": "{name} が作成されました。開いて作業を開始してください。",
+    "retryActivation": "組織を開く"
+  },
+  "userDeletion": {
+    "title": "ユーザーを削除",
+    "description": "ユーザーはリクエストから {days} 日後に削除されます。すぐにすべての場所からサインアウトされ、それまでにサインインすれば取り消せます。",
+    "action": "ユーザーを削除",
+    "confirmTitle": "ユーザーを削除しますか？",
+    "confirmDescription": "今すぐすべての場所からサインアウトされます。サインインして取り消さない限り、{days} 日後に削除されます。",
+    "scheduledTitle": "ユーザーの削除が予定されています",
+    "scheduledDescription": "{date} に削除されます。引き続き使用するには取り消してください。",
+    "blockedTitle": "ユーザーを削除できませんでした",
+    "blockedInUse": "あなたは他の組織の料金を支払う請求組織の最後のメンバーです。別のオーナーを招待するか、それらの組織のプランをダウングレードしてから、もう一度リクエストしてください。",
+    "blockedOwnerRequired": "あなたは他の組織の料金を支払う請求組織の最後のオーナーです。別のメンバーをオーナーにしてから、もう一度リクエストしてください。",
+    "cancel": "削除を取り消す",
+    "continue": "削除を続けてサインアウト",
+    "canceled": "削除を取り消しました。",
+    "reauthenticate": "本人確認のためもう一度サインインしてから、やり直してください。"
   }
 }
