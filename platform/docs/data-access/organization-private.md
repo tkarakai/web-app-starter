@@ -129,7 +129,8 @@ Account deletion also needs a deliberate retention/erasure policy.
 - Repeat that denial with Bob as org admin and owner; management role does not bypass privacy.
 - Every pagination page contains only the current org and canonical owner.
 - Alice cannot access even her own note while another org is active.
-- Removal blocks her access despite a stale session selection; no-membership writes fail.
+- Removal blocks her access despite a stale session selection, and refuses her writes with
+  `ORGANIZATION_CHANGED` until the session switches; no-membership writes fail.
 - An `add` composed for an org she has since left is refused (`ORGANIZATION_CHANGED`).
 - Rejoining restores only her retained notes under this example's stated policy.
 - Children, files, counts, search and exports do not reveal another member's private data.

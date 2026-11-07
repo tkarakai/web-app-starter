@@ -10,16 +10,21 @@ memberships. Organization management is built on Better Auth's
 
 ## What users get
 
-- **A personal organization at sign-up**, named after them (they can rename it). Someone who never
-  invites anyone never has to think about organizations.
+- **A personal organization at sign-up**, named after them (they can rename it), on its first plan.
+  Someone who never invites anyone never has to think about organizations. In organizations mode,
+  a sign-up through an organization invitation gets only the organization it was invited into;
+  platform administrators get none. Tenancy modes, plans and billing organizations are in
+  [tenancy and billing](tenancy-and-billing.md).
 - **Invitations by email.** Owners and admins invite an address with a role. The email links to
   `/accept-invitation/<id>`. An existing user also sees the invitation as a banner on the
   dashboard. A new user creates an account from the link, even when public sign-up is closed
   (waitlist or invite-only). Invitations expire after 7 days; inviting the same address again
   replaces the pending invitation.
 - **Several organizations per user.** The sidebar header shows the active organization and opens
-  a menu to switch between the user's organizations or create one. A new sign-in starts in the
-  organization the user last switched to.
+  a menu to switch between the user's organizations. A new sign-in starts in the organization the
+  user last switched to. Organizations are created only by the owners and admins of a billing
+  organization, from its organization page (`BillingSection`), together with their plan;
+  Better Auth's `/organization/create` is refused (`ORGANIZATION_CREATION_DISABLED`).
 - **An organization page** (the account menu's **Organization** entry, `/dashboard/organization`
   in the reference app): rename; members and roles; invite; the invitations sent, each pending,
   expired or declined, with resend or invite again, and delete (with confirmation); leave (from your own row); and for
@@ -32,12 +37,12 @@ memberships. Organization management is built on Better Auth's
   app home. In the sample, the selected project and its tab are part of the URL and restored
   only if that project still belongs to the active organization.
 - **No organization is a supported account state.** After losing or deleting the last
-  organization, the account stays signed in. The selector shows **No organization** and its
-  menu contains only **Create organization**. The empty app header has no organization
+  organization, the account stays signed in. The selector shows **No organization**. The empty
+  app header has no organization
   breadcrumb. Empty-state guidance mentions accepting an invitation only when one is pending.
   Organization navigation and app workspace controls disappear; Profile, Security, Theme,
   Sign out and pending invitations remain.
-  Creating an organization or accepting an invitation restores the workspace. Reloading,
+  Accepting an invitation restores the workspace. Reloading,
   signing in again and ordinary backend operations never create a replacement organization.
 
 ### Roles
@@ -100,9 +105,14 @@ built-in roles; custom roles are not currently supported.
 ## How it works
 
 - **Active organization.** Better Auth stores it on the session (`session.activeOrganizationId`).
-  On every request, the backend checks that the user is still a member of it, and otherwise falls
-  back to their oldest membership. Removing someone takes effect on their next request. A
-  membership of an organization that is deleted, or being deleted, never counts.
+  On every request, the backend checks that the user is still a member of it. A membership of
+  an organization that is deleted, or being deleted, never counts. When the selection is no
+  longer valid (they were removed, or it was deleted), **reads** move to the user's oldest
+  membership, so removal takes effect on the next request, but **writes are refused**
+  (`ORGANIZATION_CHANGED`): a write is never sent to an organization the user didn't select.
+  `mine` reports `selectionStale: true` meanwhile, and `OrganizationAccessNotice` (in
+  `ProtectedLayout`) switches the session to the organization the page now shows. Only a
+  session that never selected an organization starts in the oldest membership for writes.
 - **Reads are Convex queries** over Better Auth's tables, so the UI updates live:
   `api.platform.organizations.mine` (memberships and active), `.active` (settings view),
   `.myInvitations`, `.invitation`.
@@ -248,12 +258,13 @@ Choose shared or member-private audience explicitly using the [data access recip
   `ctx.user` and `ctx.ownerId`). It returns `null` when signed out or without an organization.
 - `orgMutation` adds the same to `authedMutation`. A signed-in user with no membership gets
   `NO_ORGANIZATION`; the mutation never creates an organization as a side effect. Every
-  `orgMutation` also takes an optional `expectedOrganizationId`: the organization the UI showed
-  when the user composed the write. If the active organization has changed since (they were
-  removed, it was deleted, another tab switched), the write is refused with
-  `ORGANIZATION_CHANGED` and nothing is written. It is a precondition, never the organization
-  written to.
+  `orgMutation` refuses with `ORGANIZATION_CHANGED` while the session's selected organization is
+  no longer valid, and writes nothing. It also takes an optional `expectedOrganizationId`: the
+  organization the UI showed when the user composed the write. If the active organization has
+  changed since (for example, another tab switched), the write is refused the same way. It is a
+  precondition, never the organization written to.
 - `getOrgAuth(ctx)` resolves the same thing inside an internal function called from an action.
+  Pass `{ write: true }` when that function writes, to get `orgMutation`'s rule.
 
 The rules:
 
@@ -269,9 +280,10 @@ The rules:
    uploads have no `organizationId`, and every access goes through
    `requireProjectAccess(ctx, projectId)`.
 7. **Pass `expectedOrganizationId` on every create** (any write that doesn't name an existing
-   record): the active organization from `useOrganizations()` when the form opened. Otherwise
-   a draft composed for one organization can land in another the user falls back to, where
-   other people read it. On `ORGANIZATION_CHANGED`, keep the draft and ask the user to check
+   record): the active organization from `useOrganizations()` when the form opened. The backend
+   already refuses writes after the selected organization is lost; this also catches a switch
+   made in another tab while the form was open, which would otherwise put the draft where other
+   people read it. On `ORGANIZATION_CHANGED`, keep the draft and ask the user to check
    the organization, as the sample's new-project dialog does. Writes to an existing record need
    nothing extra: rule 4 already pins them.
 

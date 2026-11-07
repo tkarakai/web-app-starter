@@ -146,6 +146,9 @@ export const createE2eUser = httpAction(async (ctx, request) => {
   const authContext = await auth.$context;
   if (await authContext.internalAdapter.findUserByEmail(email)) return badRequest("FIXTURE_ALREADY_EXISTS");
 
+  // Fixtures sign up in organizations mode, without a plan to pick (tenancy.ts).
+  await ctx.runMutation(internal.platform.tenancy.ensureFixtureTenancy, {});
+
   // 1. Admit the address past inviteOnly gating.
   await ctx.runMutation(internal.platform.e2eFixtures.prepareE2eInvitation, { email, isAdmin });
 

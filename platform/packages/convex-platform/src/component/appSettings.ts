@@ -51,12 +51,14 @@ const VALID_KEYS = [
   USER_PASSKEY_POLICY_KEY,
   ADMIN_PASSKEY_POLICY_KEY,
   "emailVerificationTemplate",
+  "userDeletionGraceDays",
 ] as const;
 
 /** Default values returned when a key has never been set. */
 const DEFAULTS: Record<string, SettingValue> = {
   onboardingType: "inviteOnly",
   invitationTokenExpiryDays: 7,
+  userDeletionGraceDays: 14,
   [LEGACY_MFA_REQUIRED_KEY]: false,
   [LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY]: true,
   [USER_MAGIC_LINK_ENABLED_KEY]: false,
@@ -103,6 +105,13 @@ function validateValue(key: string, value: string): void {
     if (Number.isNaN(num) || num < 1 || num > 365) {
       throw new Error(
         "INVALID_VALUE: invitationTokenExpiryDays must be an integer between 1 and 365"
+      );
+    }
+  } else if (key === "userDeletionGraceDays") {
+    const num = Number(value);
+    if (!Number.isInteger(num) || num < 1 || num > 365) {
+      throw new Error(
+        "INVALID_VALUE: userDeletionGraceDays must be an integer between 1 and 365"
       );
     }
   } else if (key === USER_MAGIC_LINK_ENABLED_KEY) {

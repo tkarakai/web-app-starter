@@ -96,6 +96,13 @@ test("an invited teammate signs in from the link, joins, shares the organization
     await expect(teammatePage.getByText(`You no longer have access to ${organization}.`)).toBeVisible();
     await expect(teammatePage.getByTestId("active-organization")).toHaveText("E2E User");
     await expect(teammatePage.getByRole("button", { name: "Shared roadmap" })).toHaveCount(0);
+
+    // The session switched to the organization shown, so the teammate's next project goes there.
+    await teammatePage.getByTitle("New project", { exact: true }).click();
+    await teammatePage.getByLabel("Name", { exact: true }).fill("After removal");
+    await teammatePage.getByRole("button", { name: "Create project", exact: true }).click();
+    await expect(teammatePage.getByRole("heading", { name: "After removal", level: 1 })).toBeVisible();
+    await expect(teammatePage.getByTestId("active-organization")).toHaveText("E2E User");
   });
 });
 
@@ -162,14 +169,14 @@ test("an invitation answers only its own address; a declined one is spent and sh
   await expect(page.getByText(`You no longer have access to ${organization}.`)).toHaveCount(0);
 });
 
-test("deleting the last organization keeps account controls and invitations, persists across sign-in, and allows joining or creating explicitly", async ({ page, browser }) => {
+test("deleting the last organization keeps account controls and invitations, persists across sign-in, and allows joining explicitly", async ({ page, browser }) => {
   test.setTimeout(180_000);
   const owner = await createDisposableUser();
   const host = await createDisposableUser();
+  const secondHost = await createDisposableUser();
   const doomed = `Delete ${randomUUID().slice(0, 8)}`;
   const invited = `Join ${randomUUID().slice(0, 8)}`;
   const secondInvited = `Other ${randomUUID().slice(0, 8)}`;
-  const created = `Create ${randomUUID().slice(0, 8)}`;
   await signIn(page, owner.email, owner.password);
   await renameOrganization(page, doomed);
   await withPage(browser, async hostPage => {
@@ -186,13 +193,14 @@ test("deleting the last organization keeps account controls and invitations, per
   await expect(page.getByTestId("active-organization")).toHaveText("No organization");
   await expect(page.getByTestId("no-organization")).toBeVisible();
   await expect(page.getByTitle("New project", { exact: true })).toHaveCount(0);
-  await expect(page.getByTestId("no-organization")).toContainText("Create an organization or accept an invitation to get started.");
+  await expect(page.getByTestId("no-organization")).toContainText("Accept an invitation to get started.");
+  // Organizations are created by billing organizations, never from the empty state or the switcher.
+  await expect(page.getByTestId("no-organization").getByRole("button")).toHaveCount(0);
   await expect(page.locator("main header").getByText("No organization", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Projects", { exact: true })).toHaveCount(0);
   await expect(page.getByTestId("organization-invitations-banner")).toContainText(invited);
   await page.getByRole("button", { name: "Switch organization" }).click();
-  await expect(page.getByRole("menuitem")).toHaveCount(1);
-  await expect(page.getByRole("menuitem", { name: "Create organization" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Create organization" })).toHaveCount(0);
   await page.keyboard.press("Escape");
 
   await page.locator('[data-slot="sidebar-footer"] button').first().click();
@@ -208,12 +216,8 @@ test("deleting the last organization keeps account controls and invitations, per
   await expect(page.getByTestId("organization-invitations-banner")).toContainText(invited);
   // A second invitation arrives while this user remains in Settings, without navigation.
   await withPage(browser, async hostPage => {
-    await signIn(hostPage, host.email, host.password);
-    await hostPage.getByRole("button", { name: "Switch organization" }).click();
-    await hostPage.getByRole("menuitem", { name: "Create organization" }).click();
-    await hostPage.getByRole("dialog").getByLabel("Name", { exact: true }).fill(secondInvited);
-    await hostPage.getByRole("dialog").getByRole("button", { name: "Create organization", exact: true }).click();
-    await expect(hostPage.getByTestId("active-organization")).toHaveText(secondInvited);
+    await signIn(hostPage, secondHost.email, secondHost.password);
+    await renameOrganization(hostPage, secondInvited);
     await invite(hostPage, owner.email);
   });
   await page.bringToFront();
@@ -249,14 +253,8 @@ test("deleting the last organization keeps account controls and invitations, per
   await expect(page.getByTestId("active-organization")).toHaveText("No organization");
   await page.getByRole("list", { name: "Invitations", exact: true }).getByRole("button", { name: "Decline", exact: true }).click();
   await expect(page.getByTestId("organization-invitations-banner")).toHaveCount(0);
-  await expect(page.getByTestId("no-organization")).toContainText("Create an organization to get started.");
-  await expect(page.getByTestId("no-organization")).not.toContainText("or accept an invitation");
-  await page.getByRole("button", { name: "Switch organization" }).click();
-  await page.getByRole("menuitem", { name: "Create organization" }).click();
-  await page.getByRole("dialog").getByLabel("Name", { exact: true }).fill(created);
-  await page.getByRole("dialog").getByRole("button", { name: "Create organization", exact: true }).click();
-  await expect(page.getByTestId("active-organization")).toHaveText(created);
-  await expect(page.getByText("You're the only owner. Invite another owner and wait for them to accept before leaving.")).toBeVisible();
+  await expect(page.getByTestId("no-organization")).toContainText("Ask an organization's owner or admin to invite you.");
+  await expect(page.getByTestId("no-organization")).not.toContainText("Accept an invitation");
 });
 
 test("Settings and Organization close back to the original project and tab, with a safe home fallback", async ({ page }) => {

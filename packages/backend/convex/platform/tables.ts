@@ -38,6 +38,48 @@ export const platformTables = {
     updatedAt: v.number(),
   }).index("by_organization", ["organizationId"]).index("by_state", ["state", "updatedAt"]),
 
+  // A user who must pick a plan before using the app (sign-up plan picker, billingAccess.ts).
+  pendingPlanChoices: defineTable({
+    userId: v.string(),
+    organizationId: v.string(),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  // Turning on a tenancy mode: progress of the batched setup (tenancy.ts).
+  tenancySetups: defineTable({
+    mode: v.union(v.literal("individuals"), v.literal("organizations")),
+    state: v.union(v.literal("running"), v.literal("failed"), v.literal("done")),
+    step: v.union(v.literal("plans"), v.literal("shared"), v.literal("done")),
+    cursor: v.union(v.string(), v.null()),
+    billingUserId: v.optional(v.string()),
+    adminUserId: v.optional(v.string()),
+    billingOrganizationName: v.optional(v.string()),
+    sharedOrganizationName: v.optional(v.string()),
+    billingOrganizationId: v.optional(v.string()),
+    sharedOrganizationId: v.optional(v.string()),
+    startedAt: v.number(),
+    startedBy: v.string(),
+    finishedAt: v.optional(v.number()),
+    error: v.optional(v.string()),
+  }),
+
+  // A user's own deletion request during its grace period (userDeletion.ts).
+  userDeletions: defineTable({
+    userId: v.string(),
+    requestId: v.optional(v.string()),
+    requestedAt: v.number(),
+    deleteAt: v.number(),
+    jobId: v.id("_scheduled_functions"),
+    state: v.union(v.literal("scheduled"), v.literal("deleting"), v.literal("cleanup_pending"), v.literal("blocked")),
+    blockedReason: v.optional(v.string()),
+  }).index("by_user", ["userId"]).index("by_deleteAt", ["deleteAt"]),
+
+  userDeletionCleanups: defineTable({
+    userId: v.string(), ownerId: v.string(), email: v.string(), name: v.string(),
+    state: v.union(v.literal("pending"), v.literal("running"), v.literal("failed")),
+    attempts: v.number(), createdAt: v.number(), error: v.optional(v.string()),
+  }).index("by_user", ["userId"]),
+
   userProfiles: defineTable({
     ownerId: v.string(),
     locale: v.optional(v.string()),

@@ -11,6 +11,7 @@ import {
 import { Button } from "@web-app-starter/design-system";
 
 import { ResumeInvitation } from "../components/accept-invitation";
+import { TenancyGate } from "../components/tenancy-gate";
 import { AuthGuard } from "../components/auth-guard";
 import { OrganizationAccessNotice } from "../components/organization-invitations";
 import { ForceSystemTheme } from "../components/force-system-theme";
@@ -80,7 +81,7 @@ export async function ProtectedLayout({ children }: { children: ReactNode }) {
     <AuthGuard preloadedUser={preloadedUser}>
       <OrganizationAccessNotice />
       <ResumeInvitation />
-      {children}
+      <TenancyGate>{children}</TenancyGate>
     </AuthGuard>
   );
 }

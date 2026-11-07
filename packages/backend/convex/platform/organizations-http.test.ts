@@ -142,17 +142,19 @@ describe("deleting an organization", () => {
     expect(await f.members(acme)).toEqual([]);
     expect(await f.t.query(internal.platform.organizations.hasPendingInvitation, { email: "carol@example.test" })).toBe(false);
     // Accounts survive without memberships; ordinary organization operations never recreate one.
-    expect(await bob.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
-    expect(await alice.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
+    expect(await bob.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: null, organizations: [] });
+    expect(await alice.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: null, organizations: [] });
     await expect(bob.caller.mutation(api.platform.organizations.deleteInvitation, { invitationId: "unknown" })).rejects.toThrow("NO_ORGANIZATION");
     await bob.caller.mutation(api.platform.userProfiles.setLocale, { locale: "de" });
     expect(await bob.caller.query(api.platform.userProfiles.get, {})).toMatchObject({ locale: "de" });
     expect(await bob.caller.query(api.platform.organizations.active, {})).toBeNull();
     expect((await bob.caller.query(api.platform.organizations.mine, {}))!.organizations).toEqual([]);
 
+    // Organizations are created with their plan by platform functions, never through Better Auth.
     const created = await f.post("/organization/create", { name: "Chosen", slug: "chosen" }, f.token("bob"));
-    expect(created.status, await created.clone().text()).toBe(200);
-    expect((await bob.caller.query(api.platform.organizations.mine, {}))!.organizations).toMatchObject([{ name: "Chosen", role: "owner" }]);
+    expect(created.status).toBe(403);
+    expect(await created.json()).toMatchObject({ code: "ORGANIZATION_CREATION_DISABLED" });
+    expect((await bob.caller.query(api.platform.organizations.mine, {}))!.organizations).toEqual([]);
   });
 
   test("the last owner cannot leave until an invited owner accepts; either owner can then leave their last organization", async () => {
@@ -173,7 +175,7 @@ describe("deleting an organization", () => {
     const accepted = await f.post("/organization/accept-invitation", { invitationId: invitation.id }, f.token("bob"));
     expect(accepted.status, await accepted.clone().text()).toBe(200);
     expect((await leave()).status).toBe(200);
-    expect(await alice.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
+    expect(await alice.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: null, organizations: [] });
     expect(await f.members(acme)).toMatchObject([{ userId: bob.userId, role: "owner" }]);
   });
 });

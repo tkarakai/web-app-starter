@@ -20,7 +20,7 @@ describe("organizations", () => {
     const f = await fixture();
     const alice = await f.user("alice");
     const bob = await f.user("bob");
-    expect(await alice.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
+    expect(await alice.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: null, organizations: [] });
     const acme = await alice.provision();
     expect(await alice.provision()).toBe(acme);
     expect((await alice.caller.query(api.platform.organizations.mine, {}))!.organizations)

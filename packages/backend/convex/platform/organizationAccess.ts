@@ -9,6 +9,7 @@
  * (organizationOwnership.ts). See platform/docs/organizations.md.
  */
 import { components, internal } from "../_generated/api";
+import { createFunctionHandle } from "convex/server";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { deleteMember, needsSuccessor, organizationSeats, pickSuccessor, setMemberRole } from "./organizationOwnership";
@@ -137,28 +138,42 @@ async function inLiveOrganization(ctx: Reader, member: Doc<"member"> | null): Pr
 }
 
 /**
- * The caller's organization: the session's active organization while they are still a
- * member of it, otherwise their oldest membership. Removal from an organization therefore
- * takes effect on the next request. Memberships of a deleted organization, or one being
- * deleted, never count. `null` only when the user belongs to no live organization.
+ * The organization the session selected, if it is still a live membership; otherwise the
+ * oldest live membership, with `stale` set when the session had selected one that no longer
+ * counts (the user was removed, or it was deleted). Memberships of a deleted organization, or
+ * one being deleted, never count. `active` is `null` only when the user belongs to no live
+ * organization.
+ *
+ * Reads follow `active`, so removal takes effect on the next request. Writes refuse a stale
+ * selection (`orgMutation`): the user composed them for the organization they had selected,
+ * and must not find them in another. The UI switches the session explicitly instead
+ * (`OrganizationAccessNotice`).
  */
+export async function resolveOrganizationSelection(
+  ctx: Reader,
+  user: Pick<Doc<"user">, "_id">,
+  session: Pick<Doc<"session">, "activeOrganizationId">,
+): Promise<{ active: ActiveOrganization | null; stale: boolean }> {
+  const requested = session.activeOrganizationId;
+  const selected = requested ? await findMembership(ctx, user._id, requested) : null;
+  if (selected && await inLiveOrganization(ctx, selected)) {
+    return { active: { organizationId: selected.organizationId, organizationRole: parseRole(selected.role) }, stale: false };
+  }
+  for (const candidate of await listMemberships(ctx, user._id)) {
+    if (await inLiveOrganization(ctx, candidate)) {
+      return { active: { organizationId: candidate.organizationId, organizationRole: parseRole(candidate.role) }, stale: !!requested };
+    }
+  }
+  return { active: null, stale: !!requested };
+}
+
+/** The organization reads use: the session's selection while valid, otherwise the oldest live membership. */
 export async function resolveActiveOrganization(
   ctx: Reader,
   user: Pick<Doc<"user">, "_id">,
   session: Pick<Doc<"session">, "activeOrganizationId">,
 ): Promise<ActiveOrganization | null> {
-  const requested = session.activeOrganizationId;
-  let member = requested ? await findMembership(ctx, user._id, requested) : null;
-  if (!(await inLiveOrganization(ctx, member))) {
-    member = null;
-    for (const candidate of await listMemberships(ctx, user._id)) {
-      if (await inLiveOrganization(ctx, candidate)) {
-        member = candidate;
-        break;
-      }
-    }
-  }
-  return member ? { organizationId: member.organizationId, organizationRole: parseRole(member.role) } : null;
+  return (await resolveOrganizationSelection(ctx, user, session)).active;
 }
 
 /** A new personal organization is named after its user; they can rename it. */
@@ -185,19 +200,29 @@ async function createPersonalOrganization(
   ctx: Writer,
   user: Pick<Doc<"user">, "_id" | "name" | "email">,
 ): Promise<string> {
+  return await createOrganizationWithOwner(ctx, personalOrganizationName(user), user._id);
+}
+
+/**
+ * Create an organization with its owner, in the caller's transaction. Every organization the
+ * platform creates goes through here, so it can be given its plan in the same transaction
+ * (Better Auth's own create route is turned off).
+ */
+export async function createOrganizationWithOwner(ctx: Writer, name: string, ownerUserId: string): Promise<string> {
   const now = Date.now();
   const organization = await ctx.runMutation(components.betterAuth.adapter.create, {
     input: {
       model: "organization",
       // The slug is internal (Better Auth requires one); the UI never shows it.
-      data: { name: personalOrganizationName(user), slug: `${user._id}-${now.toString(36)}`, createdAt: now },
+      data: { name: name.trim().slice(0, 100), slug: `${ownerUserId}-${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`, createdAt: now },
     },
   });
   await ctx.runMutation(components.betterAuth.adapter.create, {
     input: {
       model: "member",
-      data: { organizationId: organization._id, userId: user._id, role: "owner", createdAt: now },
+      data: { organizationId: organization._id, userId: ownerUserId, role: "owner", createdAt: now },
     },
+    onCreateHandle: await createFunctionHandle(internal.platform.authTriggers.onCreate),
   });
   return organization._id;
 }
@@ -296,6 +321,8 @@ async function deleteEmptyOrganization(
   if (!(await deleteInvitationBatch(ctx, organizationId))) {
     await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationInvitations, { organizationId });
   }
+  // Its plan ends and its billing row is marked deleted; both stay as billing history.
+  await ctx.runMutation(components.platform.billing.organizationDeleted, { organizationId, actor });
   await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
     input: { model: "organization", where: [{ field: "_id", value: organizationId }] },
   });

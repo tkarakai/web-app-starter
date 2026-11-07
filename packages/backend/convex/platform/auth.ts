@@ -814,6 +814,13 @@ export const createAuthOptions = (
             if (await actionCtx.runQuery(components.platform.adminInvitations.requiresEnrollment, { email: user.email })) {
               throw new Error("ADMIN_ENROLLMENT_REQUIRED");
             }
+
+            // Nobody signs up until the platform admin has chosen a tenancy mode
+            // (platform/docs/tenancy-and-billing.md); administrators enroll separately.
+            const tenancy = await actionCtx.runQuery(components.platform.appSettings.getRaw, { key: "tenancyMode" });
+            if (!tenancy && !hasAdminInvitation) {
+              throw new APIError("FORBIDDEN", { code: "TENANCY_NOT_CONFIGURED", message: "TENANCY_NOT_CONFIGURED" });
+            }
             return { data: user };
           },
           after: async (user) => {
@@ -837,10 +844,31 @@ export const createAuthOptions = (
           },
         },
         delete: {
+          // Every path that deletes a user (the admin's delete, a scheduled self-deletion) keeps
+          // billing organizations that pay for other organizations' plans owned.
+          before: async (user) => {
+            const userId = (user as Record<string, unknown>).id;
+            if (typeof userId !== "string") return;
+            const blocker = await requireActionCtx(ctx).runQuery(internal.platform.userDeletion.blockerFor, { userId });
+            if (blocker) throw new APIError("CONFLICT", { code: blocker.code, message: blocker.code });
+            const ownerId = (user as Record<string, unknown>).userId;
+            await requireActionCtx(ctx).runMutation(internal.platform.userDeletion.prepareCleanup, {
+              userId, ownerId: typeof ownerId === "string" ? ownerId : userId, email: user.email, name: user.name ?? "",
+            });
+          },
           after: async (user) => {
             const userId = (user as Record<string, unknown>).id;
             if (typeof userId !== "string") return;
-            await requireActionCtx(ctx).runMutation(internal.platform.organizations.removeUserMemberships, { userId, email: user.email });
+            try {
+              await requireActionCtx(ctx).runMutation(internal.platform.organizations.removeUserMemberships, { userId, email: user.email });
+              const migratedOwnerId = (user as Record<string, unknown>).userId;
+              await requireActionCtx(ctx).runMutation(internal.platform.userDeletion.forget, {
+                userId, ownerId: typeof migratedOwnerId === "string" ? migratedOwnerId : userId,
+              });
+            } catch (error) {
+              await requireActionCtx(ctx).runMutation(internal.platform.userDeletion.cleanupFailed, { userId, error: error instanceof Error ? error.message : "Cleanup failed" });
+              throw error;
+            }
           },
         },
       },

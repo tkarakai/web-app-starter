@@ -618,8 +618,72 @@
     },
     "empty": {
       "title": "Vous n’appartenez à aucune organisation",
-      "description": "Créez une organisation ou acceptez une invitation pour commencer.",
-      "createDescription": "Créez une organisation pour commencer."
+      "description": "Acceptez une invitation pour commencer.",
+      "createDescription": "Demandez au propriétaire ou à un admin d’une organisation de vous inviter."
     }
+  },
+  "billing": {
+    "title": "Offre et facturation",
+    "description": "L’offre utilisée par {organization} et qui la paie.",
+    "individualDescription": "Votre offre et votre moyen de paiement.",
+    "plan": "Offre",
+    "free": "Gratuit",
+    "perMonth": "{price} par mois",
+    "paidBy": "Payé par {name}",
+    "noPayer": "Aucun payeur nécessaire",
+    "paymentMethod": "Moyen de paiement",
+    "paymentMethods": {
+      "cash": "Espèces",
+      "check": "Chèque"
+    },
+    "changePlan": "Changer d’offre",
+    "planChanged": "Offre changée pour {plan}.",
+    "managedByPayer": "Seuls les propriétaires et admins de {name} peuvent changer cette offre.",
+    "upgradeTitle": "Passer à une offre payante",
+    "upgradeDescription": "Choisissez une offre payante et qui la paie.",
+    "payer": "Payé par",
+    "newPayer": "Une nouvelle organisation de facturation",
+    "payerName": "Nom de l’organisation de facturation",
+    "upgradeAction": "Passer à l’offre",
+    "upgraded": "{organization} utilise maintenant {plan}.",
+    "billingTitle": "Organisation de facturation",
+    "billingDescription": "{name} paie pour les organisations ci-dessous. Ses propriétaires et admins gèrent les offres et le paiement ; les membres peuvent seulement consulter.",
+    "paysFor": "Paie pour",
+    "paysForNone": "Elle ne paie encore pour aucune organisation.",
+    "savePaymentMethod": "Enregistrer le moyen de paiement",
+    "paymentMethodSaved": "Moyen de paiement enregistré.",
+    "createAction": "Créer une organisation",
+    "createTitle": "Nouvelle organisation",
+    "createDescription": "{billing} la paie. Vous en serez le propriétaire.",
+    "createNameLabel": "Nom",
+    "created": "{name} créée. Vous y travaillez maintenant.",
+    "pickerTitle": "Choisissez votre offre",
+    "pickerDescription": "Vous pourrez la changer plus tard dans vos paramètres.",
+    "pickerContinue": "Continuer",
+    "errors": {
+      "generic": "Une erreur s’est produite. Veuillez réessayer.",
+      "paymentMethodRequired": "Choisissez un moyen de paiement.",
+      "nameRequired": "Saisissez un nom.",
+      "notAllowed": "Vous n’avez pas l’autorisation de faire cela.",
+      "inUse": "Cette organisation de facturation paie encore pour d’autres organisations."
+    },
+    "activationPending": "{name} a été créée. Ouvrez-la pour commencer à y travailler.",
+    "retryActivation": "Ouvrir l’organisation"
+  },
+  "userDeletion": {
+    "title": "Supprimer l’utilisateur",
+    "description": "Votre utilisateur est supprimé {days, plural, one {# jour} other {# jours}} après votre demande. Vous êtes déconnecté partout immédiatement et pouvez annuler en vous connectant d’ici là.",
+    "action": "Supprimer l’utilisateur",
+    "confirmTitle": "Supprimer votre utilisateur ?",
+    "confirmDescription": "Vous allez être déconnecté partout. La suppression aura lieu dans {days, plural, one {# jour} other {# jours}}, sauf si vous vous connectez pour l’annuler.",
+    "scheduledTitle": "La suppression de votre utilisateur est programmée",
+    "scheduledDescription": "Il sera supprimé le {date}. Annulez pour continuer à l’utiliser.",
+    "blockedTitle": "Votre utilisateur n’a pas pu être supprimé",
+    "blockedInUse": "Vous êtes le dernier membre d’une organisation de facturation qui paie pour d’autres organisations. Invitez un autre propriétaire ou rétrogradez ces organisations, puis refaites la demande.",
+    "blockedOwnerRequired": "Vous êtes le dernier propriétaire d’une organisation de facturation qui paie pour d’autres organisations. Nommez un autre membre propriétaire, puis refaites la demande.",
+    "cancel": "Annuler la suppression",
+    "continue": "Poursuivre la suppression et se déconnecter",
+    "canceled": "Suppression annulée.",
+    "reauthenticate": "Reconnectez-vous pour confirmer votre identité, puis réessayez."
   }
 }

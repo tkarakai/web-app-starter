@@ -112,6 +112,28 @@ const ACCESS: Record<string, Access> = {
   "platform/meta:health": "public",
   "platform/passwordStrength:evaluate": "public",
   "platform/userProfiles:get": "user",
+  "platform/billing:changePlan": "user",
+  "platform/billing:choosePlan": "user",
+  "platform/billing:createOrganization": "user",
+  "platform/billing:createPlan": "admin",
+  "platform/billing:ensureSeeded": "admin",
+  "platform/billing:listPlans": "admin",
+  "platform/billing:myStatus": "user",
+  "platform/billing:overview": "user",
+  "platform/billing:setDefaultPlan": "admin",
+  "platform/billing:setPaymentMethod": "user",
+  "platform/billing:updatePlan": "admin",
+  "platform/billing:upgrade": "user",
+  "platform/tenancy:configure": "admin",
+  "platform/tenancy:retry": "admin",
+  "platform/tenancy:mode": "public",
+  "platform/tenancy:status": "admin",
+  "platform/userDeletion:adminCancel": "admin",
+  "platform/userDeletion:adminRetryCleanup": "admin",
+  "platform/userDeletion:cancel": "user",
+  "platform/userDeletion:graceDays": "user",
+  "platform/userDeletion:list": "admin",
+  "platform/userDeletion:request": "user",
   "platform/organizations:active": "user",
   "platform/organizations:deleteInvitation": "user",
   "platform/organizations:invitation": "user",
@@ -308,7 +330,7 @@ describe("platform endpoint authorization contract", async () => {
   // the functions' own checks, not empty tables or unusable arguments.
   // Excluded: they answer [] without data the seed can't make (passkeys and organizations in the
   // auth component, tokens of a real waitlist entry). Their non-admin refusals are errors or null, not [].
-  const noControl = ["platform/adminOrganizations:get", "platform/adminOrganizations:list", "platform/adminOrganizations:forUser", "platform/adminOrganizations:cleanups", "platform/agentUsers:get", "platform/agentUsers:sessions", "platform/agentTaskAdmin:get", "platform/agentTaskAdmin:list", "platform/agentRegistry:announcement", "platform/agentAccess:listMine","platform/adminAuth:listAdminPasskeyUserIds", "platform/waitlistTokens:listByEntry"];
+  const noControl = ["platform/adminOrganizations:get", "platform/adminOrganizations:list", "platform/adminOrganizations:forUser", "platform/adminOrganizations:cleanups", "platform/agentUsers:get", "platform/agentUsers:sessions", "platform/agentTaskAdmin:get", "platform/agentTaskAdmin:list", "platform/agentRegistry:announcement", "platform/agentAccess:listMine","platform/adminAuth:listAdminPasskeyUserIds", "platform/waitlistTokens:listByEntry", "platform/billing:listPlans", "platform/userDeletion:list"];
   test.each(withAccess("admin").filter(([path, fn]) => fn.kind === "query" && !noControl.includes(path)))("%s answers an admin", async (_path, fn) => {
     expect(await call(await signIn(await fixture(), "boss", "admin"), fn)).toMatchObject({ refused: false });
   });
