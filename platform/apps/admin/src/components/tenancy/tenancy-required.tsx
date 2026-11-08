@@ -38,7 +38,7 @@ export function TenancyRequired({ children }: { children: React.ReactNode }) {
 
   return <TenancyContext.Provider value={{ status }}>
     {configured ? children : <main className="min-h-dvh bg-muted/30">
-      {security || repairPlans ? <div className="mx-auto max-w-4xl space-y-6 p-6">
+      {status && (security || repairPlans) ? <div className="mx-auto max-w-4xl space-y-6 p-6">
         <Button asChild variant="outline"><Link href="/configure/tenancy">Back to setup</Link></Button>
         {children}
       </div> : <Dialog open>

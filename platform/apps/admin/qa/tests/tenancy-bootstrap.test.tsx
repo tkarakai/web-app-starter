@@ -56,3 +56,13 @@ it("allows security and plan repair without dismissing bootstrap for normal page
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   }
 });
+
+it("waits for tenancy before mounting security pages in their final shell", () => {
+  state.path = "/settings";
+  const result = render(<TenancyRequired><input aria-label="Security form" /></TenancyRequired>);
+  expect(screen.queryByLabelText("Security form")).not.toBeInTheDocument();
+  expect(screen.getByRole("status")).toBeVisible();
+  state.status = { mode: "organizations", running: null, eligibility: null };
+  result.rerender(<TenancyRequired><input aria-label="Security form" /></TenancyRequired>);
+  expect(screen.getByLabelText("Security form")).toBeVisible();
+});
