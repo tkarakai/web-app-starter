@@ -9,7 +9,7 @@
  */
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { components, internal } from "../_generated/api";
+import { components } from "../_generated/api";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { adminMutation, authedQuery } from "./functions";
@@ -17,6 +17,7 @@ import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { findById, findMembership, listMemberships, listOrganizationMembers, parseRole } from "./organizationAccess";
 import { canAct, canActNow, isBanned, markOrganizationDeleting, needsSuccessor, organizationSeats, pickSuccessor, setMemberRole, successorsNeededForBan } from "./organizationOwnership";
 import { livePendingInvitations, organizationInvitations } from "./organizations";
+import { cleanupRow, cleanupStale, restartCleanup, startOrganizationCleanup } from "./organizationCleanup";
 
 type Reader = Pick<QueryCtx, "runQuery" | "db">;
 type AdminCtx = Pick<MutationCtx, "runQuery" | "runMutation" | "scheduler" | "db"> & { user: Doc<"user">; ownerId: string };
@@ -212,30 +213,35 @@ async function deleteAll(ctx: AdminCtx, model: "member" | "invitation", organiza
   throw new Error("TOO_MANY_ORGANIZATION_RECORDS");
 }
 
-/** Cleanups of deleted organizations' app data that need attention: failed ones, and ones still running. */
+/**
+ * Cleanups of deleted organizations' app data that need attention: failed ones, and ones still
+ * running. `stale` marks a running one whose run died without recording an outcome
+ * (backgroundJobs.ts); it can be retried like a failed one.
+ */
 export const cleanups = authedQuery({
   args: {},
   handler: async (ctx) => {
     requireAdmin(ctx.user);
     const byState = (state: "failed" | "running") => ctx.db.query("organizationCleanups")
       .withIndex("by_state", (q) => q.eq("state", state)).order("desc").take(100);
-    return [...await byState("failed"), ...await byState("running")].map((row) => ({
+    const now = Date.now();
+    return await Promise.all([...await byState("failed"), ...await byState("running")].map(async (row) => ({
       organizationId: row.organizationId, state: row.state, attempts: row.attempts, batches: row.batches,
       lastError: row.lastError ?? null, startedAt: row.startedAt, updatedAt: row.updatedAt,
-    }));
+      stale: await cleanupStale(ctx, row, now),
+    })));
   },
 });
 
-/** Run a failed cleanup again, from where it stopped (cleanup batches are idempotent). */
+/** Run a failed or stale cleanup again, from where it stopped (cleanup batches are idempotent). */
 export const retryCleanup = adminMutation({
   args: { organizationId: v.string() },
   handler: async (ctx, { organizationId }) => {
-    const row = await ctx.db.query("organizationCleanups").withIndex("by_organization", (q) => q.eq("organizationId", organizationId)).unique();
+    const row = await cleanupRow(ctx, organizationId);
     if (!row) throw new Error("CLEANUP_NOT_FOUND");
-    if (row.state !== "failed") throw new Error("CLEANUP_NOT_FAILED");
-    await ctx.db.patch(row._id, { state: "running", attempts: 0, updatedAt: Date.now() });
-    await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationAppData, { organizationId });
-    await audit(ctx, "admin.organization.cleanup_retried", organizationId);
+    if (row.state !== "failed" && !(await cleanupStale(ctx, row))) throw new Error("CLEANUP_NOT_FAILED");
+    await restartCleanup(ctx, row);
+    await audit(ctx, "admin.organization.cleanup_retried", organizationId, row.state === "failed" ? undefined : { stale: "true" });
   },
 });
 
@@ -259,7 +265,7 @@ export const remove = adminMutation({
     await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
       input: { model: "organization", where: [{ field: "_id", value: organizationId }] },
     });
-    await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationAppData, { organizationId });
+    await startOrganizationCleanup(ctx, organizationId);
     await audit(ctx, "admin.organization.deleted", organizationId, { name: organization.name });
   },
 });

@@ -717,12 +717,14 @@ describe("tenancy setup owners", () => {
     const setup = (await f.t.run(ctx => ctx.db.query("tenancySetups").first()))!;
     expect(setup).toMatchObject({ step: "shared", state: "running" });
     const shared = setup.sharedOrganizationId!;
-    await expect(f.boss.caller.mutation(api.platform.tenancy.retry, { adminUserId: carol.userId })).rejects.toThrow("TENANCY_SETUP_NOT_FAILED");
+    // Its continuation is gone, so the setup is stale; while the shared organization has an owner, the owners stay.
+    expect((await f.boss.caller.query(api.platform.tenancy.status, {}))!.running).toMatchObject({ failed: false, stale: true, canReplaceAdmin: false });
+    await expect(f.boss.caller.mutation(api.platform.tenancy.retry, { adminUserId: carol.userId })).rejects.toThrow("TENANCY_SETUP_OWNERS_FIXED");
 
     if (change === "banned") await f.boss.caller.mutation(api.platform.agentUsers.ban, { userId: bob.userId });
     if (change === "made an administrator") await f.boss.caller.mutation(api.platform.agentUsers.setRole, { userId: bob.userId, role: "admin" });
     if (change === "deleted") await f.boss.caller.mutation(api.platform.agentUsers.remove, { userId: bob.userId });
-    await f.t.action(internal.platform.tenancy.advanceSetup, {});
+    await f.t.mutation(internal.platform.tenancy.advanceSetup, { runId: setup.runId });
     const stopped = (await f.boss.caller.query(api.platform.tenancy.status, {}))!;
     expect(stopped.running).toMatchObject({ failed: true, canReplaceOwners: false, canReplaceAdmin: true });
 

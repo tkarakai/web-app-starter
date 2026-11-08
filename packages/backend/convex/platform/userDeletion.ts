@@ -11,6 +11,8 @@ import { components, internal } from "../_generated/api";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalAction, internalMutation, internalQuery } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
+import type { Doc as AppDoc } from "../_generated/dataModel";
+import { isCurrentRun, jobStale, newRunId } from "./backgroundJobs";
 import { adminMutation, authedMutation, authedQuery } from "./functions";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { createAuth } from "./auth";
@@ -170,10 +172,38 @@ export const request = authedMutation({
   },
 });
 
+type DeletionRow = AppDoc<"userDeletions">;
+
+/**
+ * Whether a `deleting` request is stuck: its `execute` run died before finishing or recording why
+ * (backgroundJobs.ts). An administrator retries it (`adminRetry`).
+ */
+async function deletionStale(ctx: Pick<QueryCtx, "db">, row: DeletionRow, now = Date.now()): Promise<boolean> {
+  return row.state === "deleting" && await jobStale(ctx, row, row.claimedAt ?? row.deleteAt, now);
+}
+
+/** Nothing of the user has been deleted yet: the user row and a sign-in account are still there. */
+async function userIntact(ctx: Pick<QueryCtx, "runQuery">, userId: string): Promise<boolean> {
+  if (!(await findById(ctx, "user", userId))) return false;
+  return !!(await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "account", where: [{ field: "userId", value: userId }] }));
+}
+
+/**
+ * Whether the request can still be cancelled: anything but a deletion under way. A stale
+ * deletion can be cancelled only while the user is intact; a partly deleted user can only be
+ * retried.
+ */
+async function cancelRefusal(ctx: Pick<QueryCtx, "db" | "runQuery">, row: DeletionRow): Promise<string | null> {
+  if (row.state !== "deleting") return null;
+  if (!(await deletionStale(ctx, row))) return "USER_DELETION_IN_PROGRESS";
+  return await userIntact(ctx, row.userId) ? null : "USER_DELETION_INCOMPLETE";
+}
+
 async function cancelDeletion(ctx: Pick<MutationCtx, "db" | "scheduler" | "runQuery">, userId: string, actor: { email: string; userId: string }) {
   const row = await scheduledDeletion(ctx, userId);
   if (!row) return false;
-  if (row.state === "deleting") throw new Error("USER_DELETION_IN_PROGRESS");
+  const refusal = await cancelRefusal(ctx, row);
+  if (refusal) throw new Error(refusal);
   if (row.state === "cleanup_pending" || (!(await findById(ctx, "user", userId)) && await cleanupFor(ctx, userId))) throw new Error("USER_CLEANUP_PENDING");
   if (row.state === "scheduled") await ctx.scheduler.cancel(row.jobId);
   await ctx.db.delete(row._id);
@@ -192,7 +222,7 @@ export const graceDays = authedQuery({
   handler: async (ctx) => await graceDaysSetting(ctx),
 });
 
-/** Keep the caller: cancel their scheduled (or blocked) deletion. */
+/** Keep the caller: cancel their scheduled (or blocked, or stale but intact) deletion. */
 export const cancel = authedMutation({
   args: {},
   handler: async (ctx) => {
@@ -204,7 +234,10 @@ export const cancel = authedMutation({
 // Platform admins
 // ---------------------------------------------------------------------------
 
-/** Scheduled and blocked deletions, soonest first, for the admin app's Users page. */
+/**
+ * Scheduled and blocked deletions, soonest first, for the admin app's Users page. `stale` marks a
+ * deletion under way whose run died (`adminRetry`); `cancelable` whether `adminCancel` accepts it.
+ */
 export const list = authedQuery({
   args: {},
   handler: async (ctx) => {
@@ -214,12 +247,17 @@ export const list = authedQuery({
     const orphaned = [];
     for (const cleanup of cleanups) if (!(await findById(ctx, "user", cleanup.userId))) orphaned.push(cleanup);
     const all = [...rows, ...orphaned.filter(cleanup => !rows.some(row => row.userId === cleanup.userId)).map(cleanup => ({ userId: cleanup.userId, requestedAt: cleanup.createdAt, deleteAt: cleanup.createdAt, state: "cleanup_pending" as const, blockedReason: cleanup.error }))];
+    const now = Date.now();
     return await Promise.all(all.map(async row => {
       const user = await findById(ctx, "user", row.userId);
       const cleanup = cleanups.find(entry => entry.userId === row.userId);
+      const request = "_id" in row ? row : null;
+      const state = !user && cleanup ? "cleanup_pending" as const : row.state;
       return { userId: row.userId, email: user?.email ?? cleanup?.email ?? "", name: user?.name ?? cleanup?.name ?? "", requestedAt: row.requestedAt, deleteAt: row.deleteAt,
-        state: !user && cleanup ? "cleanup_pending" as const : row.state,
-        blockedReason: !user && cleanup ? cleanup.error ?? null : row.blockedReason ?? null };
+        state,
+        blockedReason: !user && cleanup ? cleanup.error ?? null : row.blockedReason ?? null,
+        stale: !!request && await deletionStale(ctx, request, now),
+        cancelable: !!request && state !== "cleanup_pending" && !(await cancelRefusal(ctx, request)) };
     }));
   },
 });
@@ -229,6 +267,28 @@ export const adminCancel = adminMutation({
   handler: async (ctx, args) => {
     if (ctx.user.role !== "admin") throw new Error("NOT_ADMIN");
     if (!(await cancelDeletion(ctx, args.userId, { email: ctx.user.email, userId: ctx.user._id }))) throw new Error("USER_DELETION_NOT_FOUND");
+  },
+});
+
+/**
+ * Run a stale deletion again: `execute` resumes the same request under a new run token, so a late
+ * run of the dead one does nothing. Every step is idempotent; where the user row is already gone
+ * it continues into the cleanup (`runCleanup`).
+ */
+export const adminRetry = adminMutation({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    if (ctx.user.role !== "admin") throw new Error("NOT_ADMIN");
+    const row = await scheduledDeletion(ctx, args.userId);
+    if (!row) throw new Error("USER_DELETION_NOT_FOUND");
+    if (!(await deletionStale(ctx, row))) throw new Error("USER_DELETION_NOT_STALE");
+    const runId = newRunId();
+    const jobId = await ctx.scheduler.runAfter(0, internal.platform.userDeletion.execute, { userId: args.userId, requestId: row.requestId, runId });
+    await ctx.db.patch(row._id, { jobId, runId, claimedAt: Date.now() });
+    await scheduleAuditEvent(ctx, {
+      actor: ctx.user.email, authenticatedUserId: ctx.user._id, sourceDetail: "user-deletion", action: "user.deletion.retried",
+      resource: `user:${args.userId}`, status: "succeeded",
+    });
   },
 });
 
@@ -276,26 +336,42 @@ export const recordCompleted = internalMutation({
   },
 });
 
-/** Claim and cancellation serialize on the same row. A claimed request cannot be canceled. */
+/**
+ * Claim and cancellation serialize on the same row. A claimed request cannot be canceled until
+ * it is stale. With `runId`, an administrator's retry re-claims its own `deleting` request.
+ */
 export const claim = internalMutation({
-  args: { userId: v.string(), requestId: v.optional(v.string()) },
+  args: { userId: v.string(), requestId: v.optional(v.string()), runId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const row = await scheduledDeletion(ctx, args.userId);
-    if (!row || row.state !== "scheduled" || row.requestId !== args.requestId || row.deleteAt > Date.now()) return false;
+    if (!row || row.requestId !== args.requestId) return false;
+    if (args.runId !== undefined) {
+      if (row.state !== "deleting" || row.runId !== args.runId) return false;
+      await ctx.db.patch(row._id, { claimedAt: Date.now() });
+      return true;
+    }
+    if (row.state !== "scheduled" || row.deleteAt > Date.now()) return false;
     const blocker = await deletionBlocker(ctx, args.userId);
     if (blocker) {
       await ctx.runMutation(internal.platform.userDeletion.markBlocked, { userId: args.userId, requestId: args.requestId, reason: blocker.code });
       return blocker;
     }
-    await ctx.db.patch(row._id, { state: "deleting" });
+    await ctx.db.patch(row._id, { state: "deleting", claimedAt: Date.now() });
     return true;
   },
 });
 
-/** The grace period is over: atomically claim this specific request before destructive calls. */
+/**
+ * The grace period is over: atomically claim this specific request before destructive calls.
+ * Convex runs an action at most once: killed before it finishes, the request stays `deleting`
+ * and is reported stale for an administrator's retry, which runs this again with `runId`.
+ */
 export const execute = internalAction({
-  args: { userId: v.string(), requestId: v.optional(v.string()) },
+  args: { userId: v.string(), requestId: v.optional(v.string()), runId: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const request = await ctx.runQuery(internal.platform.userDeletion.pending, { userId: args.userId });
+    // A run of a request an administrator has since retried under a new token.
+    if (request && request.requestId === args.requestId && request.state === "deleting" && !isCurrentRun(request, args.runId)) return;
     const pendingCleanup = await ctx.runQuery(internal.platform.userDeletion.cleanupStatus, { userId: args.userId });
     if (pendingCleanup && !(await ctx.runQuery(internal.platform.userDeletion.userRow, { userId: args.userId }))) {
       await ctx.runAction(internal.platform.userDeletion.runCleanup, { userId: args.userId });
@@ -319,7 +395,7 @@ export const execute = internalAction({
     } catch (error) {
       const reason = error instanceof Error ? error.message.slice(0, 1000) : "Deletion failed";
       if (await ctx.runQuery(internal.platform.userDeletion.userRow, { userId: args.userId })) {
-        await ctx.runMutation(internal.platform.userDeletion.markBlocked, { ...args, reason });
+        await ctx.runMutation(internal.platform.userDeletion.markBlocked, { userId: args.userId, requestId: args.requestId, reason });
       } else {
         await ctx.runMutation(internal.platform.userDeletion.cleanupFailed, { userId: args.userId, error: reason });
       }

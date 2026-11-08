@@ -1,4 +1,5 @@
 import { delegationProof } from "./agentProof";
+import { jobFields } from "./backgroundJobs";
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 import { migrationsTable } from "convex-helpers/server/migrations";
@@ -36,6 +37,7 @@ export const platformTables = {
     lastError: v.optional(v.string()),
     startedAt: v.number(),
     updatedAt: v.number(),
+    ...jobFields,
   }).index("by_organization", ["organizationId"]).index("by_state", ["state", "updatedAt"]),
 
   // A user who must pick a plan before using the app (sign-up plan picker, billingAccess.ts).
@@ -61,6 +63,9 @@ export const platformTables = {
     startedBy: v.string(),
     finishedAt: v.optional(v.number()),
     error: v.optional(v.string()),
+    // The pending `advanceSetup` run while `running` (backgroundJobs.ts).
+    ...jobFields,
+    updatedAt: v.optional(v.number()),
   }),
 
   // A user's own deletion request during its grace period (userDeletion.ts).
@@ -72,6 +77,9 @@ export const platformTables = {
     jobId: v.id("_scheduled_functions"),
     state: v.union(v.literal("scheduled"), v.literal("deleting"), v.literal("cleanup_pending"), v.literal("blocked")),
     blockedReason: v.optional(v.string()),
+    // While `deleting`: when it was claimed, and the token of an administrator's retry (backgroundJobs.ts).
+    claimedAt: v.optional(v.number()),
+    runId: v.optional(v.string()),
   }).index("by_user", ["userId"]).index("by_deleteAt", ["deleteAt"]),
 
   userDeletionCleanups: defineTable({

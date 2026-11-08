@@ -163,9 +163,24 @@ Deletion cancellation and execution serialize on the request row. A scheduled jo
 request identity; a canceled or superseded job cannot delete a later request. Once execution
 atomically claims the request (`deleting`), cancellation refuses with `USER_DELETION_IN_PROGRESS`.
 
+Execution is a Convex action, which runs at most once: one killed mid-run (a deploy, a crash,
+the 10-minute limit) leaves the request `deleting` with nothing scheduled, and the user possibly
+half deleted. The admin deletion list (`userDeletion.list`) reports such a request as `stale`
+(shown as **Stalled**): its job failed, was canceled, finished without moving the request on, or
+has been running for over 15 minutes. **Retry deletion** (`userDeletion.adminRetry`) runs it
+again under a new run token, so a late run of the dead one does nothing; where the user row is
+already gone it continues into the cleanup below. A stale deletion can be cancelled, by the user
+or an administrator, only while the user row and its sign-in accounts are intact (`cancelable`
+in the list); otherwise cancelling refuses with `USER_DELETION_INCOMPLETE` and only a retry
+finishes it. A retry is audited as `user.deletion.retried`.
+
 Tenancy setup checks owner membership capacity before accepting configuration and again before
-each batch that creates owners. Failed batches roll back and appear as stopped in the admin
-tenancy page. Correct the prerequisite and use Retry setup; replacement owners can be selected
+each batch that creates owners. Each batch runs inside a scheduled mutation (`advanceSetup`),
+which Convex runs exactly once: a batch that throws, or exceeds its share of the transaction's
+limits, rolls back and the same mutation records the setup as failed. Failed batches appear as
+stopped in the admin tenancy page. Should a batch's mutation itself fail or be canceled, the
+setup stays `running` with nothing scheduled; `status` then reports it as `stale` and Retry setup
+accepts it like a failed one. Correct the prerequisite and use Retry setup; replacement owners can be selected
 before the billing/shared organizations are created. After that, if the shared organization's
 owner was banned, made a platform admin or deleted between batches, so it has no owner who can
 act, Retry setup takes a new owner for it (`retry({ adminUserId })`, shown when `status` reports

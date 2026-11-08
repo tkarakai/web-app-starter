@@ -95,14 +95,14 @@ export function organizationPlugin(ctx: GenericCtx<DataModel>, siteUrl: string) 
           throw error;
         }
       },
+      // The adapter has already deleted the organization, and nothing here rolls back: record and
+      // schedule the cleanup and audit first, so a failure ending the plan can't orphan its data.
       afterDeleteOrganization: async ({ organization: org, user }) => {
+        await requireActionCtx(ctx).runMutation(internal.platform.organizations.startCleanup, { organizationId: org.id });
+        await audit("organization.deleted", user, `organization:${org.id}`);
         // Its plan ends and its billing row is marked deleted; both stay as billing history.
         await requireActionCtx(ctx).runMutation(components.platform.billing.organizationDeleted, {
           organizationId: org.id, actor: { userId: user.id, email: user.email },
-        });
-        await audit("organization.deleted", user, `organization:${org.id}`);
-        await requireActionCtx(ctx).scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationAppData, {
-          organizationId: org.id,
         });
       },
       afterCreateInvitation: async ({ invitation, inviter, organization: org }) => {

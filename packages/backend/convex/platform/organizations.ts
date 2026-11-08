@@ -11,6 +11,8 @@ import { v } from "convex/values";
 
 import { components, internal } from "../_generated/api";
 import { internalAction, internalMutation, internalQuery, query, type QueryCtx } from "../_generated/server";
+import { isCurrentRun } from "./backgroundJobs";
+import { cleanupRow, scheduleCleanupRun, startOrganizationCleanup } from "./organizationCleanup";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { evaluateSession, identitySession } from "./sessionPolicy";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
@@ -359,20 +361,27 @@ export function isMissingCleanup(error: unknown): boolean {
   return message.includes(DELETE_ORGANIZATION_DATA) && /Couldn't resolve|Could not find/i.test(message);
 }
 
+/** `startOrganizationCleanup` for Better Auth's organization-delete hook, which runs in an action. */
+export const startCleanup = internalMutation({
+  args: { organizationId: v.string() },
+  handler: async (ctx, { organizationId }) => await startOrganizationCleanup(ctx, organizationId),
+});
+
 /**
- * Start (or resume) a cleanup run. `false` when it has already finished, so a duplicate or late
- * delivery does nothing.
+ * Start (or resume) a cleanup run. `false` when it has already finished, or when the run is not
+ * the row's current chain (a late run after a retry), so a duplicate or late delivery does nothing.
  */
 export const beginCleanup = internalMutation({
-  args: { organizationId: v.string() },
-  handler: async (ctx, { organizationId }) => {
-    const row = await ctx.db.query("organizationCleanups").withIndex("by_organization", (q) => q.eq("organizationId", organizationId)).unique();
+  args: { organizationId: v.string(), runId: v.optional(v.string()) },
+  handler: async (ctx, { organizationId, runId }) => {
+    const row = await cleanupRow(ctx, organizationId);
     const now = Date.now();
     if (!row) {
-      await ctx.db.insert("organizationCleanups", { organizationId, state: "running", attempts: 0, batches: 0, startedAt: now, updatedAt: now });
+      // A run scheduled before cleanups were recorded at deletion.
+      await ctx.db.insert("organizationCleanups", { organizationId, state: "running", attempts: 0, batches: 0, startedAt: now, updatedAt: now, runId });
       return true;
     }
-    if (row.state !== "running") return false;
+    if (row.state !== "running" || !isCurrentRun(row, runId)) return false;
     await ctx.db.patch(row._id, { updatedAt: now });
     return true;
   },
@@ -385,13 +394,14 @@ export const beginCleanup = internalMutation({
 export const recordCleanup = internalMutation({
   args: {
     organizationId: v.string(),
+    runId: v.optional(v.string()),
     batches: v.number(),
     outcome: v.union(v.literal("progress"), v.literal("done"), v.literal("retained"), v.literal("error")),
     error: v.optional(v.string()),
   },
-  handler: async (ctx, { organizationId, batches, outcome, error }) => {
-    const row = await ctx.db.query("organizationCleanups").withIndex("by_organization", (q) => q.eq("organizationId", organizationId)).unique();
-    if (!row || row.state !== "running") return;
+  handler: async (ctx, { organizationId, runId, batches, outcome, error }) => {
+    const row = await cleanupRow(ctx, organizationId);
+    if (!row || row.state !== "running" || !isCurrentRun(row, runId)) return;
     const now = Date.now();
     const total = row.batches + batches;
     if (outcome === "done" || outcome === "retained") {
@@ -399,18 +409,18 @@ export const recordCleanup = internalMutation({
       return;
     }
     if (outcome === "progress") {
-      await ctx.db.patch(row._id, { batches: total, attempts: 0, updatedAt: now });
-      await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationAppData, { organizationId });
+      await scheduleCleanupRun(ctx, row, 0, { batches: total, attempts: 0, updatedAt: now });
       return;
     }
     const attempts = row.attempts + 1;
     const failed = attempts >= CLEANUP_MAX_ATTEMPTS;
-    await ctx.db.patch(row._id, { state: failed ? "failed" : "running", batches: total, attempts, lastError: (error ?? "").slice(0, 500), updatedAt: now });
+    const patch = { state: failed ? "failed" as const : "running" as const, batches: total, attempts, lastError: (error ?? "").slice(0, 500), updatedAt: now };
     if (failed) {
+      await ctx.db.patch(row._id, patch);
       console.error(`Cleanup of deleted organization ${organizationId} failed ${attempts} times; retry it from the admin app.`);
       return;
     }
-    await ctx.scheduler.runAfter(CLEANUP_RETRY_BASE_MS * 2 ** (attempts - 1), internal.platform.organizations.deleteOrganizationAppData, { organizationId });
+    await scheduleCleanupRun(ctx, row, CLEANUP_RETRY_BASE_MS * 2 ** (attempts - 1), patch);
   },
 });
 
@@ -419,16 +429,18 @@ export const recordCleanup = internalMutation({
  * already unreachable (nobody is a member), so this only frees storage. Progress is recorded in
  * `organizationCleanups`: a failed run is retried with backoff, then left `failed` for an
  * administrator to retry (`adminOrganizations.retryCleanup`). Without the app's
- * `organizationData.ts` the data is deliberately kept (`retained`).
+ * `organizationData.ts` the data is deliberately kept (`retained`). Convex runs an action at most
+ * once: a run killed before it records its outcome leaves the row `running`, reported stale
+ * (`cleanupStale`) for an administrator to retry. `runId` is the chain's run token.
  */
 export const deleteOrganizationAppData = internalAction({
-  args: { organizationId: v.string() },
+  args: { organizationId: v.string(), runId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     if (!(await ctx.runMutation(internal.platform.organizations.beginCleanup, args))) return;
     let batches = 0;
     try {
       while (batches < CLEANUP_BATCHES_PER_RUN) {
-        const result = await ctx.runMutation(deleteOrganizationData, args);
+        const result = await ctx.runMutation(deleteOrganizationData, { organizationId: args.organizationId });
         batches++;
         if (result.done) {
           await ctx.runMutation(internal.platform.organizations.recordCleanup, { ...args, batches, outcome: "done" });

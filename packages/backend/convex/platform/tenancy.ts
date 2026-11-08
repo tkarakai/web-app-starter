@@ -6,11 +6,11 @@
  * and for organizations on an install with users only, a billing organization and one shared
  * organization with every user are created.
  */
-import { createFunctionHandle } from "convex/server";
+import { createFunctionHandle, type TransactionLimits } from "convex/server";
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { internalAction, internalMutation, internalQuery, query } from "../_generated/server";
+import { internalMutation, internalQuery, query } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import type { Doc as AppDoc } from "../_generated/dataModel";
 import { adminMutation, authedQuery } from "./functions";
@@ -26,6 +26,7 @@ import {
 import { createOrganizationWithOwner, findById, findMembership, listMemberships, listOrganizationMembers, MAX_MEMBERSHIPS_PER_USER } from "./organizationAccess";
 import { canAct, organizationSeats, setMemberRole } from "./organizationOwnership";
 import { assertLocalFixtures } from "./localFixtures";
+import { isCurrentRun, jobStale, newRunId } from "./backgroundJobs";
 import { assertMaxLength, MAX_NAME_LENGTH } from "@web-app-starter/convex-platform/validation";
 
 type Reader = Pick<QueryCtx, "runQuery" | "db">;
@@ -111,25 +112,51 @@ export const membershipMode = internalQuery({
   },
 });
 
-/** The action records a failed batch in a separate transaction after its writes roll back. */
-export const advanceSetup = internalAction({
-  args: {},
-  handler: async ctx => {
+/** How much of the transaction a setup batch may use: the rest records its failure (`advanceSetup`). */
+const BATCH_SHARE = 0.9;
+const BATCH_LIMITS = ["bytesRead", "bytesWritten", "databaseQueries", "documentsRead", "documentsWritten", "functionsScheduled", "scheduledFunctionArgsBytes"] as const;
+
+async function batchLimits(ctx: MutationCtx): Promise<TransactionLimits | undefined> {
+  try {
+    const metrics = await ctx.meta.getTransactionMetrics();
+    return Object.fromEntries(BATCH_LIMITS.map((key) => [key, Math.floor(metrics[key].remaining * BATCH_SHARE)]));
+  } catch {
+    return undefined;
+  }
+}
+
+/** Schedule the setup's next batch and record its job on the row (backgroundJobs.ts). */
+async function scheduleSetupRun(ctx: Pick<MutationCtx, "db" | "scheduler">, setup: AppDoc<"tenancySetups">, patch: Partial<AppDoc<"tenancySetups">> = {}) {
+  const runId = patch.runId ?? setup.runId;
+  const jobId = await ctx.scheduler.runAfter(0, internal.platform.tenancy.advanceSetup, { runId });
+  await ctx.db.patch(setup._id, { ...patch, jobId, updatedAt: Date.now() });
+}
+
+/**
+ * The setup driver: a scheduled mutation, which Convex runs exactly once. It runs one batch
+ * (`runSetup`) as a sub-transaction and records a failure in its own transaction: a failed
+ * batch's writes roll back and the setup is left `failed`, never `running` with nothing
+ * scheduled. The batch gets most of the transaction's limits, so exceeding them is a failure
+ * this records. Only a run of the setup's current chain (`runId`) does anything.
+ */
+export const advanceSetup = internalMutation({
+  args: { runId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const setup = await currentSetup(ctx);
+    if (!setup || setup.state !== "running" || !isCurrentRun(setup, args.runId)) return;
+    const transactionLimits = await batchLimits(ctx);
     try {
-      await ctx.runMutation(internal.platform.tenancy.runSetup, {});
+      await ctx.runMutation(internal.platform.tenancy.runSetup, {}, transactionLimits ? { transactionLimits } : {});
     } catch (error) {
-      await ctx.runMutation(internal.platform.tenancy.failSetup, { error: error instanceof Error ? error.message : "Setup failed" });
+      await ctx.db.patch(setup._id, { state: "failed", error: (error instanceof Error ? error.message : "Setup failed").slice(0, 1000), updatedAt: Date.now() });
     }
   },
 });
 
-export const failSetup = internalMutation({
-  args: { error: v.string() },
-  handler: async (ctx, args) => {
-    const setup = await currentSetup(ctx);
-    if (setup?.state === "running") await ctx.db.patch(setup._id, { state: "failed", error: args.error.slice(0, 1000) });
-  },
-});
+/** Whether a `running` setup is stuck: its batch can no longer run or record its outcome (backgroundJobs.ts). */
+async function setupStale(ctx: Pick<QueryCtx, "db">, setup: AppDoc<"tenancySetups">): Promise<boolean> {
+  return setup.state === "running" && await jobStale(ctx, setup, setup.updatedAt ?? setup.startedAt);
+}
 
 /**
  * Whether the shared organization of a setup that has created it lost every owner who can act
@@ -176,6 +203,7 @@ async function replaceSharedOwner(ctx: MutationCtx & { user: Doc<"user"> }, setu
 
 /**
  * Retry the same batch after correcting its reported prerequisite; completed work is retained.
+ * Accepts a failed setup, and a stale one (still `running`, but its batch can no longer run).
  * Owners can be replaced until the billing and shared organizations exist; after that, only a
  * new `adminUserId`, and only while the shared organization has no owner who can act.
  */
@@ -184,15 +212,15 @@ export const retry = adminMutation({
   handler: async (ctx, args) => {
     requireAdmin(ctx.user);
     const setup = await currentSetup(ctx);
-    if (!setup || setup.state !== "failed") throw new Error("TENANCY_SETUP_NOT_FAILED");
+    if (!setup || (setup.state !== "failed" && !(await setupStale(ctx, setup)))) throw new Error("TENANCY_SETUP_NOT_FAILED");
     const ownersCreated = !!(setup.billingOrganizationId || setup.sharedOrganizationId);
     if (ownersCreated && (args.billingUserId || (args.adminUserId && !(await sharedOwnerLost(ctx, setup))))) throw new Error("TENANCY_SETUP_OWNERS_FIXED");
     if (ownersCreated && args.adminUserId) await replaceSharedOwner(ctx, setup, args.adminUserId);
     const billingUserId = args.billingUserId ?? setup.billingUserId;
     const adminUserId = args.adminUserId ?? setup.adminUserId;
     if (billingUserId && !ownersCreated) await requireSetupOwners(ctx, billingUserId, adminUserId);
-    await ctx.db.patch(setup._id, { state: "running", error: undefined, billingUserId, adminUserId });
-    await ctx.scheduler.runAfter(0, internal.platform.tenancy.advanceSetup, {});
+    // A new run token: a late run of the stopped chain does nothing.
+    await scheduleSetupRun(ctx, setup, { state: "running", error: undefined, billingUserId, adminUserId, runId: newRunId() });
   },
 });
 
@@ -241,15 +269,17 @@ export const status = authedQuery({
     const mode = await readTenancyMode(ctx);
     const setup = await currentSetup(ctx);
     const failed = setup?.state === "failed";
+    /** Still `running`, but its batch can no longer run: retry it like a failed one. */
+    const stale = !!setup && await setupStale(ctx, setup);
     const running = setup && setup.state !== "done" ? {
-      mode: setup.mode, step: setup.step, startedAt: setup.startedAt, failed,
+      mode: setup.mode, step: setup.step, startedAt: setup.startedAt, failed, stale,
       canReplaceOwners: !setup.billingOrganizationId && !setup.sharedOrganizationId,
       /** The shared organization exists but has no owner who can act: retry with a new `adminUserId`. */
-      canReplaceAdmin: failed && await sharedOwnerLost(ctx, setup),
+      canReplaceAdmin: (failed || stale) && await sharedOwnerLost(ctx, setup),
       error: setup.error ?? null,
     } : null;
     if (mode) return { mode, running: null, eligibility: null };
-    return { mode: null, running, eligibility: running && !running.failed ? null : await eligibility(ctx) };
+    return { mode: null, running, eligibility: running && !running.failed && !running.stale ? null : await eligibility(ctx) };
   },
 });
 
@@ -288,7 +318,8 @@ export const configure = adminMutation({
         names[key] = name;
       }
     }
-    await ctx.db.insert("tenancySetups", {
+    const id = await ctx.db.insert("tenancySetups", {
+      runId: newRunId(),
       mode: args.mode,
       state: "running",
       step: "plans",
@@ -297,7 +328,7 @@ export const configure = adminMutation({
       startedAt: Date.now(),
       startedBy: ctx.user._id,
     });
-    await ctx.scheduler.runAfter(0, internal.platform.tenancy.advanceSetup, {});
+    await scheduleSetupRun(ctx, (await ctx.db.get(id))!);
   },
 });
 
@@ -317,7 +348,10 @@ async function preparePlan(ctx: MutationCtx, organization: Doc<"organization">, 
   });
 }
 
-/** One batch of the running setup; schedules the next until the mode is on. */
+/**
+ * One batch of the running setup; schedules the next until the mode is on. Runs only inside
+ * `advanceSetup`, which checks the run token and records a failure.
+ */
 export const runSetup = internalMutation({
   args: {},
   handler: async (ctx) => {
@@ -374,7 +408,7 @@ export const runSetup = internalMutation({
       });
       return;
     }
-    await ctx.scheduler.runAfter(0, internal.platform.tenancy.advanceSetup, {});
+    await scheduleSetupRun(ctx, (await ctx.db.get(setup._id))!);
   },
 });
 

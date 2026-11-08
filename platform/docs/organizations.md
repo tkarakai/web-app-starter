@@ -214,13 +214,21 @@ child rows and stored files), and return `true` only when none remain. The sampl
 removes projects with their tasks and uploads. Without the file, a deleted organization's rows
 simply stay in the database, unreachable.
 
-Each cleanup's progress is kept in the platform's `organizationCleanups` table: `running`, then
-`done`, or `retained` when the app has no `organizationData.ts`. A batch that throws is retried
-with growing delays (1, 2, 4 and 8 minutes); after five failures in a row the cleanup stops as
-`failed`. Make batches idempotent: a retry, or a duplicate run, repeats the last one. The admin
-app's Organizations page lists failed and running cleanups with **Retry**
+Each cleanup's progress is kept in the platform's `organizationCleanups` table, written in the
+same transaction that deletes the organization, so a cleanup that is owed is always recorded:
+`running`, then `done`, or `retained` when the app has no `organizationData.ts`. A batch that
+throws is retried with growing delays (1, 2, 4 and 8 minutes); after five failures in a row the
+cleanup stops as `failed`. Make batches idempotent: a retry, or a duplicate run, repeats the last
+one. The admin app's Organizations page lists failed and running cleanups with **Retry**
 (`adminOrganizations.cleanups`, `retryCleanup`; the `organizations_cleanups` and
 `organizations_retryCleanup` agent capabilities).
+
+A cleanup run is a Convex action, which runs at most once: one killed mid-run (by a deploy, a
+crash or the 10-minute limit) records nothing and schedules nothing more. The row keeps the
+scheduled run's ID, and `cleanups` reports such a row as `stale` (shown as **Stalled**): still
+`running`, but its run failed, was canceled, finished without recording an outcome, or has been
+in progress for over 15 minutes. **Retry** accepts a stale cleanup as it does a failed one. Each
+run carries a run token that a retry replaces, so a late run of the old one does nothing.
 
 **Deleting an account deletes the organizations it leaves empty.** Every account starts with a
 personal organization, so deleting an account (through Better Auth, or an administrator agent's
@@ -246,8 +254,8 @@ and through the `organizations_*` admin agent capabilities. Both use
 | `removeOwner` | Make an owner an admin or member. Refused (`LAST_OWNER`) for the only owner, or the only one who isn't banned while members can sign in |
 | `cancelInvitation` | Cancel a pending invitation; its link reads as no longer valid |
 | `remove` | Delete the organization: memberships, invitations, its plan (ended; its billing row is marked deleted, both kept as billing history) and the organization at once, then its app data through `organizationData.ts`. Accounts are kept. Refused (`BILLING_ORGANIZATION_IN_USE`) while it pays for another organization's plan |
-| `cleanups` | App-data removals of deleted organizations that failed (after retries) or are still running |
-| `retryCleanup` | Restart a failed removal where it stopped |
+| `cleanups` | App-data removals of deleted organizations that failed (after retries) or are still running; `stale` marks a running one whose run stopped without recording an outcome |
+| `retryCleanup` | Restart a failed or stale removal where it stopped. Refused (`CLEANUP_NOT_FAILED`) while it is running normally |
 
 To transfer ownership, add the new owner, then remove the previous one. Administrators see
 organization metadata, members and invitations, never an organization's app data. They can't

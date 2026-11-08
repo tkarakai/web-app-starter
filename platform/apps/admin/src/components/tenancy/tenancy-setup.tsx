@@ -80,8 +80,10 @@ export function TenancySetup() {
     return (
       <Alert data-testid="tenancy-running">
         <AlertDescription>
-          {status.running.failed ? <>
-            Setup stopped: {status.running.error}. Correct the reported prerequisite, then retry.
+          {status.running.failed || status.running.stale ? <>
+            {status.running.failed
+              ? <>Setup stopped: {status.running.error}. Correct the reported prerequisite, then retry.</>
+              : <>Setup stalled: its last step stopped without finishing or reporting an error. Retry it; completed work is kept.</>}
             {replaceable.length > 0 && status.running.mode === "organizations" && <div className="my-3 grid gap-3">
               {replaceable.map(role => <div key={role}>
                 <Label htmlFor={`retry-${role}`}>{canReplaceOwners ? `Replacement ${role} owner (optional, before organizations are created)` : "New owner of the shared organization (it has no owner who can act)"}</Label>

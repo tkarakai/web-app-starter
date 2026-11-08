@@ -180,6 +180,27 @@ version. Release-specific compatibility and deployment steps are listed explicit
     offered when `tenancy.status` reports `canReplaceAdmin`); a deleted shared organization is
     recreated on its plan and payer.
 
+- **Background jobs can no longer get stuck with no way to recover them.** Organization data
+  cleanup, user self-deletion and tenancy setup each record their scheduled job on their
+  progress row, and the admin app reports a row as **Stalled** (`stale`) when its job died
+  without moving it on (failed, canceled, gone, or running for over 15 minutes):
+  - A deleted organization's `organizationCleanups` row is now written, with its job, in the
+    transaction that deletes it (admin delete, owner delete, last member's account deletion), so
+    an owed cleanup is never lost. `adminOrganizations.retryCleanup` (**Retry**) accepts a stale
+    cleanup as well as a failed one. Better Auth's organization-delete hook records the cleanup
+    and the audit event before ending the plan, so a billing error there can't orphan the data.
+  - A self-deletion stuck in `deleting` can be retried (`userDeletion.adminRetry`, **Retry
+    deletion**, audited as `user.deletion.retried`). It can be cancelled, by the user or an
+    administrator, only while the user and their sign-in accounts are intact; otherwise
+    cancelling refuses with `USER_DELETION_INCOMPLETE`. `userDeletion.list` adds `stale` and
+    `cancelable`.
+  - Tenancy setup batches run in a scheduled mutation that records a failed batch in the same
+    transaction (`advanceSetup` is now an internal mutation, and `failSetup` is gone), so setup
+    can no longer stay `running` after a batch fails. `tenancy.status` reports `stale` for a
+    setup whose batch job was lost, and `tenancy.retry` accepts it.
+  - Every run carries a run token that a retry replaces, so a late run of the stopped one does
+    nothing. The helpers are in `backgroundJobs.ts`.
+
 - **Org mutations no longer write to a fallback organization.** When the session's selected
   organization is no longer valid (the user was removed, or it was deleted), reads still move to
   the oldest membership, but `orgMutation`, and `getOrgAuth(ctx, { write: true })`, now refuse

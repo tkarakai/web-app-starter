@@ -14,6 +14,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { deleteMember, needsSuccessor, organizationSeats, pickSuccessor, setMemberRole } from "./organizationOwnership";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
+import { startOrganizationCleanup } from "./organizationCleanup";
 
 type Reader = Pick<QueryCtx, "runQuery">;
 type Writer = Pick<MutationCtx, "runQuery" | "runMutation">;
@@ -336,7 +337,7 @@ async function deleteEmptyOrganization(
     reason: "last_member_deleted",
     meta: JSON.stringify({ deletedUserId }),
   });
-  await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationAppData, { organizationId });
+  await startOrganizationCleanup(ctx, organizationId);
 }
 
 /**
