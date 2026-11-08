@@ -311,7 +311,9 @@ describe("deleting your user", () => {
     await f.t.run(ctx => ctx.db.insert("pendingPlanChoices", { userId: alice.userId, organizationId: own, createdAt: Date.now() }));
 
     const { deleteAt } = await alice.caller.mutation(api.platform.userDeletion.request, {});
-    expect(deleteAt - Date.now()).toBe(3 * 24 * 60 * 60 * 1000);
+    // convex-test pins the mutation's clock at or after the last commit, so it can run 1ms ahead.
+    expect(deleteAt - Date.now()).toBeGreaterThanOrEqual(3 * 24 * 60 * 60 * 1000);
+    expect(deleteAt - Date.now()).toBeLessThan(3 * 24 * 60 * 60 * 1000 + 1000);
     expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "session", where: [{ field: "userId", value: alice.userId }] })).toBeNull();
     expect((await f.boss.caller.query(api.platform.userDeletion.list, {}))).toMatchObject([{ userId: alice.userId, state: "scheduled" }]);
 
