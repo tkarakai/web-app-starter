@@ -142,6 +142,10 @@ Ports are `runtime.ports` in `app.config.ts`. Development servers and seed accou
 
 ## Conventions
 
+Public Convex refusals use `refuse(code, details?)` from `@web-app-starter/convex-platform/errors`.
+Client handlers use `errorCode(error)` from `@web-app-starter/agentic/errors`, then a generic fallback
+for unknown codes. Production redacts `.message`; only explicit `ConvexError` data survives.
+
 ### Imports
 
 | Package | Import |

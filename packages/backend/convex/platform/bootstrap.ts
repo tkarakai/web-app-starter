@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 import { invalidateTenancyCheck } from "./organizationOwnership";
 /**
  * Admin bootstrap — first-time deployment setup.
@@ -26,7 +27,7 @@ import { assertMaxLength, MAX_NAME_LENGTH } from "./functions";
 function assertValidEmail(email: string): void {
   assertMaxLength(email, MAX_NAME_LENGTH, "EMAIL");
   if (!email.includes("@") || email.length < 3) {
-    throw new Error("BOOTSTRAP_INVALID_EMAIL");
+    refuse("BOOTSTRAP_INVALID_EMAIL");
   }
 }
 
@@ -39,10 +40,10 @@ export const initialize = internalMutation({
   handler: async (ctx, args) => {
     args.email = args.email.trim().toLowerCase();
     const account = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: args.email }] });
-    if (account) throw new Error("BOOTSTRAP_ACCOUNT_EXISTS");
+    if (account) refuse("BOOTSTRAP_ACCOUNT_EXISTS");
     const existing = await ctx.runQuery(components.platform.adminEmails.list, {});
     if (existing.length > 0) {
-      throw new Error("BOOTSTRAP_ALREADY_INITIALIZED");
+      refuse("BOOTSTRAP_ALREADY_INITIALIZED");
     }
 
     assertValidEmail(args.email);
@@ -80,21 +81,21 @@ export const rescue = internalMutation({
     args.newEmail = args.newEmail.trim().toLowerCase();
     for (const email of new Set([args.currentEmail, args.newEmail])) {
       const account = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: email }] });
-      if (account) throw new Error("BOOTSTRAP_ACCOUNT_EXISTS");
+      if (account) refuse("BOOTSTRAP_ACCOUNT_EXISTS");
     }
     // Guard: exactly one admin email must exist
     const adminEmails = await ctx.runQuery(components.platform.adminEmails.list, {});
     if (adminEmails.length === 0) {
-      throw new Error("BOOTSTRAP_NOT_INITIALIZED");
+      refuse("BOOTSTRAP_NOT_INITIALIZED");
     }
     if (adminEmails.length > 1) {
-      throw new Error("BOOTSTRAP_MULTIPLE_ADMINS");
+      refuse("BOOTSTRAP_MULTIPLE_ADMINS");
     }
 
     // Guard: caller must prove they know the current email
     const adminRow = adminEmails[0];
     if (adminRow.email.trim().toLowerCase() !== args.currentEmail) {
-      throw new Error("BOOTSTRAP_EMAIL_MISMATCH");
+      refuse("BOOTSTRAP_EMAIL_MISMATCH");
     }
 
     assertValidEmail(args.newEmail);

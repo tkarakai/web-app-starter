@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 /**
  * Deleting a user (platform/docs/tenancy-and-billing.md). A user deletes themselves after a grace
  * period (`userDeletionGraceDays`): the request signs them out everywhere, and until the date
@@ -83,7 +84,7 @@ async function handOverForDeletion(ctx: Pick<MutationCtx, "runQuery" | "runMutat
   const successors: { organizationId: string; userId: string }[] = [];
   for (const need of await successorsNeededForBan(ctx, userId)) {
     const member = need.suggested ? await findMembership(ctx, need.suggested, need.organizationId) : null;
-    if (!member) throw new Error("OWNER_SUCCESSOR_REQUIRED");
+    if (!member) refuse("OWNER_SUCCESSOR_REQUIRED");
     await setMemberRole(ctx, member._id, "owner");
     successors.push({ organizationId: need.organizationId, userId: member.userId });
   }
@@ -155,11 +156,11 @@ export async function finishUserDeletion(
 export const request = authedMutation({
   args: {},
   handler: async (ctx) => {
-    if (ctx.user.role === "admin") throw new Error("NOT_APPLICATION_USER");
-    if (!ctx.assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
-    if (await scheduledDeletion(ctx, ctx.user._id)) throw new Error("USER_DELETION_ALREADY_SCHEDULED");
+    if (ctx.user.role === "admin") refuse("NOT_APPLICATION_USER");
+    if (!ctx.assurance.recent) refuse("RECENT_AUTHENTICATION_REQUIRED");
+    if (await scheduledDeletion(ctx, ctx.user._id)) refuse("USER_DELETION_ALREADY_SCHEDULED");
     const blocker = await deletionBlocker(ctx, ctx.user._id);
-    if (blocker) throw new Error(blocker.code);
+    if (blocker) refuse(blocker.code);
     const successors = await handOverForDeletion(ctx, ctx.user._id);
     const now = Date.now();
     const deleteAt = now + (await graceDaysSetting(ctx)) * DAY_MS;
@@ -208,12 +209,12 @@ async function cancelDeletion(ctx: Pick<MutationCtx, "db" | "scheduler" | "runQu
   const row = await scheduledDeletion(ctx, userId);
   if (!row) return false;
   const refusal = await cancelRefusal(ctx, row);
-  if (refusal) throw new Error(refusal);
-  if (row.state === "cleanup_pending" || (!(await findById(ctx, "user", userId)) && await cleanupFor(ctx, userId))) throw new Error("USER_CLEANUP_PENDING");
+  if (refusal) refuse(refusal);
+  if (row.state === "cleanup_pending" || (!(await findById(ctx, "user", userId)) && await cleanupFor(ctx, userId))) refuse("USER_CLEANUP_PENDING");
   const user = await findById(ctx, "user", userId);
   if (user && canAct(user)) {
     const needed = await ownersNeededForReactivation(ctx, userId, true);
-    if (needed.length) throw new Error(successorRequiredMessage(needed, "canceling deletion for"));
+    if (needed.length) refuse("OWNER_SUCCESSOR_REQUIRED", { message: successorRequiredMessage(needed, "canceling deletion for") });
   }
   await invalidateTenancyCheck(ctx);
   if (row.state === "scheduled") await ctx.scheduler.cancel(row.jobId);
@@ -258,7 +259,7 @@ const LIST_LIMIT = 200;
 export const list = authedQuery({
   args: {},
   handler: async (ctx) => {
-    if (ctx.user.role !== "admin") throw new Error("NOT_ADMIN");
+    if (ctx.user.role !== "admin") refuse("NOT_ADMIN");
     const requests = await ctx.db.query("userDeletions").withIndex("by_deleteAt").take(LIST_LIMIT + 1);
     const cleanups = await ctx.db.query("userDeletionCleanups").take(LIST_LIMIT + 1);
     const more = requests.length > LIST_LIMIT || cleanups.length > LIST_LIMIT;
@@ -296,8 +297,8 @@ export const list = authedQuery({
 export const adminCancel = adminMutation({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    if (ctx.user.role !== "admin") throw new Error("NOT_ADMIN");
-    if (!(await cancelDeletion(ctx, args.userId, { email: ctx.user.email, userId: ctx.user._id }))) throw new Error("USER_DELETION_NOT_FOUND");
+    if (ctx.user.role !== "admin") refuse("NOT_ADMIN");
+    if (!(await cancelDeletion(ctx, args.userId, { email: ctx.user.email, userId: ctx.user._id }))) refuse("USER_DELETION_NOT_FOUND");
   },
 });
 
@@ -309,10 +310,10 @@ export const adminCancel = adminMutation({
 export const adminRetry = adminMutation({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    if (ctx.user.role !== "admin") throw new Error("NOT_ADMIN");
+    if (ctx.user.role !== "admin") refuse("NOT_ADMIN");
     const row = await scheduledDeletion(ctx, args.userId);
-    if (!row) throw new Error("USER_DELETION_NOT_FOUND");
-    if (!(await deletionStale(ctx, row))) throw new Error("USER_DELETION_NOT_STALE");
+    if (!row) refuse("USER_DELETION_NOT_FOUND");
+    if (!(await deletionStale(ctx, row))) refuse("USER_DELETION_NOT_STALE");
     const runId = newRunId();
     const jobId = await ctx.scheduler.runAfter(0, internal.platform.userDeletion.execute, { userId: args.userId, requestId: row.requestId, runId });
     await ctx.db.patch(row._id, { jobId, runId, claimedAt: Date.now() });
@@ -592,11 +593,11 @@ export const cleanupFailed = internalMutation({
 export const adminRetryCleanup = adminMutation({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    if (ctx.user.role !== "admin") throw new Error("NOT_ADMIN");
+    if (ctx.user.role !== "admin") refuse("NOT_ADMIN");
     const cleanup = await cleanupFor(ctx, args.userId);
-    if (!cleanup) throw new Error("USER_CLEANUP_NOT_FOUND");
-    if (await findById(ctx, "user", args.userId)) throw new Error("USER_STILL_EXISTS");
-    if (cleanup.state === "running" && !(await cleanupStale(ctx, cleanup))) throw new Error("USER_CLEANUP_RUNNING");
+    if (!cleanup) refuse("USER_CLEANUP_NOT_FOUND");
+    if (await findById(ctx, "user", args.userId)) refuse("USER_STILL_EXISTS");
+    if (cleanup.state === "running" && !(await cleanupStale(ctx, cleanup))) refuse("USER_CLEANUP_RUNNING");
     await scheduleCleanupRun(ctx, cleanup, 0, { state: "running", attempts: 0, error: undefined, runId: newRunId() });
   },
 });

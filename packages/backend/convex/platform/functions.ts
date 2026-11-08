@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 import { rememberNative, captureNativeBuilder } from "./nativeCapabilities";
 import {
   customCtx,
@@ -44,8 +45,8 @@ type AuthInfo = NonNullable<Awaited<ReturnType<typeof getAuth>>>;
  */
 async function writeOrganization(ctx: QueryCtx, auth: AuthInfo): Promise<ActiveOrganization> {
   const selection = await resolveOrganizationSelection(ctx, auth.user, auth.session);
-  if (!selection.active) throw new Error("NO_ORGANIZATION");
-  if (selection.stale) throw new Error("ORGANIZATION_CHANGED");
+  if (!selection.active) refuse("NO_ORGANIZATION");
+  if (selection.stale) refuse("ORGANIZATION_CHANGED");
   return selection.active;
 }
 
@@ -64,7 +65,7 @@ export async function getOrgAuth(ctx: QueryCtx, options: { write?: boolean } = {
   if (options.write) {
     const selection = await resolveOrganizationSelection(ctx, auth.user, auth.session);
     if (!selection.active) return null;
-    if (selection.stale) throw new Error("ORGANIZATION_CHANGED");
+    if (selection.stale) refuse("ORGANIZATION_CHANGED");
     return { ...auth, ...selection.active };
   }
   const organization = await resolveActiveOrganization(ctx, auth.user, auth.session);
@@ -108,7 +109,7 @@ export const authedMutation = captureNativeBuilder(customMutation(
   mutation,
   customCtx(async (ctx) => {
     const auth = await getAuth(ctx);
-    if (!auth) throw new Error("NOT_AUTHENTICATED");
+    if (!auth) refuse("NOT_AUTHENTICATED");
 
     await rateLimit(ctx, {
       name: "mutationGlobal",
@@ -221,9 +222,9 @@ export const orgMutation = customMutation(mutation, {
   args: { expectedOrganizationId: v.optional(v.string()) },
   input: async (ctx, { expectedOrganizationId }) => {
     const auth = await getAuth(ctx);
-    if (!auth) throw new Error("NOT_AUTHENTICATED");
+    if (!auth) refuse("NOT_AUTHENTICATED");
     // Platform administrators manage organizations in the admin app; they don't use app data.
-    if (getPolicyScopeFromRole(auth.user.role) === "admin") throw new Error("NOT_APPLICATION_USER");
+    if (getPolicyScopeFromRole(auth.user.role) === "admin") refuse("NOT_APPLICATION_USER");
 
     await rateLimit(ctx, {
       name: "mutationGlobal",
@@ -232,10 +233,10 @@ export const orgMutation = customMutation(mutation, {
     });
 
     const blocker = await appBlocker(ctx, auth.user._id);
-    if (blocker) throw new Error(blocker);
+    if (blocker) refuse(blocker);
     const organization = await writeOrganization(ctx, auth);
     if (expectedOrganizationId !== undefined && expectedOrganizationId !== organization.organizationId) {
-      throw new Error("ORGANIZATION_CHANGED");
+      refuse("ORGANIZATION_CHANGED");
     }
     return { ctx: { ...auth, ...organization }, args: {} };
   },
@@ -261,9 +262,9 @@ export const adminMutation = captureNativeBuilder(customMutation(
   mutation,
   customCtx(async ctx => {
     const auth = await getAuth(ctx);
-    if (!auth) throw new Error("NOT_AUTHENTICATED");
-    if (getPolicyScopeFromRole(auth.user.role) !== "admin") throw new Error("NOT_ADMIN");
-    if (!auth.assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
+    if (!auth) refuse("NOT_AUTHENTICATED");
+    if (getPolicyScopeFromRole(auth.user.role) !== "admin") refuse("NOT_ADMIN");
+    if (!auth.assurance.recent) refuse("RECENT_AUTHENTICATION_REQUIRED");
     await rateLimit(ctx, { name: "mutationGlobal", key: auth.ownerId, throws: true });
     return auth;
   }),

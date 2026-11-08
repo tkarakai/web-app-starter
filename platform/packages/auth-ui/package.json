@@ -29,7 +29,8 @@
     "convex": "^1.48.0",
     "lucide-react": "^1.69.0",
     "next-intl": "^4.14.9",
-    "next-themes": "^0.4.6"
+    "next-themes": "^0.4.6",
+    "@web-app-starter/agentic": "workspace:*"
   },
   "peerDependencies": {
     "next": "^16.4.1",

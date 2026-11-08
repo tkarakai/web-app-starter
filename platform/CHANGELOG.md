@@ -91,6 +91,13 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Changed
 
+- Public Convex refusals now carry `ConvexError` data with a `code` field, preserving agent
+  recovery hints and human error messages in production. Apps matching `error.message` should
+  use `errorCode` from `@web-app-starter/agentic/errors`; messages are redacted in production.
+  Backend code can throw a refusal with `refuse` from `@web-app-starter/convex-platform/errors`.
+  Rate-limit data (`kind: "RateLimited"`) maps to `RATE_LIMITED`. Agent replies include only
+  allowlisted codes and fixed recovery hints, never backend details or traces.
+
 - **Organizations are created only by billing organizations.** Better Auth's
   `/organization/create` is refused (`ORGANIZATION_CREATION_DISABLED`); the switcher and the
   no-organization state no longer offer **Create organization**, and `CreateOrganizationDialog`

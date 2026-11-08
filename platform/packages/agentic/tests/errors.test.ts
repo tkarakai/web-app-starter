@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { safeCapabilityError } from "../src/errors";
+import { errorCode, safeCapabilityError } from "../src/errors";
 
 describe("agent-facing errors", () => {
   test("organization refusals keep their code and a fixed recovery step, never the backend message", () => {
@@ -26,5 +26,29 @@ describe("agent-facing errors", () => {
   test("unknown failures stay generic", () => {
     expect(safeCapabilityError(new Error("sensitive credential trace"))).toStartWith("CAPABILITY_FAILED");
     expect(safeCapabilityError("not an error")).toStartWith("CAPABILITY_FAILED");
+  });
+});
+
+
+describe("production error data", () => {
+  test("structured codes survive a redacted message without leaking details", () => {
+    const error = { message: "[Request ID: secret] Server Error", data: { code: "LAST_OWNER", message: "Private Org cookie=secret", trace: "private.ts" } };
+    expect(errorCode(error)).toBe("LAST_OWNER");
+    expect(safeCapabilityError(error)).toStartWith("LAST_OWNER: ");
+    expect(safeCapabilityError(error)).not.toContain("secret");
+    expect(safeCapabilityError(error)).not.toContain("Private");
+    expect(safeCapabilityError({ ...error, data: { code: "UNRECOGNIZED_INTERNAL_FAILURE" } })).toStartWith("CAPABILITY_FAILED");
+  });
+  test("rate-limit kind has one canonical code", () => {
+    expect(errorCode({ data: { kind: "RateLimited", retryAfter: 5000 } })).toBe("RATE_LIMITED");
+    expect(safeCapabilityError({ data: { kind: "RateLimited" } })).toBe("RATE_LIMITED");
+  });
+  test("legacy fallback matches complete tokens, never substrings", () => {
+    expect(errorCode(new Error("Uncaught Error: CTA_NAME_REQUIRED\n at handler"))).toBe("CTA_NAME_REQUIRED");
+    expect(safeCapabilityError(new Error("CTA_NAME_REQUIRED"))).toStartWith("CTA_NAME_REQUIRED:");
+    expect(safeCapabilityError(new Error("PREFIX_LAST_OWNER_SUFFIX"))).toStartWith("CAPABILITY_FAILED");
+    expect(errorCode({ data: { code: "LAST_OWNER" }, message: "NOT_ADMIN" })).toBe("LAST_OWNER");
+    expect(errorCode(null)).toBeUndefined();
+    expect(errorCode({ data: { code: 5 }, message: "Server Error" })).toBeUndefined();
   });
 });

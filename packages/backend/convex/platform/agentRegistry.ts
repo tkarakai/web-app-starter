@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 import * as tasks from "./agentTaskAdmin";
 import * as grants from "./agentAccess";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
@@ -52,7 +53,7 @@ add("surfaces", surfaces, ["configuration", "setEnabled"], "Read/change independ
 export const currentUser = authedQuery({ args: {}, handler: async ctx => ({ id: ctx.user._id, name: ctx.user.name, email: ctx.user.email, role: ctx.user.role }) });
 export const assurance = authedQuery({ args: {}, handler: async ctx => ctx.assurance });
 export const announcement = authedQuery({ args: { announcementId: v.string() }, handler: async (ctx, { announcementId }) => {
-  if (ctx.user.role !== "admin") throw new Error("NOT_ADMIN");
+  if (ctx.user.role !== "admin") refuse("NOT_ADMIN");
   const rows = await ctx.runQuery(components.platform.announcements.list, { includeArchived: true });
   return rows.find(row => row._id === announcementId) ?? null;
 } });
@@ -65,14 +66,14 @@ export const ownPasskeys = authedQuery({ args: { paginationOpts: v.optional(pagi
 } });
 export const renamePasskey = adminMutation({ args: { passkeyId: v.string(), name: v.string() }, handler: async (ctx, { passkeyId, name }) => {
   const key = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "passkey", where: [{ field: "_id", value: passkeyId }] });
-  if (!key || key.userId !== ctx.user._id) throw new Error("PASSKEY_NOT_FOUND");
-  if (!name.trim() || name.length > 100) throw new Error("INVALID_PASSKEY_NAME");
+  if (!key || key.userId !== ctx.user._id) refuse("PASSKEY_NOT_FOUND");
+  if (!name.trim() || name.length > 100) refuse("INVALID_PASSKEY_NAME");
   await ctx.runMutation(components.betterAuth.adapter.updateOne, { input: { model: "passkey", where: [{ field: "_id", value: passkeyId }], update: { name } } });
   await scheduleAuditEvent(ctx, { actor: ctx.user.email, authenticatedUserId: ctx.ownerId, sourceDetail: "agent-account", action: "auth.passkey.renamed", resource: `passkey:${passkeyId}`, status: "succeeded" });
 } });
 export const removePasskey = adminMutation({ args: { passkeyId: v.string() }, handler: async (ctx, { passkeyId }) => {
   const key = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "passkey", where: [{ field: "_id", value: passkeyId }] });
-  if (!key || key.userId !== ctx.user._id) throw new Error("PASSKEY_NOT_FOUND");
+  if (!key || key.userId !== ctx.user._id) refuse("PASSKEY_NOT_FOUND");
   await ctx.runMutation(components.betterAuth.adapter.deleteOne, { input: { model: "passkey", where: [{ field: "_id", value: passkeyId }] } });
   await scheduleAuditEvent(ctx, { actor: ctx.user.email, authenticatedUserId: ctx.ownerId, sourceDetail: "agent-account", action: "auth.passkey.deleted", resource: `passkey:${passkeyId}`, status: "succeeded" });
 } });
@@ -112,6 +113,6 @@ export const revokeOtherSessions = adminMutation({ args: {}, handler: async ctx 
       return { revoked: true, currentBrowserSessionPreserved: Boolean(currentSessionId), delegationPreserved: !currentSessionId };
     }
   }
-  throw new Error("TOO_MANY_SESSIONS");
+  refuse("TOO_MANY_SESSIONS");
 } });
 add("account", { revokeOtherSessions }, ["revokeOtherSessions"], "Sign out other browser devices. WebMCP preserves its current browser session. A remote agent has a separate delegation, so every browser session is another device; the delegation stays valid. Agent grants are managed separately.");

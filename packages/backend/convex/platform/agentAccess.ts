@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { rememberNative } from "./nativeCapabilities";
 /** One-use browser authorization and scoped delegations. Raw credentials are never stored. */
@@ -34,10 +35,10 @@ export function validRedirect(value: string): boolean {
 
 const consentMutation = customMutation(mutation, customCtx(async ctx => {
   const auth = await authorizedSession(ctx, false, true);
-  if (!auth) throw new Error("NOT_AUTHENTICATED");
-  if (!auth.assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
-  if (auth.user.role !== "admin") throw new Error("NOT_ADMIN");
-  if (auth.session.authPurpose !== "mcp-authorization" || !process.env.AGENT_MCP_AUTH_ORIGIN) throw new Error("MCP_AUTHORIZATION_ONLY");
+  if (!auth) refuse("NOT_AUTHENTICATED");
+  if (!auth.assurance.recent) refuse("RECENT_AUTHENTICATION_REQUIRED");
+  if (auth.user.role !== "admin") refuse("NOT_ADMIN");
+  if (auth.session.authPurpose !== "mcp-authorization" || !process.env.AGENT_MCP_AUTH_ORIGIN) refuse("MCP_AUTHORIZATION_ONLY");
   await rateLimit(ctx, { name: "mutationGlobal", key: auth.ownerId, throws: true });
   return auth;
 }));
@@ -45,9 +46,9 @@ export const authorize = consentMutation({
   args: { clientId: v.string(), redirectUri: v.string(), resource: v.string(), challenge: v.string(), scope: v.string() },
   handler: async (ctx, args) => {
     if (args.clientId !== AGENT_CLIENT_ID || args.scope !== AGENT_SCOPE || !resourceEnabled(args.resource)
-      || !validRedirect(args.redirectUri) || !/^[A-Za-z0-9_-]{43}$/.test(args.challenge)) throw new Error("INVALID_AUTHORIZATION_REQUEST");
+      || !validRedirect(args.redirectUri) || !/^[A-Za-z0-9_-]{43}$/.test(args.challenge)) refuse("INVALID_AUTHORIZATION_REQUEST");
     const config = await surfaceConfiguration(ctx, surfaceForResource(args.resource) ?? "mcp");
-    if (!config.enabled) throw new Error("MCP_DISABLED");
+    if (!config.enabled) refuse("MCP_DISABLED");
     const delegationId = await captureDelegation(ctx, { user: ctx.user, session: ctx.session });
     const code = secret();
     const codeId = await ctx.db.insert("agentAuthorizationCodes", {
@@ -65,31 +66,31 @@ export const authorize = consentMutation({
 export const deny = mutation({
   args: {}, handler: async ctx => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity || typeof identity.sessionId !== "string") throw new Error("NOT_AUTHENTICATED");
+    if (!identity || typeof identity.sessionId !== "string") refuse("NOT_AUTHENTICATED");
     const session = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "session", where: [{ field: "_id", value: identity.sessionId }] }) as Doc<"session"> | null;
     if (!session) return;
-    if (session.userId !== identity.subject || session.authPurpose !== "mcp-authorization") throw new Error("FORBIDDEN");
+    if (session.userId !== identity.subject || session.authPurpose !== "mcp-authorization") refuse("FORBIDDEN");
     await deleteAuthorizationSession(ctx, session._id);
   },
 });
 
 export async function requireGrant(ctx: QueryCtx, token: string, resource: string, recent = false) {
-  if (!/^[a-f0-9]{64}$/.test(token) || !resourceEnabled(resource)) throw new Error("INVALID_AGENT_TOKEN");
+  if (!/^[a-f0-9]{64}$/.test(token) || !resourceEnabled(resource)) refuse("INVALID_AGENT_TOKEN");
   const config = await surfaceConfiguration(ctx, surfaceForResource(resource) ?? "mcp");
-  if (!config.enabled) throw new Error("INVALID_AGENT_TOKEN");
+  if (!config.enabled) refuse("INVALID_AGENT_TOKEN");
   const tokenHash = await credentialHash(token);
   const grant = await ctx.db.query("agentGrants").withIndex("by_token_hash", q => q.eq("tokenHash", tokenHash)).unique();
   if (!grant || grant.generation !== config.generation || grant.revokedAt || grant.expiresAt <= Date.now() || grant.resource !== resource || grant.scope !== AGENT_SCOPE)
-    throw new Error("INVALID_AGENT_TOKEN");
+    refuse("INVALID_AGENT_TOKEN");
   return validateGrant(ctx, grant, recent);
 }
 
 async function validateGrant(ctx: QueryCtx, grant: import("../_generated/dataModel").Doc<"agentGrants">, recent: boolean) {
   const pair = await readDelegation(ctx, grant.delegationId, grant.userId);
-  if (!pair || pair.user.role !== "admin") throw new Error("INVALID_AGENT_TOKEN");
+  if (!pair || pair.user.role !== "admin") refuse("INVALID_AGENT_TOKEN");
   const assurance = await evaluateSession(ctx, pair);
-  if (!assurance.allowed) throw new Error("INVALID_AGENT_TOKEN");
-  if (recent && !assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
+  if (!assurance.allowed) refuse("INVALID_AGENT_TOKEN");
+  if (recent && !assurance.recent) refuse("RECENT_AUTHENTICATION_REQUIRED");
   return { ...pair, assurance, grantId: grant._id, generation: grant.generation, ownerId: (pair.user.userId ?? pair.user._id).toString() };
 }
 
@@ -98,7 +99,7 @@ export async function requireGrantById(ctx: QueryCtx, grantId: import("../_gener
   const grant = await ctx.db.get(grantId);
   const surface = surfaceForResource(resource);
   const config = surface ? await surfaceConfiguration(ctx, surface) : null;
-  if (!grant || !config?.enabled || grant.generation !== config.generation || grant.revokedAt || grant.expiresAt <= Date.now() || grant.resource !== resource || grant.scope !== AGENT_SCOPE) throw new Error("INVALID_AGENT_TOKEN");
+  if (!grant || !config?.enabled || grant.generation !== config.generation || grant.revokedAt || grant.expiresAt <= Date.now() || grant.resource !== resource || grant.scope !== AGENT_SCOPE) refuse("INVALID_AGENT_TOKEN");
   return validateGrant(ctx, grant, recent);
 }
 
@@ -110,14 +111,14 @@ export const exchange = mutation({
     const hash = await credentialHash(args.code);
     const row = await ctx.db.query("agentAuthorizationCodes").withIndex("by_code_hash", q => q.eq("codeHash", hash)).unique();
     if (!config.enabled || !row || row.generation !== config.generation || row.expiresAt <= Date.now() || !resourceEnabled(args.resource) || row.resource !== args.resource
-      || row.clientId !== args.clientId || row.redirectUri !== args.redirectUri || !/^[A-Za-z0-9._~-]{43,128}$/.test(args.verifier)) throw new Error("INVALID_GRANT");
+      || row.clientId !== args.clientId || row.redirectUri !== args.redirectUri || !/^[A-Za-z0-9._~-]{43,128}$/.test(args.verifier)) refuse("INVALID_GRANT");
     const challengeBytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new globalThis.TextEncoder().encode(args.verifier)));
     const challenge = btoa(String.fromCharCode(...challengeBytes)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
-    if (challenge !== row.challenge) throw new Error("INVALID_GRANT");
+    if (challenge !== row.challenge) refuse("INVALID_GRANT");
     const pair = await readDelegation(ctx, row.delegationId, row.userId);
-    if (!pair || pair.user.role !== "admin") throw new Error("INVALID_GRANT");
+    if (!pair || pair.user.role !== "admin") refuse("INVALID_GRANT");
     const assurance = await evaluateSession(ctx, pair);
-    if (!assurance.allowed || !assurance.recent) throw new Error("INVALID_GRANT");
+    if (!assurance.allowed || !assurance.recent) refuse("INVALID_GRANT");
     // A mutation atomically consumes the code. Racing or repeated exchanges cannot mint two tokens.
     await ctx.db.delete(row._id);
     const token = secret();
@@ -151,7 +152,7 @@ export const revoke = adminMutation({
   args: { grantId: v.id("agentGrants") },
   handler: async (ctx, args) => {
     const grant = await ctx.db.get(args.grantId);
-    if (!grant || grant.userId !== ctx.user._id) throw new Error("GRANT_NOT_FOUND");
+    if (!grant || grant.userId !== ctx.user._id) refuse("GRANT_NOT_FOUND");
     await ctx.db.patch(grant._id, { revokedAt: Date.now() });
     await scheduleAuditEvent(ctx, { actor: ctx.user.email, authenticatedUserId: ctx.ownerId, sourceDetail: "agent-access", action: "admin.agent_grant_revoked", resource: `agent-grant:${grant._id}`, status: "succeeded" });
   },

@@ -1,3 +1,5 @@
+
+import { errorCode } from "@web-app-starter/agentic/errors";
 /** Friendly English messages for organization support-action errors. */
 const MESSAGES: Record<string, string> = {
   OWNER_SUCCESSOR_REQUIRED: "An organization would be left without an owner who can act. Make another member an owner first, or unban one of its owners.",
@@ -17,7 +19,6 @@ const MESSAGES: Record<string, string> = {
 };
 
 export function organizationErrorMessage(error: unknown): string {
-  const text = error instanceof Error ? error.message : String(error);
-  const code = Object.keys(MESSAGES).find((key) => text.includes(key));
-  return code ? MESSAGES[code]! : "Action failed. Please try again.";
+  const code = errorCode(error);
+  return MESSAGES[code ?? ""] ?? "Action failed. Please try again.";
 }

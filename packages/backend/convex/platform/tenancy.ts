@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 /**
  * Tenancy mode: the platform admin chooses `individuals` or `organizations` once
  * (platform/docs/tenancy-and-billing.md). Until a setup finishes, sign-ups and organization
@@ -40,7 +41,7 @@ const ELIGIBILITY_LIMIT = 2_000;
 const modeValidator = v.union(v.literal("individuals"), v.literal("organizations"));
 
 function requireAdmin(user: Doc<"user">) {
-  if (user.role !== "admin") throw new Error("NOT_ADMIN");
+  if (user.role !== "admin") refuse("NOT_ADMIN");
 }
 
 async function page<T>(ctx: Reader, model: "organization" | "user", cursor: string | null, numItems = SETUP_BATCH): Promise<Page<T>> {
@@ -74,7 +75,7 @@ async function pendingEnrollees(ctx: Reader): Promise<(email: string) => boolean
 /** A setup owner: an application user who can act and isn't a pending administrator. */
 async function requireSetupUser(ctx: Reader, userId: string | undefined, enrollee?: (email: string) => boolean) {
   const user = userId ? await findById(ctx, "user", userId) : null;
-  if (!user || !(await canActNow(ctx, user)) || (enrollee ?? await pendingEnrollees(ctx))(user.email)) throw new Error("TENANCY_USER_REQUIRED");
+  if (!user || !(await canActNow(ctx, user)) || (enrollee ?? await pendingEnrollees(ctx))(user.email)) refuse("TENANCY_USER_REQUIRED");
   return user;
 }
 
@@ -87,7 +88,7 @@ async function requireSetupOwners(ctx: Reader, billingUserId?: string, adminUser
     needed.set(user._id, (needed.get(user!._id) ?? 0) + 1);
   }
   for (const [userId, count] of needed) {
-    if ((await listMemberships(ctx, userId)).length + count > MAX_MEMBERSHIPS_PER_USER) throw new Error("MEMBERSHIP_LIMIT_REACHED");
+    if ((await listMemberships(ctx, userId)).length + count > MAX_MEMBERSHIPS_PER_USER) refuse("MEMBERSHIP_LIMIT_REACHED");
   }
 }
 
@@ -155,7 +156,7 @@ async function replaceSharedOwner(ctx: MutationCtx & { user: Doc<"user"> }, setu
   const sharedOrganizationId = setup.sharedOrganizationId!;
   const existing = await findById(ctx, "organization", sharedOrganizationId);
   const member = existing ? await findMembership(ctx, user._id, sharedOrganizationId) : null;
-  if (!member && (await listMemberships(ctx, user._id)).length + 1 > MAX_MEMBERSHIPS_PER_USER) throw new Error("MEMBERSHIP_LIMIT_REACHED");
+  if (!member && (await listMemberships(ctx, user._id)).length + 1 > MAX_MEMBERSHIPS_PER_USER) refuse("MEMBERSHIP_LIMIT_REACHED");
   if (!existing) {
     const organizationId = await createOrganizationWithOwner(ctx, setup.sharedOrganizationName!, user._id);
     const billing = setup.billingOrganizationId ? await ctx.runQuery(components.platform.billing.billingByOrganization, { organizationId: setup.billingOrganizationId }) : null;
@@ -188,9 +189,9 @@ export const retry = adminMutation({
   handler: async (ctx, args) => {
     requireAdmin(ctx.user);
     const setup = await currentSetup(ctx);
-    if (!setup || (setup.state !== "failed" && !(await setupStale(ctx, setup)))) throw new Error("TENANCY_SETUP_NOT_FAILED");
+    if (!setup || (setup.state !== "failed" && !(await setupStale(ctx, setup)))) refuse("TENANCY_SETUP_NOT_FAILED");
     const ownersCreated = !!(setup.billingOrganizationId || setup.sharedOrganizationId);
-    if (ownersCreated && (args.billingUserId || (args.adminUserId && !(await sharedOwnerLost(ctx, setup))))) throw new Error("TENANCY_SETUP_OWNERS_FIXED");
+    if (ownersCreated && (args.billingUserId || (args.adminUserId && !(await sharedOwnerLost(ctx, setup))))) refuse("TENANCY_SETUP_OWNERS_FIXED");
     if (ownersCreated && args.adminUserId) await replaceSharedOwner(ctx, setup, args.adminUserId);
     const billingUserId = args.billingUserId ?? setup.billingUserId;
     const adminUserId = args.adminUserId ?? setup.adminUserId;
@@ -253,9 +254,9 @@ export const check = adminMutation({
   args: {},
   handler: async (ctx) => {
     requireAdmin(ctx.user);
-    if (await readTenancyMode(ctx)) throw new Error("TENANCY_ALREADY_CONFIGURED");
+    if (await readTenancyMode(ctx)) refuse("TENANCY_ALREADY_CONFIGURED");
     const setup = await currentSetup(ctx);
-    if (setup && setup.state !== "done") throw new Error("TENANCY_SETUP_RUNNING");
+    if (setup && setup.state !== "done") refuse("TENANCY_SETUP_RUNNING");
     const existing = await currentCheck(ctx);
     if (existing && existing.state === "running" && !(await checkStale(ctx, existing))) return;
     const now = Date.now();
@@ -434,24 +435,24 @@ export const configure = adminMutation({
   },
   handler: async (ctx, args) => {
     requireAdmin(ctx.user);
-    if (await readTenancyMode(ctx)) throw new Error("TENANCY_ALREADY_CONFIGURED");
+    if (await readTenancyMode(ctx)) refuse("TENANCY_ALREADY_CONFIGURED");
     const previous = await currentSetup(ctx);
-    if (previous && previous.state !== "done") throw new Error("TENANCY_SETUP_RUNNING");
+    if (previous && previous.state !== "done") refuse("TENANCY_SETUP_RUNNING");
     const stored = await currentCheck(ctx);
-    if (!stored || stored.state !== "done") throw new Error("TENANCY_CHECK_REQUIRED");
-    if (!checkFresh(stored)) throw new Error("TENANCY_CHECK_EXPIRED");
+    if (!stored || stored.state !== "done") refuse("TENANCY_CHECK_REQUIRED");
+    if (!checkFresh(stored)) refuse("TENANCY_CHECK_EXPIRED");
     await ctx.runMutation(components.platform.billing.ensureSeeded, {});
     const check = await eligibilityFrom(ctx, stored);
-    if (!check.complete) throw new Error("TENANCY_INSTALL_TOO_LARGE");
-    if (!check.plans.ready) throw new Error("TENANCY_PLANS_REQUIRED");
-    if (args.mode === "individuals" && !check.individualsAllowed) throw new Error("TENANCY_INDIVIDUALS_NOT_ALLOWED");
+    if (!check.complete) refuse("TENANCY_INSTALL_TOO_LARGE");
+    if (!check.plans.ready) refuse("TENANCY_PLANS_REQUIRED");
+    if (args.mode === "individuals" && !check.individualsAllowed) refuse("TENANCY_INDIVIDUALS_NOT_ALLOWED");
     const shared = args.mode === "organizations" && check.sharedStep;
     const names: { billingOrganizationName?: string; sharedOrganizationName?: string } = {};
     if (shared) {
       await requireSetupOwners(ctx, args.billingUserId, args.adminUserId);
       for (const key of ["billingOrganizationName", "sharedOrganizationName"] as const) {
         const name = args[key]?.trim();
-        if (!name) throw new Error("ORGANIZATION_NAME_REQUIRED");
+        if (!name) refuse("ORGANIZATION_NAME_REQUIRED");
         assertMaxLength(name, MAX_NAME_LENGTH, key);
         names[key] = name;
       }
@@ -497,7 +498,7 @@ export const runSetup = internalMutation({
     if (!setup || setup.state !== "running") return;
     if (setup.billingUserId && (!setup.billingOrganizationId || !setup.sharedOrganizationId)) await requireSetupOwners(ctx, setup.billingUserId, setup.adminUserId);
     const plans = await ctx.runQuery(components.platform.billing.listPlans, {});
-    if (!plans.some(plan => !plan.isSeeded) || !plans.some(plan => plan.isDefault && plan.isFreeForever && plan.status === "active")) throw new Error("TENANCY_PLANS_REQUIRED");
+    if (!plans.some(plan => !plan.isSeeded) || !plans.some(plan => plan.isDefault && plan.isFreeForever && plan.status === "active")) refuse("TENANCY_PLANS_REQUIRED");
     const actor = setup.startedBy ? { userId: setup.startedBy, email: (await findById(ctx, "user", setup.startedBy))?.email ?? "admin" } : SYSTEM_ACTOR;
     const planId = await initialPlanId(ctx);
 
@@ -505,7 +506,7 @@ export const runSetup = internalMutation({
       const result = await page<Doc<"organization">>(ctx, "organization", setup.cursor);
       for (const organization of result.page) {
         // Individuals: every organization still has one member (joins are refused meanwhile).
-        if (setup.mode === "individuals" && (await firstMembers(ctx, organization._id, 2)).length > 1) throw new Error("TENANCY_INDIVIDUALS_NOT_ALLOWED");
+        if (setup.mode === "individuals" && (await firstMembers(ctx, organization._id, 2)).length > 1) refuse("TENANCY_INDIVIDUALS_NOT_ALLOWED");
         await preparePlan(ctx, organization, setup.mode, planId, actor);
       }
       const next = result.isDone ? (setup.billingUserId ? "shared" : setup.mode === "individuals" ? "verify" : "done") : "plans";
@@ -544,7 +545,7 @@ export const runSetup = internalMutation({
       const result = await page<Doc<"user">>(ctx, "user", setup.cursor);
       const enrollee = await pendingEnrollees(ctx);
       for (const user of result.page) {
-        if (isAppUser(user, enrollee) && (await membershipCount(ctx, user._id, 2)) !== 1) throw new Error("TENANCY_INDIVIDUALS_NOT_ALLOWED");
+        if (isAppUser(user, enrollee) && (await membershipCount(ctx, user._id, 2)) !== 1) refuse("TENANCY_INDIVIDUALS_NOT_ALLOWED");
       }
       await ctx.db.patch(setup._id, { step: result.isDone ? "done" : "verify", cursor: result.isDone ? null : result.continueCursor });
     } else {

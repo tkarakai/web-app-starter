@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 /**
  * The ownership invariant: an organization that has members always has an owner, and while any
  * member can act, an owner who can (`canActNow`: not banned, not a platform administrator, no
@@ -181,11 +182,11 @@ export async function assertOrganizationHasOwner(
   if (isDeleting(organization)) return;
   const owners = await ownersExcept(ctx, organizationId, change.leaving);
   if (owners.length === 0) {
-    if (await otherMemberExists(ctx, organizationId, change.leaving)) throw new Error(OWNER_REQUIRED);
+    if (await otherMemberExists(ctx, organizationId, change.leaving)) refuse(OWNER_REQUIRED);
     return;
   }
   if (change.removedActiveOwner && !(await someActive(ctx, owners)) && await activeNonOwnerExists(ctx, organizationId, change.leaving)) {
-    throw new Error(OWNER_REQUIRED);
+    refuse(OWNER_REQUIRED);
   }
 }
 
@@ -262,13 +263,13 @@ export const memberTriggers = {
   onCreate: async (ctx: Writer, doc: MemberRow) => {
     await invalidateTenancyCheck(ctx);
     const blocker = await joinBlocker(ctx, doc, true);
-    if (blocker) throw new Error(blocker);
+    if (blocker) refuse(blocker);
   },
   onUpdate: async (ctx: Writer, doc: MemberRow, old: MemberRow) => {
     await invalidateTenancyCheck(ctx);
     if (doc.organizationId !== old.organizationId || doc.userId !== old.userId) {
       const blocker = await joinBlocker(ctx, doc, true);
-      if (blocker) throw new Error(blocker);
+      if (blocker) refuse(blocker);
     }
     const demoted = parseRole(doc.role) !== "owner" || old.organizationId !== doc.organizationId;
     const removedActiveOwner = demoted && await activeOwner(ctx, old);
@@ -396,10 +397,10 @@ export const userTriggers = {
     const after = canAct(doc);
     if (before && !after) {
       const needed = await successorsNeededForBan(ctx, doc._id);
-      if (needed.length > 0) throw new Error(successorRequiredMessage(needed, isBanned(doc) ? "banning" : "making an administrator of"));
+      if (needed.length > 0) refuse("OWNER_SUCCESSOR_REQUIRED", { organizations: needed.map(({ organizationId, name }) => ({ organizationId, name })), message: successorRequiredMessage(needed, isBanned(doc) ? "banning" : "making an administrator of") });
     } else if (!before && after) {
       const needed = await ownersNeededForReactivation(ctx, doc._id);
-      if (needed.length > 0) throw new Error(successorRequiredMessage(needed, "reactivating"));
+      if (needed.length > 0) refuse("OWNER_SUCCESSOR_REQUIRED", { organizations: needed.map(({ organizationId, name }) => ({ organizationId, name })), message: successorRequiredMessage(needed, "reactivating") });
     }
   },
 };
@@ -443,7 +444,7 @@ export async function setMemberRole(ctx: Writer, memberId: string, role: Organiz
 
 /** Exempt an organization from the guard while it is deleted (members go before the row). */
 export async function markOrganizationDeleting(ctx: Writer, organizationId: string): Promise<void> {
-  if (await ctx.runQuery(components.platform.billing.billingInUse, { organizationId })) throw new Error("BILLING_ORGANIZATION_IN_USE");
+  if (await ctx.runQuery(components.platform.billing.billingInUse, { organizationId })) refuse("BILLING_ORGANIZATION_IN_USE");
   await ctx.runMutation(components.betterAuth.adapter.updateOne, {
     input: { model: "organization", where: [{ field: "_id", value: organizationId }], update: { deletingAt: Date.now() } },
   });

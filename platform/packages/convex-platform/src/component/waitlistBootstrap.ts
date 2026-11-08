@@ -1,3 +1,4 @@
+import { refuse } from "../errors";
 import { v } from "convex/values";
 import { mutation, query } from "./functions";
 import { waitlistEntriesFields, invitationTokensFields } from "./schema";
@@ -13,7 +14,7 @@ export const initialize = mutation({
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .first();
     if (existingEntry) {
-      throw new Error("BOOTSTRAP_DUPLICATE_WAITLIST_ENTRY");
+      refuse("BOOTSTRAP_DUPLICATE_WAITLIST_ENTRY");
     }
 
     // Create a waitlist entry and immediately invite
@@ -45,7 +46,7 @@ export const rescue = mutation({
       .first();
 
     if (waitlistEntry && waitlistEntry.status === "claimed") {
-      throw new Error("BOOTSTRAP_ALREADY_COMPLETE");
+      refuse("BOOTSTRAP_ALREADY_COMPLETE");
     }
 
     const emailChanged = args.newEmail !== args.currentEmail;
@@ -58,7 +59,7 @@ export const rescue = mutation({
         .withIndex("by_email", (q) => q.eq("email", args.newEmail))
         .first();
       if (existingNewEntry) {
-        throw new Error("BOOTSTRAP_DUPLICATE_WAITLIST_ENTRY");
+        refuse("BOOTSTRAP_DUPLICATE_WAITLIST_ENTRY");
       }
     }
 

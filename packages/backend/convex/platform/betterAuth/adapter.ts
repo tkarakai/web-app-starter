@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 import { createApi } from "@convex-dev/better-auth";
 import schema from "./schema";
 import { createAuthOptions } from "../auth";
@@ -50,7 +51,7 @@ export const invitationsByExpiry = query({
   },
   handler: async (ctx, args) => {
     const { organizationId, email, status, expiresAfter } = args;
-    if ((organizationId === undefined) === (email === undefined)) throw new Error("INVALID_INVITATION_SCOPE");
+    if ((organizationId === undefined) === (email === undefined)) refuse("INVALID_INVITATION_SCOPE");
     const invitations = stream(ctx.db, schema).query("invitation");
     const rows = organizationId !== undefined
       ? invitations.withIndex("organizationId_status_expiresAt", (q) =>

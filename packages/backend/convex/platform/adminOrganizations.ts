@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 /**
  * Platform-administrator view and support actions over every organization: the admin app's
  * Organizations page and the `organizations_*` agent capabilities share these functions.
@@ -23,12 +24,12 @@ type Reader = Pick<QueryCtx, "runQuery" | "db">;
 type AdminCtx = Pick<MutationCtx, "runQuery" | "runMutation" | "scheduler" | "db"> & { user: Doc<"user">; ownerId: string };
 
 function requireAdmin(user: Doc<"user">) {
-  if (user.role !== "admin") throw new Error("NOT_ADMIN");
+  if (user.role !== "admin") refuse("NOT_ADMIN");
 }
 
 async function target(ctx: Reader, organizationId: string) {
   const organization = await findById(ctx, "organization", organizationId);
-  if (!organization) throw new Error("ORGANIZATION_NOT_FOUND");
+  if (!organization) refuse("ORGANIZATION_NOT_FOUND");
   return organization;
 }
 
@@ -82,7 +83,7 @@ export const list = authedQuery({
   args: { paginationOpts: paginationOptsValidator, search: v.optional(v.string()) },
   handler: async (ctx, args) => {
     requireAdmin(ctx.user);
-    if (args.paginationOpts.numItems > 100) throw new Error("INVALID_PAGE_SIZE");
+    if (args.paginationOpts.numItems > 100) refuse("INVALID_PAGE_SIZE");
     const search = args.search?.trim();
     const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
       model: "organization",
@@ -160,7 +161,7 @@ async function audit(ctx: AdminCtx, action: "admin.organization.owner_added" | "
 async function memberOf(ctx: Reader, organizationId: string, userId: string) {
   await target(ctx, organizationId);
   const member = await findMembership(ctx, userId, organizationId);
-  if (!member) throw new Error("MEMBER_NOT_FOUND");
+  if (!member) refuse("MEMBER_NOT_FOUND");
   return member;
 }
 
@@ -174,8 +175,8 @@ export async function promoteToOwner(ctx: AdminCtx, organizationId: string, user
   const previous = parseRole(member.role);
   if (previous === "owner") return;
   const user = await findById(ctx, "user", userId);
-  if (isBanned(user)) throw new Error("MEMBER_BANNED");
-  if (!canAct(user)) throw new Error("MEMBER_IS_ADMINISTRATOR");
+  if (isBanned(user)) refuse("MEMBER_BANNED");
+  if (!canAct(user)) refuse("MEMBER_IS_ADMINISTRATOR");
   await setMemberRole(ctx, member._id, "owner");
   await audit(ctx, "admin.organization.owner_added", organizationId, { userId, ...meta }, { oldValue: previous, newValue: "owner" });
 }
@@ -193,11 +194,11 @@ export const removeOwner = adminMutation({
   args: { organizationId: v.string(), userId: v.string(), role: v.union(v.literal("admin"), v.literal("member")) },
   handler: async (ctx, { organizationId, userId, role }) => {
     const member = await memberOf(ctx, organizationId, userId);
-    if (parseRole(member.role) !== "owner") throw new Error("NOT_AN_OWNER");
-    if (!(await hasOtherOwner(ctx, organizationId, member._id))) throw new Error("LAST_OWNER");
+    if (parseRole(member.role) !== "owner") refuse("NOT_AN_OWNER");
+    if (!(await hasOtherOwner(ctx, organizationId, member._id))) refuse("LAST_OWNER");
     // The only owner who can act, while others can: demoting them needs a successor first.
     const active = await canActNow(ctx, await findById(ctx, "user", userId));
-    if (active && await successorNeeded(ctx, organizationId, member._id)) throw new Error("LAST_OWNER");
+    if (active && await successorNeeded(ctx, organizationId, member._id)) refuse("LAST_OWNER");
     await setMemberRole(ctx, member._id, role);
     await audit(ctx, "admin.organization.owner_removed", organizationId, { userId }, { oldValue: "owner", newValue: role });
   },
@@ -208,8 +209,8 @@ export const cancelInvitation = adminMutation({
   args: { invitationId: v.string() },
   handler: async (ctx, { invitationId }) => {
     const invitation = await findById(ctx, "invitation", invitationId);
-    if (!invitation) throw new Error("INVITATION_NOT_FOUND");
-    if (invitation.status !== "pending") throw new Error("INVITATION_NOT_PENDING");
+    if (!invitation) refuse("INVITATION_NOT_FOUND");
+    if (invitation.status !== "pending") refuse("INVITATION_NOT_PENDING");
     await ctx.runMutation(components.betterAuth.adapter.updateOne, {
       input: { model: "invitation", where: [{ field: "_id", value: invitationId }], update: { status: "canceled" } },
     });
@@ -268,8 +269,8 @@ export const retryCleanup = adminMutation({
   args: { organizationId: v.string() },
   handler: async (ctx, { organizationId }) => {
     const row = await cleanupRow(ctx, organizationId);
-    if (!row) throw new Error("CLEANUP_NOT_FOUND");
-    if (row.state !== "failed" && !(await cleanupStale(ctx, row))) throw new Error("CLEANUP_NOT_FAILED");
+    if (!row) refuse("CLEANUP_NOT_FOUND");
+    if (row.state !== "failed" && !(await cleanupStale(ctx, row))) refuse("CLEANUP_NOT_FAILED");
     await restartCleanup(ctx, row);
     await audit(ctx, "admin.organization.cleanup_retried", organizationId, row.state === "failed" ? undefined : { stale: "true" });
   },

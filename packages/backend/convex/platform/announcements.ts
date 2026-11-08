@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 /** Public and internal app API: authorization stays here; the component owns storage and scheduling. */
 import { v, type ObjectType } from "convex/values";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
@@ -38,7 +39,7 @@ export const announcementCreateArgs = {
   };
 
 export async function createAnnouncement(ctx: MutationCtx & AnnouncementIdentity, args: ObjectType<typeof announcementCreateArgs>) {
-    if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
+    if ((ctx.user as Record<string, unknown>).role !== "admin") refuse("NOT_ADMIN");
     return await ctx.runMutation(components.platform.announcements.create, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
   }
 
@@ -57,14 +58,14 @@ export const announcementUpdateArgs = {
   };
 
 export async function updateAnnouncement(ctx: MutationCtx & AnnouncementIdentity, args: ObjectType<typeof announcementUpdateArgs>) {
-    if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
+    if ((ctx.user as Record<string, unknown>).role !== "admin") refuse("NOT_ADMIN");
     return await ctx.runMutation(components.platform.announcements.update, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
   }
 
 export const announcementRemoveArgs = { announcementId: v.string() };
 
 export async function removeAnnouncement(ctx: MutationCtx & AnnouncementIdentity, args: ObjectType<typeof announcementRemoveArgs>) {
-    if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
+    if ((ctx.user as Record<string, unknown>).role !== "admin") refuse("NOT_ADMIN");
     return await ctx.runMutation(components.platform.announcements.remove, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
   }
 
@@ -163,7 +164,7 @@ export const publishNow = adminMutation({
     announcementId: v.string(),
   },
   handler: async (ctx, args) => {
-    if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
+    if ((ctx.user as Record<string, unknown>).role !== "admin") refuse("NOT_ADMIN");
     return await ctx.runMutation(components.platform.announcements.publishNow, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
   },
 });
@@ -182,7 +183,7 @@ export const unpublishNow = adminMutation({
     announcementId: v.string(),
   },
   handler: async (ctx, args) => {
-    if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
+    if ((ctx.user as Record<string, unknown>).role !== "admin") refuse("NOT_ADMIN");
     return await ctx.runMutation(components.platform.announcements.unpublishNow, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
   },
 });
@@ -203,7 +204,7 @@ export const setLive = adminMutation({
     confirmDisableOthers: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
+    if ((ctx.user as Record<string, unknown>).role !== "admin") refuse("NOT_ADMIN");
     return await ctx.runMutation(components.platform.announcements.setLive, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
   },
 });
@@ -213,7 +214,7 @@ export const archive = adminMutation({
     announcementId: v.string(),
   },
   handler: async (ctx, args) => {
-    if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
+    if ((ctx.user as Record<string, unknown>).role !== "admin") refuse("NOT_ADMIN");
     return await ctx.runMutation(components.platform.announcements.archive, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
   },
 });

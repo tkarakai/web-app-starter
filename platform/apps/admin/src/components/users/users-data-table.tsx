@@ -1,5 +1,7 @@
 "use client";
 
+import { errorCode } from "@web-app-starter/agentic/errors";
+
 import * as React from "react";
 import {
   flexRender,
@@ -263,7 +265,7 @@ export function UsersDataTable() {
         setRowSelection({});
         refresh();
       } catch (err) {
-        toast.error(err instanceof Error && /OWNER_SUCCESSOR_REQUIRED|INVALID_SUCCESSOR|MEMBER_BANNED|ORGANIZATION_OWNER_REQUIRED/.test(err.message)
+        toast.error(["OWNER_SUCCESSOR_REQUIRED", "INVALID_SUCCESSOR", "MEMBER_BANNED", "ORGANIZATION_OWNER_REQUIRED"].includes(errorCode(err) ?? "")
           ? organizationErrorMessage(err)
           : err instanceof Error ? err.message : "Failed to ban user");
       } finally {
@@ -290,7 +292,7 @@ export function UsersDataTable() {
       setRowSelection({});
       refresh();
     } catch (err) {
-      toast.error(err instanceof Error && /OWNER_SUCCESSOR_REQUIRED/.test(err.message)
+      toast.error(["OWNER_SUCCESSOR_REQUIRED"].includes(errorCode(err) ?? "")
         ? organizationErrorMessage(err)
         : err instanceof Error ? err.message : "Failed to unban user");
     } finally {
@@ -321,7 +323,7 @@ export function UsersDataTable() {
       setRowSelection({});
       refresh();
     } catch (err) {
-      toast.error(err instanceof Error && /OWNER_SUCCESSOR_REQUIRED/.test(err.message)
+      toast.error(["OWNER_SUCCESSOR_REQUIRED"].includes(errorCode(err) ?? "")
         ? organizationErrorMessage(err)
         : err instanceof Error ? err.message : "Action failed");
     } finally {

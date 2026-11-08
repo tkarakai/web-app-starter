@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 import { createClient, type AuthFunctions, type GenericCtx } from "@convex-dev/better-auth";
 import { makeFunctionReference } from "convex/server";
 import { requireActionCtx } from "@convex-dev/better-auth/utils";
@@ -806,13 +807,13 @@ export const createAuthOptions = (
               { email: user.email },
             );
             if (!isSignupOnboarding(onboardingType) && !hasWaitlistInvitation && !hasAdminInvitation && !hasOrganizationInvitation) {
-              throw new Error("SIGNUP_DISABLED");
+              refuse("SIGNUP_DISABLED");
             }
 
             // Reserved administrator addresses require the bound enrollment flow.
             // This applies to every account-creation method, including public signup.
             if (await actionCtx.runQuery(components.platform.adminInvitations.requiresEnrollment, { email: user.email })) {
-              throw new Error("ADMIN_ENROLLMENT_REQUIRED");
+              refuse("ADMIN_ENROLLMENT_REQUIRED");
             }
 
             // Nobody signs up until the platform admin has chosen a tenancy mode
@@ -974,7 +975,7 @@ export const viewBackupCodes = action({
   args: { password: v.optional(v.string()) },
   handler: async (ctx, { password }): Promise<string[]> => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity || typeof identity.sessionId !== "string") throw new Error("NOT_AUTHENTICATED");
+    if (!identity || typeof identity.sessionId !== "string") refuse("NOT_AUTHENTICATED");
     return await readBackupCodes(ctx, identity.subject, identity.sessionId, password);
   },
 });

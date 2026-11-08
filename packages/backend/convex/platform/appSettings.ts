@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 /** App-side settings API: authorize here, store and validate in the platform component. */
 import { v } from "convex/values";
 import { components } from "../_generated/api";
@@ -30,7 +31,7 @@ export const getInternal = internalQuery({
 export const set = adminMutation({
   args: { key: v.string(), value: v.string() },
   handler: async (ctx, args) => {
-    if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
+    if ((ctx.user as Record<string, unknown>).role !== "admin") refuse("NOT_ADMIN");
     return await ctx.runMutation(components.platform.appSettings.set, { ...args, userId: ctx.ownerId });
   },
 });
@@ -38,7 +39,7 @@ export const set = adminMutation({
 export const remove = adminMutation({
   args: { key: v.string() },
   handler: async (ctx, args) => {
-    if ((ctx.user as Record<string, unknown>).role !== "admin") throw new Error("NOT_ADMIN");
+    if ((ctx.user as Record<string, unknown>).role !== "admin") refuse("NOT_ADMIN");
     return await ctx.runMutation(components.platform.appSettings.remove, args);
   },
 });

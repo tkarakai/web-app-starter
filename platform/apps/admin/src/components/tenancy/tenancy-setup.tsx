@@ -1,5 +1,7 @@
 "use client";
 
+import { errorCode } from "@web-app-starter/agentic/errors";
+
 import * as React from "react";
 import Link from "next/link";
 import { useMutation, useQuery } from "convex/react";
@@ -27,7 +29,7 @@ import {
 } from "@web-app-starter/design-system";
 
 type Mode = "individuals" | "organizations";
-const message = (error: unknown) => (error instanceof Error ? error.message.replace(/^.*Uncaught Error: /, "").split("\n")[0] : "Failed");
+const message = (error: unknown) => errorCode(error) ?? "Action failed. Please try again.";
 
 const MODE_COPY: Record<Mode, { title: string; description: string }> = {
   individuals: {

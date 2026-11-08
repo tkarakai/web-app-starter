@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 /**
  * Organization reads for the UI: `api.platform.organizations.*`.
  *
@@ -231,9 +232,9 @@ export const invitation = query({
 export const deleteInvitation = orgMutation({
   args: { invitationId: v.string() },
   handler: async (ctx, args) => {
-    if (ctx.organizationRole === "member") throw new Error("NOT_ALLOWED");
+    if (ctx.organizationRole === "member") refuse("NOT_ALLOWED");
     const invitation = await findById(ctx, "invitation", args.invitationId);
-    if (!invitation || invitation.organizationId !== ctx.organizationId) throw new Error("INVITATION_NOT_FOUND");
+    if (!invitation || invitation.organizationId !== ctx.organizationId) refuse("INVITATION_NOT_FOUND");
     const deleted: Doc<"invitation">[] = [];
     let cursor: string | null = null;
     // Read every page before deleting: invitation history can accumulate across re-invites.
