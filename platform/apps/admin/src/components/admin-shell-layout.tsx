@@ -16,7 +16,7 @@ import {
 } from "@web-app-starter/design-system";
 import { useAuthUser } from "@/components/auth/auth-guard";
 import { AdminSidebar } from "@/components/admin-sidebar";
-import { TenancyRequired } from "@/components/tenancy/tenancy-required";
+import { TenancyRequired, useTenancyStatus } from "@/components/tenancy/tenancy-required";
 
 const segmentLabels: Record<string, string> = {
   announcements: "Announcements",
@@ -50,6 +50,11 @@ function formatSegment(segment: string): string {
 }
 
 export function AdminShellLayout({ children }: { children: React.ReactNode }) {
+  return <TenancyRequired><AdminShellContent>{children}</AdminShellContent></TenancyRequired>;
+}
+
+function AdminShellContent({ children }: { children: React.ReactNode }) {
+  const tenancy = useTenancyStatus();
   const pathname = usePathname();
   const user = useAuthUser();
 
@@ -62,9 +67,10 @@ export function AdminShellLayout({ children }: { children: React.ReactNode }) {
     .map((segment) => formatSegment(segment))
     .filter((label) => label !== sectionLabel);
 
+  if (!tenancy?.mode) return <>{children}</>;
+
   return (
     <SidebarProvider>
-      <TenancyRequired />
       <AdminSidebar
         displayName={user?.name ?? "Admin"}
         displayEmail={user?.email}
