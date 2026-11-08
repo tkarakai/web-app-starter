@@ -506,10 +506,8 @@ if [ "$SKIP_E2E" = true ]; then
   done
 else
   print_step "Step 9/9: E2E Tests (Playwright)"
-  # Each app's playwright.config.ts has a webServer + reuseExistingServer setting.
-  # Locally (no CI env), Playwright reuses running dev servers automatically.
-  # If no server is running, Playwright starts one via the webServer command.
-  # No manual detection needed — Playwright handles everything.
+  # Each app selects free ports and starts its own managed stack. Playwright
+  # waits for the launcher's readiness message after successful page warmup.
 
   E2E_PASSED=true
   E2E_FAILED_APPS=()

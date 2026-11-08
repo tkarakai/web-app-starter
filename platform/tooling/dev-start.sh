@@ -25,6 +25,10 @@ source "$SCRIPT_DIR/dev-dashboard.sh"
 # The reader validates the config first, so a bad value stops here.
 APP_CONFIG_VARS=$("$NODE_TS" "$SCRIPT_DIR/app-config.ts" shell) || exit 1
 eval "$APP_CONFIG_VARS"
+if [ -n "${PLATFORM_E2E_PORTS:-}" ]; then
+    E2E_CONFIG_VARS=$("$NODE_TS" "$SCRIPT_DIR/e2e-ports.ts" shell) || exit 1
+    eval "$E2E_CONFIG_VARS"
+fi
 : "${APP_CONFIG_PORT_WEB:?app.config.ts values missing (platform/tooling/app-config.ts printed nothing)}"
 
 # Absolute directory of an app (apps/web, platform/apps/admin, ...), from APP_CONFIG_DIR_<APP>.
@@ -909,7 +913,15 @@ for app_name in web admin landing storybook; do
     flag="START_$(echo "$app_name" | tr '[:lower:]' '[:upper:]')"
     [ "${!flag}" = true ] || continue
     port_var="APP_CONFIG_PORT_$(echo "$app_name" | tr '[:lower:]' '[:upper:]')"
-    actual_port=$(find_available_port "${!port_var}")
+    if [ -n "${PLATFORM_E2E_PORTS:-}" ]; then
+        actual_port="${!port_var}"
+        if lsof -nP -iTCP:"$actual_port" -sTCP:LISTEN > /dev/null 2>&1; then
+            echo "Selected E2E port $actual_port is now occupied; refusing to reuse it" >&2
+            exit 1
+        fi
+    else
+        actual_port=$(find_available_port "${!port_var}")
+    fi
     SELECTED_PORTS="$SELECTED_PORTS $actual_port"
     url_var="$(echo "$app_name" | tr '[:lower:]' '[:upper:]')_APP_URL"
     printf -v "$url_var" '%s' "http://localhost:$actual_port"
@@ -927,12 +939,12 @@ for app_name in web admin landing storybook; do
 done
 
 if [ "$START_WEB" = true ]; then
-    if [ -n "$LANDING_APP_URL" ] || ! grep -q '^LANDING_URL=.' "$(app_dir web)/.env.local"; then
+    if [ -n "${PLATFORM_E2E_PORTS:-}" ] || [ -n "$LANDING_APP_URL" ] || ! grep -q '^LANDING_URL=.' "$(app_dir web)/.env.local"; then
         update_env_var "$(app_dir web)/.env.local" "LANDING_URL" "${LANDING_APP_URL:-$APP_CONFIG_ORIGIN_LANDING}"
     fi
 fi
 if [ "$START_LANDING" = true ]; then
-    if [ -n "$WEB_APP_URL" ] || ! grep -q '^NEXT_PUBLIC_WEB_APP_URL=.' "$(app_dir landing)/.env.local"; then
+    if [ -n "${PLATFORM_E2E_PORTS:-}" ] || [ -n "$WEB_APP_URL" ] || ! grep -q '^NEXT_PUBLIC_WEB_APP_URL=.' "$(app_dir landing)/.env.local"; then
         update_env_var "$(app_dir landing)/.env.local" "NEXT_PUBLIC_WEB_APP_URL" "${WEB_APP_URL:-$APP_CONFIG_ORIGIN_WEB}"
     fi
 fi
@@ -1044,6 +1056,7 @@ fi
 # FOREGROUND MODE (CI/Playwright)
 # ============================================================
 if [ "$NON_INTERACTIVE" = true ]; then
+    echo "PLATFORM_E2E_READY"
     echo "[CI MODE] Staying in foreground, streaming logs..."
     echo "[CI MODE] Press Ctrl+C to stop"
     echo ""

@@ -1,24 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
-import { localAppOrigin } from "@web-app-starter/app-config";
-import * as fs from "fs";
-import * as path from "path";
+import { e2eOrigin } from "../../tooling/e2e-ports";
 
-/**
- * Read a value from .env.local (updated by dev-start.sh with actual ports)
- */
-function getEnvValue(name: string, fallback: string): string {
-  for (const envPath of [
-    path.join(__dirname, ".env.local"),
-    path.join(__dirname, "../../../.env.local"),
-  ]) {
-    if (fs.existsSync(envPath)) {
-      const content = fs.readFileSync(envPath, "utf-8");
-      const match = content.match(new RegExp(`^${name}=(.*)`, "m"));
-      if (match) return match[1].trim();
-    }
-  }
-  return fallback;
-}
+const managedOrigin = e2eOrigin("storybook");
 
 export default defineConfig({
   testDir: "./qa/e2e",
@@ -31,7 +14,7 @@ export default defineConfig({
     ? [["github"], ["html", { outputFolder: "qa/playwright-report" }]]
     : [["html", { outputFolder: "qa/playwright-report" }]],
   use: {
-    baseURL: getEnvValue("NEXT_PUBLIC_SITE_URL", localAppOrigin("storybook")),
+    baseURL: managedOrigin,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -47,8 +30,8 @@ export default defineConfig({
     // boot failure into a bare "Exit code: 1" with no diagnostics.
     stdout: "pipe",
     stderr: "pipe",
-    url: getEnvValue("NEXT_PUBLIC_SITE_URL", localAppOrigin("storybook")),
-    reuseExistingServer: !process.env.CI,
+    wait: { stdout: /PLATFORM_E2E_READY/ },
+    reuseExistingServer: false,
     timeout: 180 * 1000,
   },
 });
