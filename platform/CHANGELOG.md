@@ -91,6 +91,13 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Changed
 
+- Public Convex refusals now carry `ConvexError` data with a `code` field, preserving agent
+  recovery hints and human error messages in production. Apps matching `error.message` should
+  use `errorCode` from `@web-app-starter/agentic/errors`; messages are redacted in production.
+  Backend code can throw a refusal with `refuse` from `@web-app-starter/convex-platform/errors`.
+  Rate-limit data (`kind: "RateLimited"`) maps to `RATE_LIMITED`. Agent replies include only
+  allowlisted codes and fixed recovery hints, never backend details or traces.
+
 - **Organizations are created only by billing organizations.** Better Auth's
   `/organization/create` is refused (`ORGANIZATION_CREATION_DISABLED`); the switcher and the
   no-organization state no longer offer **Create organization**, and `CreateOrganizationDialog`
@@ -156,6 +163,85 @@ version. Release-specific compatibility and deployment steps are listed explicit
   steps are in [the worker guide](docs/ci-workers.md#retire-public-local-runners).
 
 ### Fixed
+
+- **Bounded organization and tenancy work.** Membership guards read owners through an indexed
+  role lookup. Deleted users lose memberships in durable batches; administrators can retry a
+  stalled cleanup. Tenancy eligibility runs as a stored, batched check, invalidated by changes
+  to its inputs, and configuration requires a fresh result. Admin organization views avoid
+  repeated member/user reads; deletion lists explicitly report overflow. Billing dependency
+  checks read at most two rows and paid-organization listings are paginated.
+- **Bounded reference app lists and deletion.** Projects and tasks use pagination; project
+  counts stop at 99 and display **99+**. Large project cascades continue in scheduled batches.
+  `projects.list`, `projects.listWithStats` and `tasks.list` now accept `paginationOpts` and
+  return pages. The unreleased billing API lists payer organizations through
+  `billing.paidOrganizations`; `billing.overview` no longer embeds them, and the component's
+  `billing.paidBy` takes `paginationOpts` and returns a page. Custom consumers of these
+  unreleased interfaces must follow the updated reference callers.
+- Canceling a pending deletion checks ownership again: if reactivating the user would leave an
+  organization without an owner who can act, it refuses with `OWNER_SUCCESSOR_REQUIRED` until
+  another member is made an owner. Tenancy pickers exclude users with pending deletions.
+- Better Auth organization deletion records owed data cleanup in its component transaction,
+  so interruption before its later request hook cannot lose the cleanup job.
+
+- **Tenancy and billing follow-ups:**
+  - The platform admin's organization delete (`adminOrganizations.remove`, `organizations_remove`)
+    now ends the organization's plan and marks its billing row deleted, as an owner's delete
+    does. Before, the plan stayed current, so its payer could never be deleted, nor that
+    payer's last member.
+  - The admin agent's `users_remove` (`agentUsers.remove`) takes the same deletion path as
+    Better Auth's delete (`beginUserDeletion` / `finishUserDeletion` in `userDeletion.ts`): it
+    is refused with `BILLING_OWNER_REQUIRED` or `BILLING_ORGANIZATION_IN_USE` instead of passing
+    a paying billing organization on, and it now removes the user's app-owned data
+    (`userData:deleteUserData`), profile, pending plan choice and pending deletion request.
+  - A user with a pending self-deletion no longer counts as an owner who can act. Requesting it
+    makes a successor an owner where the requester was the only such owner while other members
+    can act; the requester stays an owner unless subsequently demoted. Cancellation rechecks ownership. Until then the other
+    owners can't leave or be demoted if that would leave no owner who can act.
+  - Tenancy setup never picks a pending platform admin (an admin invitation or protected admin
+    address) as an owner nor adds them to the shared organization, and they don't count
+    against Plans for Individuals. Completing admin enrollment now goes through the ownership
+    check.
+  - A setup stopped because its shared organization's owner was banned, made a platform admin
+    or deleted between batches can be retried with a new owner (`tenancy.retry({ adminUserId })`,
+    offered when `tenancy.status` reports `canReplaceAdmin`); a deleted shared organization is
+    recreated on its plan and payer.
+
+- **Background jobs can no longer get stuck with no way to recover them.** Organization data
+  cleanup, user self-deletion and tenancy setup each record their scheduled job on their
+  progress row, and the admin app reports a row as **Stalled** (`stale`) when its job died
+  without moving it on (failed, canceled, gone, or running for over 15 minutes):
+  - A deleted organization's `organizationCleanups` row is now written, with its job, in the
+    transaction that deletes it (admin delete, owner delete, last member's account deletion), so
+    an owed cleanup is never lost. `adminOrganizations.retryCleanup` (**Retry**) accepts a stale
+    cleanup as well as a failed one. Better Auth's organization-delete hook records the cleanup
+    and the audit event before ending the plan, so a billing error there can't orphan the data.
+  - A self-deletion stuck in `deleting` can be retried (`userDeletion.adminRetry`, **Retry
+    deletion**, audited as `user.deletion.retried`). It can be cancelled, by the user or an
+    administrator, only while the user and their sign-in accounts are intact; otherwise
+    cancelling refuses with `USER_DELETION_INCOMPLETE`. `userDeletion.list` adds `stale` and
+    `cancelable`.
+  - Tenancy setup batches run in a scheduled mutation that records a failed batch in the same
+    transaction (`advanceSetup` is now an internal mutation, and `failSetup` is gone), so setup
+    can no longer stay `running` after a batch fails. `tenancy.status` reports `stale` for a
+    setup whose batch job was lost, and `tenancy.retry` accepts it.
+  - Every run carries a run token that a retry replaces, so a late run of the stopped one does
+    nothing. The helpers are in `backgroundJobs.ts`.
+
+- **Invitation listings read only live and recent invitations.** Better Auth leaves an expired
+  invitation `pending` forever, and the listings read an organization's whole pending and
+  declined history, so they slowed down and could fail on Convex read limits as it grew. They
+  now read through two new indexes on the Better Auth component's `invitation` table,
+  `organizationId_status_expiresAt` and `email_status_expiresAt` (added by the next deploy), and
+  a component query, `adapter.invitationsByExpiry`:
+  - The organization page and `adminOrganizations.get` list expired and declined invitations for
+    30 days after they were last sent (resends included), keyed on `expiresAt`. Before, the
+    window counted from the first send, so an invitation kept alive by resends for more than 30
+    days disappeared from the page and from the admin pending count.
+  - `adminOrganizations.list` reads at most 101 live invitations per organization: its
+    `pendingInvitations` stops at 100, with `morePendingInvitations` set beyond that (the admin
+    app shows "100+"). `get` reads them once and gives the exact count.
+  - The dashboard invitation banner and the sign-up gates read only an address's live
+    invitations.
 
 - **Org mutations no longer write to a fallback organization.** When the session's selected
   organization is no longer valid (the user was removed, or it was deleted), reads still move to

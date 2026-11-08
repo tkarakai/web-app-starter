@@ -3,13 +3,14 @@
 import { Breadcrumb, SidebarTrigger } from "@/components/ui/localized-controls";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
 import {
   BreadcrumbItem,
+  Button,
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
@@ -45,9 +46,10 @@ export function DashboardClient() {
   const pathname = usePathname();
   const search = useSearchParams();
   const router = useRouter();
-  const projects = useQuery(api.projects.list, hasOrganization ? {} : "skip");
-  // Resolve the URL selection against this organization's actual IDs before querying a project.
-  const selectedProjectId = projects?.find(project => project._id === search.get("project"))?._id ?? null;
+  const requestedProjectId = search.get("project");
+  // Resolve the URL selection to a project of this organization (`null` for anything else).
+  const selectedProject = useQuery(api.projects.get, hasOrganization && requestedProjectId ? { id: requestedProjectId } : "skip");
+  const selectedProjectId = selectedProject?._id ?? null;
   const tab = search.get("tab") === "attachments" ? "attachments" : "tasks";
   const replaceSearch = (params: URLSearchParams) => router.replace(`${pathname}${params.size ? `?${params}` : ""}`, { scroll: false });
   const setSelectedProjectId = (projectId: Id<"projects"> | null) => {
@@ -86,7 +88,7 @@ export function DashboardClient() {
           <div className="mx-auto w-full max-w-4xl px-6 pt-4 empty:hidden">
             <OrganizationInvitations onAccepted={() => setSelectedProjectId(null)} />
           </div>
-          {organizations === undefined || hasOrganization && search.has("project") && projects === undefined ? (
+          {organizations === undefined || hasOrganization && requestedProjectId && selectedProject === undefined ? (
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">{tc("loading")}</div>
           ) : !hasOrganization ? (
             <NoOrganization />
@@ -152,6 +154,9 @@ function DashboardBreadcrumbs({
   );
 }
 
+/** Projects per page of the overview (the server allows up to 24). */
+const PROJECTS_PAGE = 12;
+
 function ProjectsOverview({
   onSelectProject,
 }: {
@@ -159,9 +164,9 @@ function ProjectsOverview({
 }) {
   const tc = useTranslations("common");
   const td = useTranslations("dashboard");
-  const projects = useQuery(api.projects.list);
+  const projects = usePaginatedQuery(api.projects.listWithStats, {}, { initialNumItems: PROJECTS_PAGE });
 
-  if (projects === undefined || projects === null) {
+  if (projects.status === "LoadingFirstPage") {
     return (
       <div className="flex flex-1 items-center justify-center">
         <div className="text-sm text-muted-foreground">{tc("loading")}</div>
@@ -169,7 +174,7 @@ function ProjectsOverview({
     );
   }
 
-  if (projects.length === 0) {
+  if (projects.results.length === 0) {
     return (
       <EmptyState
         title={td("noProjects")}
@@ -179,8 +184,11 @@ function ProjectsOverview({
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl p-6">
-      <ProjectSummary onSelectProject={onSelectProject} />
+    <div className="mx-auto w-full max-w-4xl space-y-4 p-6">
+      <ProjectSummary projects={projects.results} onSelectProject={onSelectProject} />
+      {projects.status === "CanLoadMore" && (
+        <Button variant="outline" size="sm" onClick={() => projects.loadMore(PROJECTS_PAGE)}>{tc("loadMore")}</Button>
+      )}
     </div>
   );
 }

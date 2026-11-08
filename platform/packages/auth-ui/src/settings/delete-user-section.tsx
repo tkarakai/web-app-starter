@@ -1,5 +1,7 @@
 "use client";
 
+import { errorCode } from "@web-app-starter/agentic/errors";
+
 import * as React from "react";
 import { Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -45,10 +47,10 @@ export function DeleteUserSection() {
       await authClient.signOut();
       window.location.assign(`/${locale}/sign-in`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "";
-      toast.error(message.includes("BILLING_ORGANIZATION_IN_USE") ? t("blockedInUse")
-        : message.includes("BILLING_OWNER_REQUIRED") ? t("blockedOwnerRequired")
-        : message.includes("RECENT_AUTHENTICATION_REQUIRED") ? t("reauthenticate")
+      const code = errorCode(error);
+      toast.error(code === "BILLING_ORGANIZATION_IN_USE" ? t("blockedInUse")
+        : code === "BILLING_OWNER_REQUIRED" ? t("blockedOwnerRequired")
+        : code === "RECENT_AUTHENTICATION_REQUIRED" ? t("reauthenticate")
         : tc("error"));
       setBusy(false);
     }

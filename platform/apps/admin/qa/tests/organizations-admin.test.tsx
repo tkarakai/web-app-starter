@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import { OrganizationsDataTable } from "../../src/components/organizations/organizations-data-table";
 
 const summary = {
-  id: "org1", name: "Acme", createdAt: Date.UTC(2026, 9, 1), memberCount: 2, pendingInvitations: 1,
+  id: "org1", name: "Acme", createdAt: Date.UTC(2026, 9, 1), memberCount: 2, pendingInvitations: 1, morePendingInvitations: false,
   owners: [{ userId: "u1", name: "Ada", email: "ada@example.test", banned: false }],
 };
 const member = (userId: string, email: string, role: string) => ({
@@ -52,6 +52,13 @@ describe("admin organizations", () => {
     const row = screen.getAllByRole("row")[1]!;
     expect(row.textContent).toContain("Acme");
     expect(row.textContent).toContain("ada@example.test");
+  });
+
+  test("a list row caps the live pending invitation count at 100+", () => {
+    mocks.page.results = [{ ...summary, pendingInvitations: 100, morePendingInvitations: true }];
+    render(<OrganizationsDataTable />);
+    const cells = within(screen.getAllByRole("row")[1]!).getAllByRole("cell");
+    expect(cells[3]!.textContent).toBe("100+");
   });
 
   test("the only owner offers no way to be removed; other members can be made owners", async () => {
@@ -98,7 +105,7 @@ describe("banning an organization's only owner who can act", () => {
     mocks.detail = [{
       organizationId: "org1", name: "Acme", role: "owner", memberCount: 2, soleOwner: true,
       onAccountDeletion: "ownershipPasses", successor: null,
-      banSuccessor: { suggested: "u2", candidates: [{ userId: "u2", name: "", email: "bob@example.test", role: "admin" }] },
+      banSuccessor: { suggested: "u2", moreCandidates: false, candidates: [{ userId: "u2", name: "", email: "bob@example.test", role: "admin" }] },
     }];
     const onConfirm = vi.fn();
     render(<BanDialog open onOpenChange={() => {}} onConfirm={onConfirm}

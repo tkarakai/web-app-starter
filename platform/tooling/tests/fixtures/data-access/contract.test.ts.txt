@@ -9,7 +9,7 @@ import { createTestEnv } from "./test.modules";
 
 function notes<Table extends "personalNotes" | "privateNotes" | "teamNotes">(table: Table) {
   return {
-    list: makeFunctionReference<"query", { paginationOpts: PaginationOptions }, PaginationResult<Doc<Table>> | null>(`${table}:list`),
+    list: makeFunctionReference<"query", { paginationOpts: PaginationOptions }, PaginationResult<Doc<Table>>>(`${table}:list`),
     get: makeFunctionReference<"query", { id: Id<Table> }, Doc<Table> | null>(`${table}:get`),
     add: makeFunctionReference<"mutation", { body: string }, Id<Table>>(`${table}:add`),
     update: makeFunctionReference<"mutation", { id: Id<Table>; body: string }, null>(`${table}:update`),
@@ -22,6 +22,7 @@ const team = notes("teamNotes");
 const publish = makeFunctionReference<"mutation", { id: Id<"privateNotes"> }, Id<"teamNotes">>("notePublishing:publish");
 const cleanup = makeFunctionReference<"mutation", { organizationId: string }, { done: boolean }>("organizationData:deleteOrganizationData");
 const firstPage = { paginationOpts: { numItems: 2, cursor: null } };
+const emptyPage = { page: [], isDone: true, continueCursor: "" };
 
 function fixture() {
   const t = createTestEnv();
@@ -136,8 +137,8 @@ describe("documented org access", () => {
   test("zero memberships refuse org writes without provisioning and still allow personal writes", async () => {
     const f = await fixture();
     const alice = await f.user("alice");
-    expect(await alice.caller.query(team.list, firstPage)).toBeNull();
-    expect(await alice.caller.query(privateNotes.list, firstPage)).toBeNull();
+    expect(await alice.caller.query(team.list, firstPage)).toEqual(emptyPage);
+    expect(await alice.caller.query(privateNotes.list, firstPage)).toEqual(emptyPage);
     await expect(alice.caller.mutation(team.add, { body: "x" })).rejects.toThrow("NO_ORGANIZATION");
     await expect(alice.caller.mutation(privateNotes.add, { body: "x" })).rejects.toThrow("NO_ORGANIZATION");
     await alice.caller.mutation(personal.add, { body: "works" });
@@ -163,14 +164,13 @@ describe("documented collection and input boundaries", () => {
       const ids: string[] = [];
       for (let pageNumber = 0; pageNumber < 10; pageNumber++) {
         const page = await alice.caller.query(api.list, { paginationOpts: { numItems: 2, cursor } });
-        expect(page).not.toBeNull();
-        for (const note of page!.page) {
+        for (const note of page.page) {
           if (api !== team) expect(note.ownerId).toBe(alice.userId);
           if ("organizationId" in note) expect(note.organizationId).toBe(acme);
           ids.push(note._id);
         }
-        if (page!.isDone) break;
-        cursor = page!.continueCursor;
+        if (page.isDone) break;
+        cursor = page.continueCursor;
         expect(pageNumber).toBeLessThan(9);
       }
       expect(ids).toHaveLength(api === team ? 10 : 5);
@@ -182,7 +182,7 @@ describe("documented collection and input boundaries", () => {
     const f = await fixture();
     const caller = mode === "anonymous" ? f.t : (await f.user("limited", { emailVerified: false })).caller;
     for (const api of [personal, privateNotes, team]) {
-      expect(await caller.query(api.list, firstPage)).toBeNull();
+      expect(await caller.query(api.list, firstPage)).toEqual(emptyPage);
       await expect(caller.mutation(api.add, { body: "x" })).rejects.toThrow();
     }
     expect(await f.t.run(ctx => ctx.db.query("personalNotes").collect())).toEqual([]);

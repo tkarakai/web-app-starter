@@ -1,3 +1,4 @@
+import { refuse } from "../errors";
 /** Trusted app callers only; clients use the authenticated app wrappers. */
 import { v } from "convex/values";
 
@@ -24,7 +25,7 @@ export const create = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const entry = await ctx.db.get(args.waitlistEntryId);
-    if (!entry || entry.email !== args.email || (entry.invitationGeneration ?? 0) !== (args.generation ?? 0)) throw new Error("STALE_INVITATION_DELIVERY");
+    if (!entry || entry.email !== args.email || (entry.invitationGeneration ?? 0) !== (args.generation ?? 0)) refuse("STALE_INVITATION_DELIVERY");
     // The `token` field stores a SHA-256 hash, not the raw token.
     await ctx.db.insert("invitationTokens", {
       waitlistEntryId: args.waitlistEntryId,
@@ -83,21 +84,21 @@ export const beginClaim = mutation({
         .withIndex("by_token", (q) => q.eq("token", tokenHash))
         .unique();
 
-      if (!tokenDoc) throw new Error("TOKEN_NOT_FOUND");
+      if (!tokenDoc) refuse("TOKEN_NOT_FOUND");
       email = tokenDoc.email;
       tokenId = tokenDoc._id;
 
-      if (Date.now() > tokenDoc.expiresAt) throw new Error("TOKEN_EXPIRED");
+      if (Date.now() > tokenDoc.expiresAt) refuse("TOKEN_EXPIRED");
 
       // Auto-reset stale "claiming" tokens back to "sent"
       if (tokenDoc.status === "claiming") {
         const claimAge = Date.now() - (tokenDoc.claimStartedAt ?? 0);
         if (claimAge < CLAIMING_TTL_MS) {
-          throw new Error("TOKEN_ALREADY_USED");
+          refuse("TOKEN_ALREADY_USED");
         }
         // Stale claim — fall through and re-claim
       } else if (tokenDoc.status !== "sent") {
-        throw new Error("TOKEN_ALREADY_USED");
+        refuse("TOKEN_ALREADY_USED");
       }
 
       await ctx.db.patch(tokenDoc._id, { status: "claiming", claimStartedAt: Date.now() });
@@ -136,8 +137,8 @@ export const finalizeClaim = mutation({
       .withIndex("by_token", (q) => q.eq("token", tokenHash))
       .unique();
 
-    if (!tokenDoc) throw new Error("TOKEN_NOT_FOUND");
-    if (tokenDoc.status !== "claiming") throw new Error("INVALID_TOKEN_STATE");
+    if (!tokenDoc) refuse("TOKEN_NOT_FOUND");
+    if (tokenDoc.status !== "claiming") refuse("INVALID_TOKEN_STATE");
 
     const now = Date.now();
 

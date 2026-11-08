@@ -34,7 +34,8 @@
     "minute": "分钟",
     "dayPeriod": "上午或下午",
     "daylightSaving": "夏令时",
-    "breadcrumb": "面包屑导航"
+    "breadcrumb": "面包屑导航",
+    "loadMore": "加载更多"
   },
   "theme": {
     "light": "浅色主题",

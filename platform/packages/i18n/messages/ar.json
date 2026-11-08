@@ -34,7 +34,8 @@
     "minute": "الدقيقة",
     "dayPeriod": "صباحًا أو مساءً",
     "daylightSaving": "التوقيت الصيفي",
-    "breadcrumb": "مسار التنقل"
+    "breadcrumb": "مسار التنقل",
+    "loadMore": "تحميل المزيد"
   },
   "theme": {
     "light": "مظهر فاتح",

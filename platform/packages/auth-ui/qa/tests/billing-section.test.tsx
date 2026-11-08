@@ -4,15 +4,16 @@ import { expect, test, vi } from "vitest";
 import messages from "@web-app-starter/i18n/messages/en.json";
 import { BillingSection } from "../../src/settings/billing-section";
 
-const mocks = vi.hoisted(() => ({ change: vi.fn(), canManage: true }));
+const mocks = vi.hoisted(() => ({ change: vi.fn(), canManage: true, loadMore: vi.fn(), status: "Exhausted" }));
 const free = { id: "free", name: "Free", isFreeForever: true, priceMonthlyUsdCents: 0, isDefault: true };
 const pro = { id: "pro", name: "Pro", isFreeForever: false, priceMonthlyUsdCents: 1900, isDefault: false };
 vi.mock("convex/react", () => ({
   useQuery: () => ({
     mode: "organizations", organization: { id: "payer-org", name: "Payer", role: "owner" }, plan: null,
     plans: [free, pro], billingOrganizations: [], payer: null,
-    billing: { id: "payer", paymentMethod: "cash", canManage: mocks.canManage, organizations: [{ organizationId: "sponsored-org", name: "Sponsored workspace", plan: pro }] },
+    billing: { id: "payer", paymentMethod: "cash", canManage: mocks.canManage },
   }),
+  usePaginatedQuery: () => ({ results: [{ organizationId: "sponsored-org", name: "Sponsored workspace", plan: pro }], status: mocks.status, loadMore: mocks.loadMore }),
   useMutation: () => mocks.change,
 }));
 vi.mock("../../src/components/create-organization-dialog", () => ({ CreateOrganizationDialog: () => null }));
@@ -40,4 +41,13 @@ test("ordinary payer members see sponsored plans without change controls", () =>
   render(<NextIntlClientProvider locale="en" messages={messages} timeZone="UTC"><BillingSection /></NextIntlClientProvider>);
   expect(screen.getByText("Sponsored workspace")).toBeInTheDocument();
   expect(screen.queryByLabelText(messages.billing.changePlan)).not.toBeInTheDocument();
+});
+
+test("the organizations a billing organization pays for load a page at a time", () => {
+  mocks.canManage = false;
+  mocks.status = "CanLoadMore";
+  render(<NextIntlClientProvider locale="en" messages={messages} timeZone="UTC"><BillingSection /></NextIntlClientProvider>);
+  fireEvent.click(screen.getByRole("button", { name: messages.common.loadMore }));
+  expect(mocks.loadMore).toHaveBeenCalledWith(20);
+  mocks.status = "Exhausted";
 });

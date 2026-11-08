@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 /** App boundary: authorize here; storage lives in the platform component. */
 import { v } from "convex/values";
 
@@ -26,7 +27,7 @@ export const validate = query({
     const result = await ctx.runQuery(components.platform.adminInvitations.validateEnrollmentToken, args);
     if (result.valid) {
       const origin = process.env.ADMIN_SITE_URL?.trim();
-      if (!origin) throw new Error("ADMIN_SITE_URL_REQUIRED");
+      if (!origin) refuse("ADMIN_SITE_URL_REQUIRED");
       return { ...result, adminOnboardingUrl: `${origin}/onboarding?token=${encodeURIComponent(args.token)}` };
     }
     return await ctx.runQuery(components.platform.waitlistTokens.validate, args);

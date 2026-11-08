@@ -189,6 +189,9 @@ export const tables = {
     createdAt: v.number(),
   })
     .index("organizationId_userId", ["organizationId","userId"])
+    // Hand-added: an organization's owners (or admins, members) oldest first, without reading
+    // its other members (organizationOwnership.ts). The adapter picks it for organizationId + role.
+    .index("organizationId_role_createdAt", ["organizationId","role","createdAt"])
     .index("userId_organizationId", ["userId","organizationId"])
     .index("role", ["role"]),
   invitation: defineTable({
@@ -201,8 +204,12 @@ export const tables = {
     inviterId: v.string(),
   })
     .index("organizationId_status", ["organizationId","status"])
+    // Hand-added: invitation listings bounded by expiry (betterAuth/adapter.ts invitationsByExpiry).
+    .index("organizationId_status_expiresAt", ["organizationId","status","expiresAt"])
     .index("email_organizationId_status", ["email","organizationId","status"])
     .index("email_status", ["email","status"])
+    // Hand-added: live invitations to an address (betterAuth/adapter.ts invitationsByExpiry).
+    .index("email_status_expiresAt", ["email","status","expiresAt"])
     .index("status", ["status"])
     .index("inviterId", ["inviterId"]),
   jwks: defineTable({

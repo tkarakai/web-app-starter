@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { api, components, internal } from "../_generated/api";
 import { authRoutePolicy } from "./authAssurance";
-import { activeOrganization, organizationFixture } from "./organizations.test-helpers";
+import { activeOrganization, countReads, organizationFixture } from "./organizations.test-helpers";
 import authSchema from "./betterAuth/schema";
 import { createTestEnv } from "../test.modules";
 
@@ -118,11 +118,77 @@ describe("organizations", () => {
     expect(asOwner!.invitations.find((row) => row.email === "live@example.test")!.id).toBe(live._id);
     expect([...statuses.values()].filter((s) => s === "declined")).toHaveLength(5);
     expect(statuses.get("expired209@example.test")).toBe("expired");
-    // History older than the listing window drops off; every live invitation is younger.
+    // History last sent before the listing window drops off; every live invitation was sent within it.
     expect(statuses.has("ancient@example.test")).toBe(false);
 
     const view = await boss.caller.query(api.platform.adminOrganizations.get, { organizationId: acme });
     expect(view!.pendingInvitations).toBe(1);
+  });
+
+  test("invitation listings read live and recent invitations only, however much older history there is", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const boss = await f.user("boss", { role: "admin" });
+    const carol = await f.user("carol");
+    const acme = await alice.provision();
+    const row = (email: string, status: string, sentDaysAgo: number, organizationId = acme) =>
+      ({ organizationId, email, status, sentDaysAgo, inviterId: alice.userId });
+    await f.seedInvitations([
+      // Older than the listing window: sent more than 30 days ago.
+      ...Array.from({ length: 2000 }, (_, i) => row(`old-expired${i}@example.test`, "pending", 31 + (i % 60))),
+      ...Array.from({ length: 1000 }, (_, i) => row(`old-declined${i}@example.test`, "rejected", 31 + (i % 60))),
+      // Inside it, each status more than one page (200 rows).
+      ...Array.from({ length: 250 }, (_, i) => row(`expired${i}@example.test`, "pending", 8 + (i % 22))),
+      ...Array.from({ length: 250 }, (_, i) => row(`declined${i}@example.test`, "rejected", 1 + (i % 29))),
+      row("live0@example.test", "pending", 1),
+      row("live1@example.test", "pending", 6),
+      // Carol's address: one live invitation, after a thousand expired ones elsewhere.
+      ...Array.from({ length: 1000 }, (_, i) => row("carol@example.test", "pending", 8 + (i % 80), `elsewhere${i}`)),
+      row("carol@example.test", "pending", 2),
+    ]);
+    const windowRows = 250 + 250 + 3;
+
+    const page = await countReads(alice.caller, (ctx) => ctx.runQuery(api.platform.organizations.active, {}));
+    const statuses = page.result!.invitations.map((i) => i.status);
+    expect(page.result!.invitations).toHaveLength(windowRows);
+    expect(statuses.filter((s) => s === "pending")).toHaveLength(3);
+    expect(statuses.filter((s) => s === "expired")).toHaveLength(250);
+    expect(statuses.filter((s) => s === "declined")).toHaveLength(250);
+    expect(page.result!.invitations.some((i) => i.email.startsWith("old-"))).toBe(false);
+    expect(page.documentsRead).toBeLessThan(windowRows + 50);
+
+    const detail = await countReads(boss.caller, (ctx) => ctx.runQuery(api.platform.adminOrganizations.get, { organizationId: acme }));
+    expect(detail.result).toMatchObject({ pendingInvitations: 3, morePendingInvitations: false });
+    expect(detail.result.invitations).toHaveLength(windowRows);
+    expect(detail.documentsRead).toBeLessThan(windowRows + 50);
+
+    const list = await countReads(boss.caller, (ctx) => ctx.runQuery(api.platform.adminOrganizations.list, { paginationOpts: { numItems: 10, cursor: null } }));
+    expect(list.result.page.find((o) => o.id === acme)).toMatchObject({ pendingInvitations: 3, morePendingInvitations: false });
+    expect(list.documentsRead).toBeLessThan(50);
+
+    const banner = await countReads(carol.caller, (ctx) => ctx.runQuery(api.platform.organizations.myInvitations, {}));
+    expect(banner.result).toMatchObject([{ organizationName: "alice", email: "carol@example.test" }]);
+    expect(banner.documentsRead).toBeLessThan(20);
+    const gate = await countReads(f.t, (ctx) => ctx.runQuery(internal.platform.organizations.hasPendingInvitation, { email: "carol@example.test" }));
+    expect(gate).toMatchObject({ result: true });
+    expect(gate.documentsRead).toBeLessThan(5);
+  }, 60_000);
+
+  test("an invitation kept alive by resends is listed however long ago it was first sent", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const boss = await f.user("boss", { role: "admin" });
+    const acme = await alice.provision();
+    // First sent 45 days ago, last resent 2 days ago; declined 40 days after first being sent, last sent 25 days ago.
+    await f.seedInvitations([
+      { organizationId: acme, email: "carol@example.test", status: "pending", inviterId: alice.userId, createdDaysAgo: 45, sentDaysAgo: 2 },
+      { organizationId: acme, email: "dave@example.test", status: "rejected", inviterId: alice.userId, createdDaysAgo: 40, sentDaysAgo: 25 },
+    ]);
+    const { invitations } = (await alice.caller.query(api.platform.organizations.active, {}))!;
+    expect(invitations.map((i) => [i.email, i.status])).toEqual([["carol@example.test", "pending"], ["dave@example.test", "declined"]]);
+    expect(await boss.caller.query(api.platform.adminOrganizations.get, { organizationId: acme })).toMatchObject({ pendingInvitations: 1 });
+    const list = await boss.caller.query(api.platform.adminOrganizations.list, { paginationOpts: { numItems: 10, cursor: null } });
+    expect(list.page.find((o) => o.id === acme)).toMatchObject({ pendingInvitations: 1 });
   });
 
   test("owners and admins delete an invitation in any state; nobody else, and only their organization's", async () => {

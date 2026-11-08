@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 /** Durable A2A tasks. Jobs store grant IDs, not raw tokens; native writes and completion commit together. */
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
@@ -15,33 +16,33 @@ import { safeCapabilityError } from "@web-app-starter/agentic/errors";
 const credentialArgs = { token: v.string(), resource: v.string() };
 import { taskDto as dto, ownedTask as owned, taskTerminalStates as terminal, type TaskDto } from "./agentTaskModel";
 const catalogue = () => withBrowserCapabilities(catalogueFromRows(catalogueRows()));
-function requireAudience(resource: string) { if (surfaceForResource(resource) !== "a2a") throw new Error("INVALID_AGENT_TOKEN"); }
+function requireAudience(resource: string) { if (surfaceForResource(resource) !== "a2a") refuse("INVALID_AGENT_TOKEN"); }
 function canonical(value: unknown): string { if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`; if (value && typeof value === "object") return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(",")}}`; return JSON.stringify(value) ?? "null"; }
 export const send = mutation({ args: { ...credentialArgs, params: v.any() }, returns: v.any(), handler: async (ctx, { token, resource, params }): Promise<TaskDto> => {
   requireAudience(resource); const auth = await requireGrant(ctx, token, resource);
   await rateLimit(ctx, { name: "agentRequest", key: auth.ownerId, throws: true });
-  if (JSON.stringify(params).length > 80_000) throw new Error("INVALID_PARAMS");
+  if (JSON.stringify(params).length > 80_000) refuse("INVALID_PARAMS");
   const request = messageRequest.parse(params);
-  if (request.configuration?.taskPushNotificationConfig) throw new Error("PUSH_NOT_SUPPORTED");
-  if (request.configuration?.acceptedOutputModes?.length && !request.configuration.acceptedOutputModes.includes("application/json")) throw new Error("CONTENT_TYPE_NOT_SUPPORTED");
+  if (request.configuration?.taskPushNotificationConfig) refuse("PUSH_NOT_SUPPORTED");
+  if (request.configuration?.acceptedOutputModes?.length && !request.configuration.acceptedOutputModes.includes("application/json")) refuse("CONTENT_TYPE_NOT_SUPPORTED");
   const dataParts = request.message.parts.filter(part => part.data !== undefined);
-  if (dataParts.length > 1 || request.message.parts.some(part => Object.keys(part).some(key => ["raw", "url"].includes(key)))) throw new Error("CONTENT_TYPE_NOT_SUPPORTED");
+  if (dataParts.length > 1 || request.message.parts.some(part => Object.keys(part).some(key => ["raw", "url"].includes(key)))) refuse("CONTENT_TYPE_NOT_SUPPORTED");
   const command = dataParts.length ? validateCommand(dataParts[0]!.data, catalogue()) : null;
   const hash = await credentialHash(canonical({ command, contextId: request.message.contextId ?? null, taskId: request.message.taskId ?? null }));
   const replay = await ctx.db.query("agentTaskMessages").withIndex("by_user_message", q => q.eq("userId", auth.user._id).eq("messageId", request.message.messageId)).unique();
-  if (replay) { if (replay.requestHash !== hash) throw new Error("MESSAGE_ID_REUSED"); return dto(await owned(ctx, auth.user._id, replay.taskId)); }
+  if (replay) { if (replay.requestHash !== hash) refuse("MESSAGE_ID_REUSED"); return dto(await owned(ctx, auth.user._id, replay.taskId)); }
   let existing: Doc<"agentTasks"> | null = null;
   if (request.message.taskId) {
     existing = await owned(ctx, auth.user._id, request.message.taskId);
-    if (request.message.contextId && request.message.contextId !== existing.contextId) throw new Error("CONTEXT_MISMATCH");
-    if (terminal.has(existing.state) || existing.state !== "TASK_STATE_INPUT_REQUIRED") throw new Error("TASK_NOT_CONTINUABLE");
+    if (request.message.contextId && request.message.contextId !== existing.contextId) refuse("CONTEXT_MISMATCH");
+    if (terminal.has(existing.state) || existing.state !== "TASK_STATE_INPUT_REQUIRED") refuse("TASK_NOT_CONTINUABLE");
     const messages = await ctx.db.query("agentTaskMessages").withIndex("by_task", q => q.eq("taskId", existing!._id)).take(13);
-    if (messages.length >= 12) throw new Error("TASK_MESSAGE_LIMIT");
+    if (messages.length >= 12) refuse("TASK_MESSAGE_LIMIT");
   } else {
     const tasks = await ctx.db.query("agentTasks").withIndex("by_user", q => q.eq("userId", auth.user._id)).filter(q => q.gt(q.field("expiresAt"), Date.now())).take(201);
-    if (tasks.length >= 200) throw new Error("TASK_LIMIT_REACHED");
+    if (tasks.length >= 200) refuse("TASK_LIMIT_REACHED");
   }
-  const generation = auth.generation; if (!generation) throw new Error("INVALID_AGENT_TOKEN");
+  const generation = auth.generation; if (!generation) refuse("INVALID_AGENT_TOKEN");
   const now = Date.now(); const expiresAt = existing?.expiresAt ?? now + 86_400_000;
   const state = command ? "TASK_STATE_SUBMITTED" : "TASK_STATE_INPUT_REQUIRED";
   const error = command ? undefined : "This worker requires one structured data part: {operation:'search|describe|execute',input:{...}}. Use the pi tester to plan conversational requests. Never send passwords or authentication codes.";
@@ -61,7 +62,7 @@ export const list = query({ args: { ...credentialArgs, contextId: v.optional(v.s
   requireAudience(args.resource); const auth = await requireGrant(ctx, args.token, args.resource);
   const requested = args.pageSize ?? 50; const offset = args.pageToken ? Number(args.pageToken) : 0;
   const after = args.statusTimestampAfter ? Date.parse(args.statusTimestampAfter) : 0;
-  if (!Number.isInteger(requested) || requested < 1 || requested > 100 || !Number.isInteger(offset) || offset < 0 || !Number.isFinite(after)) throw new Error("INVALID_PARAMS");
+  if (!Number.isInteger(requested) || requested < 1 || requested > 100 || !Number.isInteger(offset) || offset < 0 || !Number.isFinite(after)) refuse("INVALID_PARAMS");
   const rows = await ctx.db.query("agentTasks").withIndex("by_user", q => q.eq("userId", auth.user._id)).filter(q => q.gt(q.field("expiresAt"), Date.now())).take(201);
   const filtered = rows.filter(row => (!args.contextId || row.contextId === args.contextId) && (!args.status || row.state === args.status) && row.updatedAt >= after).sort((a, b) => b.createdAt - a.createdAt || a._id.localeCompare(b._id));
   const pageSize = Math.min(requested, args.includeArtifacts ? 3 : 50);
@@ -69,7 +70,7 @@ export const list = query({ args: { ...credentialArgs, contextId: v.optional(v.s
 } });
 export const cancel = mutation({ args: { ...credentialArgs, id: v.string() }, returns: v.any(), handler: async (ctx, { token, resource, id }): Promise<TaskDto> => {
   requireAudience(resource); const auth = await requireGrant(ctx, token, resource);
-  const row = await owned(ctx, auth.user._id, id); if (terminal.has(row.state)) throw new Error("TASK_NOT_CANCELABLE");
+  const row = await owned(ctx, auth.user._id, id); if (terminal.has(row.state)) refuse("TASK_NOT_CANCELABLE");
   await ctx.db.patch(row._id, { state: "TASK_STATE_CANCELED", updatedAt: Date.now(), error: "Canceled before execution committed." });
   return dto((await ctx.db.get(row._id))!);
 } });

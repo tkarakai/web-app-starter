@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 /**
  * Organization reads for the UI: `api.platform.organizations.*`.
  *
@@ -11,18 +12,22 @@ import { v } from "convex/values";
 
 import { components, internal } from "../_generated/api";
 import { internalAction, internalMutation, internalQuery, query, type QueryCtx } from "../_generated/server";
+import { isCurrentRun } from "./backgroundJobs";
+import { cleanupRow, scheduleCleanupRun, startOrganizationCleanup } from "./organizationCleanup";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { evaluateSession, identitySession } from "./sessionPolicy";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { authedQuery, orgMutation, orgQuery } from "./functions";
 import { actorOf, provisionOrganizationPlan, readTenancyMode } from "./billingAccess";
-import { needsSuccessor, organizationSeats } from "./organizationOwnership";
+import { successorNeeded } from "./organizationOwnership";
 import {
   deleteInvitationBatch,
   ensurePersonalOrganization,
   removeMemberships,
   findById,
   findMembership,
+  INVITATION_EXPIRY_MS,
+  invitationsExpiringAfter,
   isDeleting,
   listMemberships,
   listOrganizationMembers,
@@ -86,12 +91,13 @@ export const active = orgQuery({
 
     const canManage = ctx.organizationRole !== "member";
     const invitations = canManage
-      ? await organizationInvitations(ctx, ctx.organizationId, new Set(members.map((member) => member.email.toLowerCase())))
+      ? (await organizationInvitations(ctx, ctx.organizationId, new Set(members.map((member) => member.email.toLowerCase())))).invitations
       : [];
 
     // An owner may leave only if an owner who can sign in stays (organizationOwnership.ts).
-    const others = (await organizationSeats(ctx, ctx.organizationId)).filter((s) => s.member.userId !== ctx.user._id);
-    const lastOwner = ctx.organizationRole === "owner" && needsSuccessor(others);
+    // Reads the owners, and other members only when no other owner can act.
+    const own = rows.find((member) => member.userId === ctx.user._id);
+    const lastOwner = ctx.organizationRole === "owner" && !!own && await successorNeeded(ctx, ctx.organizationId, own._id);
 
     return {
       id: organization._id,
@@ -105,52 +111,36 @@ export const active = orgQuery({
   },
 });
 
-/** How long a declined or expired invitation stays listed for the people who manage the organization. */
-const DECLINED_LISTED_MS = 30 * 24 * 60 * 60 * 1000;
+/** How long a declined or expired invitation stays listed for the people who manage the organization, after it was last sent. */
+const LISTED_AFTER_SEND_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type InvitationStatus = "pending" | "expired" | "declined";
 
 type Reader = Pick<QueryCtx, "runQuery">;
 
 /**
- * Every invitation of the organization with this status sent since `since`, reading all pages:
- * expired invitations stay `pending`, and a first page of them must not hide a live one.
- * Invitation history is bounded by the per-inviter invitation budgets.
+ * Live pending invitations of the organization, latest expiry first: every one, or the first
+ * `limit`. Expired ones, which stay `pending`, are not read.
  */
-async function invitationsSince(ctx: Reader, organizationId: string, status: string, since: number): Promise<Doc<"invitation">[]> {
-  const rows: Doc<"invitation">[] = [];
-  let cursor: string | null = null;
-  do {
-    const result: { page: unknown[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(components.betterAuth.adapter.findMany, {
-      model: "invitation",
-      where: [{ field: "organizationId", value: organizationId }, { field: "status", value: status }],
-      paginationOpts: { numItems: 200, cursor },
-    });
-    rows.push(...(result.page as Doc<"invitation">[]).filter((row) => row.createdAt > since));
-    cursor = result.isDone ? null : result.continueCursor;
-  } while (cursor);
-  return rows;
-}
-
-/** Live pending invitations: unexpired, so sent within the expiry period (7 days), well inside the listing window. */
-export async function livePendingInvitations(ctx: Reader, organizationId: string): Promise<Doc<"invitation">[]> {
-  const now = Date.now();
-  return (await invitationsSince(ctx, organizationId, "pending", now - DECLINED_LISTED_MS)).filter((row) => row.expiresAt > now);
+export async function livePendingInvitations(ctx: Reader, organizationId: string, limit?: number): Promise<Doc<"invitation">[]> {
+  return await invitationsExpiringAfter(ctx, { organizationId }, "pending", Date.now(), limit);
 }
 
 /**
- * The organization's invitations for its owners and admins, from the last 30 days: pending
- * ones, expired ones still pending, and declined ones, so the inviter sees what became of each.
- * One row per address (the latest), leaving out anyone who has since joined. Older history is
- * not listed; every live invitation is younger than that.
+ * The organization's invitations for its owners and admins: pending ones, expired ones still
+ * pending, and declined ones, each sent (or resent) within the last 30 days, so the inviter sees
+ * what became of each. One row per address (the latest sent), leaving out anyone who has since
+ * joined. Every send sets `expiresAt` to the expiry period after it, so the window is an
+ * `expiresAt` range and older history is never read; a live invitation is always inside it,
+ * however long resends have kept it alive. `livePending` counts the live pending rows read.
  */
 export async function organizationInvitations(ctx: Reader, organizationId: string, memberEmails: Set<string>) {
   const now = Date.now();
-  const since = now - DECLINED_LISTED_MS;
-  const rows = [
-    ...await invitationsSince(ctx, organizationId, "pending", since),
-    ...await invitationsSince(ctx, organizationId, "rejected", since),
-  ].sort((a, b) => b.createdAt - a.createdAt);
+  // Last sent within the window <=> expiresAt (last send + expiry) after this.
+  const expiresAfter = now - (LISTED_AFTER_SEND_MS - INVITATION_EXPIRY_MS);
+  const pending = await invitationsExpiringAfter(ctx, { organizationId }, "pending", expiresAfter);
+  const rows = [...pending, ...await invitationsExpiringAfter(ctx, { organizationId }, "rejected", expiresAfter)]
+    .sort((a, b) => b.expiresAt - a.expiresAt || b.createdAt - a.createdAt);
   const seen = new Set<string>();
   const invitations: { id: string; email: string; role: OrganizationRole; status: InvitationStatus; sentAt: number; expiresAt: number }[] = [];
   for (const row of rows) {
@@ -166,7 +156,7 @@ export async function organizationInvitations(ctx: Reader, organizationId: strin
       expiresAt: row.expiresAt,
     });
   }
-  return invitations;
+  return { invitations, livePending: pending.filter((row) => row.expiresAt > now).length };
 }
 
 async function invitationView(
@@ -242,9 +232,9 @@ export const invitation = query({
 export const deleteInvitation = orgMutation({
   args: { invitationId: v.string() },
   handler: async (ctx, args) => {
-    if (ctx.organizationRole === "member") throw new Error("NOT_ALLOWED");
+    if (ctx.organizationRole === "member") refuse("NOT_ALLOWED");
     const invitation = await findById(ctx, "invitation", args.invitationId);
-    if (!invitation || invitation.organizationId !== ctx.organizationId) throw new Error("INVITATION_NOT_FOUND");
+    if (!invitation || invitation.organizationId !== ctx.organizationId) refuse("INVITATION_NOT_FOUND");
     const deleted: Doc<"invitation">[] = [];
     let cursor: string | null = null;
     // Read every page before deleting: invitation history can accumulate across re-invites.
@@ -304,18 +294,34 @@ export const hasPendingInvitation = internalQuery({
   handler: async (ctx, args) => (await pendingInvitationsFor(ctx, args.email)).length > 0,
 });
 
-/** Account deletion through Better Auth (`databaseHooks.user.delete`). */
+/** Every membership of a user in one transaction: tests and fixtures. Account deletion runs it per organization (userDeletion.ts). */
 export const removeUserMemberships = internalMutation({
   args: { userId: v.string(), email: v.string() },
   handler: async (ctx, args) => await removeMemberships(ctx, args.userId, { email: args.email, userId: args.userId }),
 });
 
-/** The rest of a deleted organization's invitations, a batch per run (`removeMemberships`). */
+/** The rest of a deleted organization's invitations, a batch per run (`removeMembership`). */
 export const deleteOrganizationInvitations = internalMutation({
   args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     if (await deleteInvitationBatch(ctx, args.organizationId)) return;
     await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationInvitations, args);
+  },
+});
+
+/**
+ * The rest of a deleted organization's memberships or invitations, a batch per run
+ * (`adminOrganizations.remove`). Only once the organization row is gone.
+ */
+export const deleteOrganizationRows = internalMutation({
+  args: { organizationId: v.string(), model: v.union(v.literal("member"), v.literal("invitation")) },
+  handler: async (ctx, args) => {
+    if (await findById(ctx, "organization", args.organizationId)) return;
+    const result = await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
+      input: { model: args.model, where: [{ field: "organizationId", value: args.organizationId }] },
+      paginationOpts: { cursor: null, numItems: 200 },
+    });
+    if (!result.isDone) await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationRows, args);
   },
 });
 
@@ -359,20 +365,27 @@ export function isMissingCleanup(error: unknown): boolean {
   return message.includes(DELETE_ORGANIZATION_DATA) && /Couldn't resolve|Could not find/i.test(message);
 }
 
+/** `startOrganizationCleanup` for Better Auth's organization-delete hook, which runs in an action. */
+export const startCleanup = internalMutation({
+  args: { organizationId: v.string() },
+  handler: async (ctx, { organizationId }) => await startOrganizationCleanup(ctx, organizationId),
+});
+
 /**
- * Start (or resume) a cleanup run. `false` when it has already finished, so a duplicate or late
- * delivery does nothing.
+ * Start (or resume) a cleanup run. `false` when it has already finished, or when the run is not
+ * the row's current chain (a late run after a retry), so a duplicate or late delivery does nothing.
  */
 export const beginCleanup = internalMutation({
-  args: { organizationId: v.string() },
-  handler: async (ctx, { organizationId }) => {
-    const row = await ctx.db.query("organizationCleanups").withIndex("by_organization", (q) => q.eq("organizationId", organizationId)).unique();
+  args: { organizationId: v.string(), runId: v.optional(v.string()) },
+  handler: async (ctx, { organizationId, runId }) => {
+    const row = await cleanupRow(ctx, organizationId);
     const now = Date.now();
     if (!row) {
-      await ctx.db.insert("organizationCleanups", { organizationId, state: "running", attempts: 0, batches: 0, startedAt: now, updatedAt: now });
+      // A run scheduled before cleanups were recorded at deletion.
+      await ctx.db.insert("organizationCleanups", { organizationId, state: "running", attempts: 0, batches: 0, startedAt: now, updatedAt: now, runId });
       return true;
     }
-    if (row.state !== "running") return false;
+    if (row.state !== "running" || !isCurrentRun(row, runId)) return false;
     await ctx.db.patch(row._id, { updatedAt: now });
     return true;
   },
@@ -385,13 +398,14 @@ export const beginCleanup = internalMutation({
 export const recordCleanup = internalMutation({
   args: {
     organizationId: v.string(),
+    runId: v.optional(v.string()),
     batches: v.number(),
     outcome: v.union(v.literal("progress"), v.literal("done"), v.literal("retained"), v.literal("error")),
     error: v.optional(v.string()),
   },
-  handler: async (ctx, { organizationId, batches, outcome, error }) => {
-    const row = await ctx.db.query("organizationCleanups").withIndex("by_organization", (q) => q.eq("organizationId", organizationId)).unique();
-    if (!row || row.state !== "running") return;
+  handler: async (ctx, { organizationId, runId, batches, outcome, error }) => {
+    const row = await cleanupRow(ctx, organizationId);
+    if (!row || row.state !== "running" || !isCurrentRun(row, runId)) return;
     const now = Date.now();
     const total = row.batches + batches;
     if (outcome === "done" || outcome === "retained") {
@@ -399,18 +413,18 @@ export const recordCleanup = internalMutation({
       return;
     }
     if (outcome === "progress") {
-      await ctx.db.patch(row._id, { batches: total, attempts: 0, updatedAt: now });
-      await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationAppData, { organizationId });
+      await scheduleCleanupRun(ctx, row, 0, { batches: total, attempts: 0, updatedAt: now });
       return;
     }
     const attempts = row.attempts + 1;
     const failed = attempts >= CLEANUP_MAX_ATTEMPTS;
-    await ctx.db.patch(row._id, { state: failed ? "failed" : "running", batches: total, attempts, lastError: (error ?? "").slice(0, 500), updatedAt: now });
+    const patch = { state: failed ? "failed" as const : "running" as const, batches: total, attempts, lastError: (error ?? "").slice(0, 500), updatedAt: now };
     if (failed) {
+      await ctx.db.patch(row._id, patch);
       console.error(`Cleanup of deleted organization ${organizationId} failed ${attempts} times; retry it from the admin app.`);
       return;
     }
-    await ctx.scheduler.runAfter(CLEANUP_RETRY_BASE_MS * 2 ** (attempts - 1), internal.platform.organizations.deleteOrganizationAppData, { organizationId });
+    await scheduleCleanupRun(ctx, row, CLEANUP_RETRY_BASE_MS * 2 ** (attempts - 1), patch);
   },
 });
 
@@ -419,16 +433,18 @@ export const recordCleanup = internalMutation({
  * already unreachable (nobody is a member), so this only frees storage. Progress is recorded in
  * `organizationCleanups`: a failed run is retried with backoff, then left `failed` for an
  * administrator to retry (`adminOrganizations.retryCleanup`). Without the app's
- * `organizationData.ts` the data is deliberately kept (`retained`).
+ * `organizationData.ts` the data is deliberately kept (`retained`). Convex runs an action at most
+ * once: a run killed before it records its outcome leaves the row `running`, reported stale
+ * (`cleanupStale`) for an administrator to retry. `runId` is the chain's run token.
  */
 export const deleteOrganizationAppData = internalAction({
-  args: { organizationId: v.string() },
+  args: { organizationId: v.string(), runId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     if (!(await ctx.runMutation(internal.platform.organizations.beginCleanup, args))) return;
     let batches = 0;
     try {
       while (batches < CLEANUP_BATCHES_PER_RUN) {
-        const result = await ctx.runMutation(deleteOrganizationData, args);
+        const result = await ctx.runMutation(deleteOrganizationData, { organizationId: args.organizationId });
         batches++;
         if (result.done) {
           await ctx.runMutation(internal.platform.organizations.recordCleanup, { ...args, batches, outcome: "done" });

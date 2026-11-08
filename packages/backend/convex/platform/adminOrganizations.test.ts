@@ -1,10 +1,10 @@
 // Administrator view and support actions over every organization (admin app and agents).
 import { describe, expect, test, vi } from "vitest";
 
-import { api, components } from "../_generated/api";
+import { api, components, internal } from "../_generated/api";
 import { createTestEnv } from "../test.modules";
 import authSchema from "./betterAuth/schema";
-import { organizationFixture } from "./organizations.test-helpers";
+import { countReads, organizationFixture } from "./organizations.test-helpers";
 
 async function fixture() {
   const t = createTestEnv();
@@ -77,6 +77,28 @@ describe("admin organizations", () => {
     await expect(f.boss.caller.mutation(orgs.removeOwner, { organizationId: f.acme, userId: f.bob.userId, role: "admin" })).rejects.toThrow("LAST_OWNER");
   });
 
+  test("a list page reads at most 101 live invitations per organization, however large its history", async () => {
+    const f = await fixture();
+    const carol = await f.user("carol");
+    const carols = await carol.provision();
+    const rows = (organizationId: string, count: number, prefix: string, status: string, sentDaysAgo: (i: number) => number) =>
+      Array.from({ length: count }, (_, i) => ({ organizationId, email: `${prefix}${i}@example.test`, status, sentDaysAgo: sentDaysAgo(i), inviterId: f.alice.userId }));
+    await f.seedInvitations([
+      ...rows(f.acme, 150, "live", "pending", (i) => i % 7),
+      ...rows(f.acme, 1500, "expired", "pending", (i) => 8 + (i % 60)),
+      ...rows(carols, 2, "live", "pending", () => 1),
+      ...rows(carols, 1500, "expired", "pending", (i) => 8 + (i % 60)),
+      ...rows(carols, 500, "declined", "rejected", (i) => 1 + (i % 60)),
+    ]);
+
+    const list = await countReads(f.boss.caller, (ctx) => ctx.runQuery(orgs.list, { paginationOpts: { numItems: 10, cursor: null } }));
+    expect(list.result.page.find((o) => o.id === f.acme)).toMatchObject({ pendingInvitations: 100, morePendingInvitations: true });
+    expect(list.result.page.find((o) => o.id === carols)).toMatchObject({ pendingInvitations: 2, morePendingInvitations: false });
+    expect(list.documentsRead).toBeLessThan(101 + 2 + 50);
+    // The detail view counts every live invitation.
+    expect(await f.boss.caller.query(orgs.get, { organizationId: f.acme })).toMatchObject({ pendingInvitations: 150, morePendingInvitations: false });
+  }, 60_000);
+
   test("an administrator cancels a pending invitation", async () => {
     const f = await fixture();
     const invitation = await f.t.mutation(components.betterAuth.adapter.create, {
@@ -102,6 +124,36 @@ describe("admin organizations", () => {
       expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "organization", where: [{ field: "_id", value: f.acme }] })).toBeNull();
       expect(await f.alice.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: null, organizations: [] });
       await expect(f.boss.caller.query(orgs.get, { organizationId: f.acme })).rejects.toThrow("ORGANIZATION_NOT_FOUND");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("deleting an organization ends its plan, so its payer and the payer's last member can go", async () => {
+    vi.useFakeTimers();
+    try {
+      const f = await fixture();
+      const actor = { email: "test" };
+      const carol = await f.user("carol");
+      const payer = await carol.provision();
+      await f.t.mutation(components.platform.billing.ensureSeeded, {});
+      const free = (await f.t.query(components.platform.billing.listPlans, {})).find((plan) => plan.isSeeded)!;
+      const payerBilling = await f.t.mutation(components.platform.billing.createBilling, { organizationId: payer, organizationName: "Payer", paymentMethod: "cash", actor });
+      // Acme is paid for by carol's organization and has a billing row of its own.
+      const acmeBilling = await f.t.mutation(components.platform.billing.createBilling, { organizationId: f.acme, organizationName: "Acme", actor });
+      await f.t.mutation(components.platform.billing.startPlan, { organizationId: f.acme, organizationName: "Acme", planId: free._id, billingOrganizationId: payerBilling, actor });
+      await expect(f.boss.caller.mutation(orgs.remove, { organizationId: payer })).rejects.toThrow("BILLING_ORGANIZATION_IN_USE");
+
+      await f.boss.caller.mutation(orgs.remove, { organizationId: f.acme });
+      expect(await f.t.query(components.platform.billing.currentPlan, { organizationId: f.acme })).toBeNull();
+      expect((await f.t.query(components.platform.billing.paidBy, { billingOrganizationId: payerBilling, paginationOpts: { numItems: 100, cursor: null } })).page).toEqual([]);
+      const acmeRow = await f.t.query(components.platform.billing.billingByOrganization, { organizationId: f.acme });
+      expect(acmeRow).toMatchObject({ _id: acmeBilling, deletedAt: expect.any(Number) });
+
+      expect(await f.t.query(internal.platform.userDeletion.blockerFor, { userId: carol.userId })).toBeNull();
+      await f.boss.caller.mutation(orgs.remove, { organizationId: payer });
+      await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await f.organization(payer)).toBeNull();
     } finally {
       vi.useRealTimers();
     }

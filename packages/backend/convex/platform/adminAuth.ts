@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 import { v } from "convex/values";
 
 import { components } from "../_generated/api";
@@ -16,7 +17,7 @@ import { parseUserAgent } from "./parseUserAgent";
 
 function requireAdmin(user: Record<string, unknown>): void {
   if (user.role !== "admin") {
-    throw new Error("NOT_ADMIN");
+    refuse("NOT_ADMIN");
   }
 }
 

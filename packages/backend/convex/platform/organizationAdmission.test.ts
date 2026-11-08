@@ -15,7 +15,10 @@ beforeEach(() => {
   vi.stubEnv("SITE_URL", "http://localhost:3001");
   vi.stubEnv("CONVEX_SITE_URL", "http://localhost:3211");
 });
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.useRealTimers();
+});
 
 async function fixture() {
   const t = createTestEnv();
@@ -75,12 +78,15 @@ describe("joining a deleted organization", () => {
   });
 
   test("an invitation accepted while its last member's account is deleted adds nobody", async () => {
+    vi.useFakeTimers();
     const f = await fixture();
     const invitation = await f.invite(f.acme, "bob@example.test", f.alice.userId);
     const result = await f.acceptWith(invitation._id, "bob", f.bob.userId, async () => {
       await f.boss.caller.mutation(api.platform.agentUsers.remove, { userId: f.alice.userId });
     });
     expect(result.status, result.body).not.toBe(200);
+    // The deletion's membership removal job empties and deletes the organization.
+    await f.t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(await f.organization(f.acme)).toBeNull();
     expect(await f.members(f.acme)).toEqual([]);
   });
@@ -115,6 +121,7 @@ describe("joining where no owner can act", () => {
 
 describe("many memberships", () => {
   test("joining is limited per user, and every membership past the first page is seen and removed", async () => {
+    vi.useFakeTimers();
     const f = await fixture();
     const host = await f.user("host");
     const invitee = await f.user("invitee");
@@ -143,6 +150,8 @@ describe("many memberships", () => {
 
     // Deleting the account removes every membership.
     await f.boss.caller.mutation(api.platform.agentUsers.remove, { userId: invitee.userId });
+    // One organization per run of the membership removal job.
+    await f.t.finishAllScheduledFunctions(vi.runAllTimers, 1000);
     const left = await f.t.query(components.betterAuth.adapter.findMany, {
       model: "member", where: [{ field: "userId", value: invitee.userId }], paginationOpts: { numItems: 1000, cursor: null },
     });

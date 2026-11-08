@@ -1378,6 +1378,26 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         any,
         Name
       >;
+      invitationsByExpiry: FunctionReference<
+        "query",
+        "internal",
+        {
+          email?: string;
+          expiresAfter: number;
+          organizationId?: string;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          status: string;
+        },
+        any,
+        Name
+      >;
       reuseOtp: FunctionReference<
         "mutation",
         "internal",

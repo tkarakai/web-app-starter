@@ -1,3 +1,4 @@
+import { refuse } from "../errors";
 import { v, type Infer } from "convex/values";
 import { appSettingsFields } from "./schema";
 const settingValueValidator = v.union(v.string(), v.number(), v.boolean(), v.null(), v.object({ subject: v.string(), html: v.string(), text: v.string() }));
@@ -335,7 +336,7 @@ export const set = mutation({
   handler: async (ctx, args) => {
 
     if (!(VALID_KEYS as readonly string[]).includes(args.key)) {
-      throw new Error("INVALID_SETTING_KEY");
+      refuse("INVALID_SETTING_KEY");
     }
 
     validateValue(args.key, args.value);
@@ -392,7 +393,7 @@ export const remove = mutation({
   handler: async (ctx, args) => {
 
     if (!(VALID_KEYS as readonly string[]).includes(args.key)) {
-      throw new Error("INVALID_SETTING_KEY");
+      refuse("INVALID_SETTING_KEY");
     }
 
     const existing = await getSettingRecord(ctx, args.key);

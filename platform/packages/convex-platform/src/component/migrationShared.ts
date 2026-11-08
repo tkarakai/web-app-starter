@@ -1,3 +1,4 @@
+import { refuse } from "../errors";
 import type { QueryCtx } from "./_generated/server";
 import { MIGRATION_NAME, type MigrationTable } from "./migrationTables";
 
@@ -8,7 +9,7 @@ export async function state(ctx: Pick<QueryCtx, "db">) {
 }
 
 export async function requireCopying(ctx: Pick<QueryCtx, "db">): Promise<void> {
-  if ((await state(ctx))?.phase !== "copying") throw new Error("MIGRATION_NOT_COPYING");
+  if ((await state(ctx))?.phase !== "copying") refuse("MIGRATION_NOT_COPYING");
 }
 
 export async function mapping(ctx: Pick<QueryCtx, "db">, table: MigrationTable, legacyId: string) {

@@ -1,3 +1,4 @@
+import { refuse } from "../errors";
 /** Trusted app callers only; clients use the authenticated app wrappers. */
 import { v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
@@ -31,7 +32,7 @@ export const join = mutation({
     // Normalize and validate before lookup so every caller uses the same policy.
     const email = normalizeEmail(args.email);
     assertMaxLength(args.email, MAX_NAME_LENGTH, "EMAIL");
-    if (!EMAIL_PATTERN.test(email)) throw new Error("INVALID_EMAIL");
+    if (!EMAIL_PATTERN.test(email)) refuse("INVALID_EMAIL");
     validateMeta(args.meta);
 
     // Check for duplicate email
@@ -112,8 +113,8 @@ export const invite = mutation({
   handler: async (ctx, args) => {
 
     const entry = await ctx.db.get(args.entryId);
-    if (!entry) throw new Error("ENTRY_NOT_FOUND");
-    if (entry.status === "claimed") throw new Error("ALREADY_CLAIMED");
+    if (!entry) refuse("ENTRY_NOT_FOUND");
+    if (entry.status === "claimed") refuse("ALREADY_CLAIMED");
 
     // Allow re-inviting only if the invitation has expired
     if (entry.status === "invited") {
@@ -121,7 +122,7 @@ export const invite = mutation({
         !entry.invitationExpiresAt ||
         Date.now() <= entry.invitationExpiresAt
       ) {
-        throw new Error("ALREADY_INVITED");
+        refuse("ALREADY_INVITED");
       }
     }
 
@@ -152,7 +153,7 @@ export const inviteMany = mutation({
   returns: v.object({ invited: v.array(v.string()), skipped: v.array(v.object({ email: v.string(), reason: v.string() })), deliveries: v.array(v.object({ entryId: v.id("waitlistEntries"), email: v.string() })) }),
   handler: async (ctx, args) => {
     if (args.emails.length > MAX_BULK_INVITE_EMAILS) {
-      throw new Error("TOO_MANY_EMAILS");
+      refuse("TOO_MANY_EMAILS");
     }
 
     const normalized = Array.from(
@@ -160,7 +161,7 @@ export const inviteMany = mutation({
     );
 
     if (normalized.length === 0) {
-      throw new Error("NO_EMAILS_PROVIDED");
+      refuse("NO_EMAILS_PROVIDED");
     }
 
     const invited: string[] = [];
@@ -243,8 +244,8 @@ export const uninvite = mutation({
   handler: async (ctx, args) => {
 
     const entry = await ctx.db.get(args.entryId);
-    if (!entry) throw new Error("ENTRY_NOT_FOUND");
-    if (entry.status === "claimed") throw new Error("ALREADY_CLAIMED");
+    if (!entry) refuse("ENTRY_NOT_FOUND");
+    if (entry.status === "claimed") refuse("ALREADY_CLAIMED");
 
     // Revoke all active tokens for this entry
     const tokens = await ctx.db
@@ -288,8 +289,8 @@ export const remove = mutation({
   handler: async (ctx, args) => {
 
     const entry = await ctx.db.get(args.entryId);
-    if (!entry) throw new Error("ENTRY_NOT_FOUND");
-    if (entry.status === "claimed") throw new Error("CANNOT_DELETE_CLAIMED");
+    if (!entry) refuse("ENTRY_NOT_FOUND");
+    if (entry.status === "claimed") refuse("CANNOT_DELETE_CLAIMED");
 
     // Delete associated tokens
     const tokens = await ctx.db

@@ -34,7 +34,8 @@
     "minute": "Minuut",
     "dayPeriod": "Ochtend of middag",
     "daylightSaving": "Zomertijd",
-    "breadcrumb": "Broodkruimelpad"
+    "breadcrumb": "Broodkruimelpad",
+    "loadMore": "Meer laden"
   },
   "theme": {
     "light": "Licht thema",
