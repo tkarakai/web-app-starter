@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, ftruncateSync, openSync, readFileSync, writeSync } from "node:fs";
 import { join } from "node:path";
 import rawConfig from "../../app.config.ts";
 import { APP_IDS, validateAppConfig, type AppId } from "../packages/app-config/src/schema.ts";
@@ -42,10 +42,22 @@ export function plannedPort(name: string): number {
  * project-local config so another checkout's anonymous-agent is never probed. */
 export function prepareBackendPorts(directory: string): void {
   const file = join(directory, ".convex/local/default/config.json");
-  if (!existsSync(file)) return;
-  const config = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
-  config.ports = { cloud: plannedPort("cloud"), site: plannedPort("site") };
-  writeFileSync(file, JSON.stringify(config, null, 2) + "\n");
+  let descriptor: number;
+  try {
+    descriptor = openSync(file, "r+");
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") return;
+    throw error;
+  }
+  try {
+    const config = JSON.parse(readFileSync(descriptor, "utf8")) as Record<string, unknown>;
+    config.ports = { cloud: plannedPort("cloud"), site: plannedPort("site") };
+    const content = JSON.stringify(config, null, 2) + "\n";
+    writeSync(descriptor, content, 0, "utf8");
+    ftruncateSync(descriptor, Buffer.byteLength(content));
+  } finally {
+    closeSync(descriptor);
+  }
 }
 
 if (process.argv[1]?.endsWith("/e2e-ports.ts")) {
