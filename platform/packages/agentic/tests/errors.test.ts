@@ -31,6 +31,13 @@ describe("agent-facing errors", () => {
 
 
 describe("production error data", () => {
+  test("billing-owner and passkey-name refusals retain their recovery steps", () => {
+    for (const code of ["BILLING_OWNER_REQUIRED", "INVALID_PASSKEY_NAME"]) {
+      const result = safeCapabilityError({ message: "Server Error", data: { code, details: "private context" } });
+      expect(result).toStartWith(`${code}: `);
+      expect(result).not.toContain("private context");
+    }
+  });
   test("structured codes survive a redacted message without leaking details", () => {
     const error = { message: "[Request ID: secret] Server Error", data: { code: "LAST_OWNER", message: "Private Org cookie=secret", trace: "private.ts" } };
     expect(errorCode(error)).toBe("LAST_OWNER");

@@ -109,7 +109,8 @@ Use the normal [organization UI](../organizations.md#ui-building-blocks), with a
 page instead of a shared notes page. Call `add` with `expectedOrganizationId` (see
 [organizations](../organizations.md#scoping-your-data)). Explain to users that notes are private from colleagues,
 but belong to the organization and become inaccessible after departure. Keep account settings
-and invitations reachable with zero memberships.
+and invitations reachable with zero memberships. In that state, `list` returns an empty
+finished page (`page: []`, `isDone: true`, `continueCursor: ""`), while `get` returns `null`.
 
 Add a bounded `privateNotes.by_organization` deletion batch to the app's organization cleanup,
 including notes whose owners left. Cleanup is privileged internal retention/deletion work;

@@ -95,6 +95,7 @@
         "@repo/messages": "workspace:*",
         "@repo/onboarding": "workspace:*",
         "@types/qrcode": "^1.5.6",
+        "@web-app-starter/agentic": "workspace:*",
         "@web-app-starter/app-config": "workspace:*",
         "@web-app-starter/auth": "workspace:*",
         "@web-app-starter/auth-ui": "workspace:*",

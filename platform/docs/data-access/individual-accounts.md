@@ -82,7 +82,9 @@ and organization deletion do not change this rule.
 Build the dashboard around personal data, without requiring `useOrganizations()` to report an
 active org before rendering it. Keep the platform protected layout and account security UI;
 omit organization management from your app navigation if it is irrelevant. Do not gate this
-personal page behind the sample's `NoOrganization` workspace state.
+personal page behind the sample's `NoOrganization` workspace state. Without an authorized
+caller, `list` returns an empty finished page (`page: []`, `isDone: true`,
+`continueCursor: ""`), while `get` returns `null`.
 
 This produces an individual-service experience with the current primitives. **It does not
 disable the organization backend.** Signup still creates a personal organization, and its

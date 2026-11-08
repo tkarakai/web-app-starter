@@ -92,8 +92,9 @@ resolving that context. Do not replace the organization check with creator owner
 ## UI, roles and cleanup
 
 Mount the [organization UI](../organizations.md#ui-building-blocks). Members select the active
-workspace; these functions accept no organization argument. Queries return `null` without a
-membership, so show the workspace empty state while preserving account controls/invitations.
+workspace; these functions accept no organization argument. Without a membership, the paginated
+`list` returns an empty finished page (`page: []`, `isDone: true`, `continueCursor: ""`),
+and `get` returns `null`. Show the workspace empty state while preserving account controls/invitations.
 Call `add` with `expectedOrganizationId` set to the active organization the form was opened
 for; on `ORGANIZATION_CHANGED` keep the draft and let the user check where it goes.
 
@@ -114,5 +115,6 @@ events; decide whether to retain or redact creator attribution.
 - Removal revokes access on the next request, including a stale active-org selection.
 - An `add` composed for an org the caller has since left or switched away from is refused
   (`ORGANIZATION_CHANGED`) and writes nothing anywhere.
-- With no memberships, reads are `null`, writes refuse `NO_ORGANIZATION`, and no org is created.
+- With no memberships, `list` returns an empty finished page, `get` returns `null`, writes
+  refuse `NO_ORGANIZATION`, and no org is created.
 - Org cleanup removes its notes and preserves personal data and other orgs' notes.

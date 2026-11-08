@@ -3,6 +3,7 @@
 import { DialogContent, Sidebar, SidebarRail } from "@/components/ui/localized-controls";
 
 import * as React from "react";
+import { errorCode } from "@web-app-starter/agentic/errors";
 import { Building2, ChevronRight, LogOut, Plus, UserCog } from "lucide-react";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
@@ -132,7 +133,7 @@ export function AppSidebar({
       setDialogOpen(false);
       onSelectProject(id);
     } catch (error) {
-      if (!(error instanceof Error && error.message.includes("ORGANIZATION_CHANGED"))) throw error;
+      if (errorCode(error) !== "ORGANIZATION_CHANGED") throw error;
       // Nothing was written. Keep the draft for the next attempt and say why.
       setDialogOpen(false);
       toast.error(tp("organizationChanged"));

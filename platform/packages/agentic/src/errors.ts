@@ -22,6 +22,8 @@ const PUBLIC_CODES = ["RECENT_AUTHENTICATION_REQUIRED", "INVALID_AGENT_TOKEN", "
  * Only exact codes are matched.
  */
 const ORGANIZATION_CODES: [code: string, recovery: string][] = [
+  ["BILLING_OWNER_REQUIRED", "make another member an owner of the billing organization before deleting this user"],
+  ["INVALID_PASSKEY_NAME", "provide a non-empty passkey name of at most 100 characters"],
   ["TENANCY_CHECK_CHANGED", "the install changed during its check; run the tenancy check again"],
   ["BILLING_ORGANIZATION_IN_USE", "move the paid organizations to another payer before deleting this billing organization"],
   ["CLEANUP_NOT_FOUND", "re-read organizations_cleanups; no cleanup is recorded"],
