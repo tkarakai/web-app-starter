@@ -23,13 +23,13 @@
   },
   "dependencies": {
     "convex": "^1.48.0",
-    "convex-helpers": "^0.1.129"
+    "convex-helpers": "^0.1.134"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
     "convex-test": "^0.0.65",
     "typescript": "^6.0.3",
-    "vite": "^8.3.5",
+    "vite": "^8.3.6",
     "vitest": "^5.0.5"
   }
 }

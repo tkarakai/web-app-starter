@@ -91,7 +91,9 @@ describe("component invitations", () => {
     await t.mutation(api.waitlistTokens.releaseClaim, { token: "secret" });
     expect((await t.query(api.waitlistTokens.validate, { token: "secret" })).valid).toBe(true);
     await t.mutation(api.waitlistTokens.beginClaim, { token: "secret" });
-    vi.setSystemTime(Date.now() + 15 * 60_000);
+    // Each transaction's pinned clock can run slightly ahead of the frozen test clock, so step
+    // clearly past the 15-minute claim TTL.
+    vi.setSystemTime(Date.now() + 15 * 60_000 + 1_000);
     expect(await t.mutation(api.waitlistTokens.beginClaim, { token: "secret" })).toEqual({ email: "buyer@example.test" });
   });
 

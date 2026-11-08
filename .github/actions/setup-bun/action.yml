@@ -4,7 +4,7 @@ description: "Install Node, Bun, cache dependencies, and run bun install. Requir
 inputs:
   bun-version:
     description: "Bun version to install"
-    default: "1.4.3"
+    default: "1.4.4"
   node-version:
     description: "Node.js version (project TypeScript scripts need 22.6+)"
     default: "24"

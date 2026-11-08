@@ -72,8 +72,10 @@ export function lockData(text: string): { packages: Record<string, string[]> } {
     const metadata = local ? entry[1] : entry[2];
     if (metadata !== undefined) {
       const data = record(metadata);
-      assert(Object.keys(data).every(k => ['dependencies', 'optionalDependencies', 'peerDependencies', 'optionalPeers', 'bundled', 'bin', 'os', 'cpu'].includes(k)), 'Unsupported lock package metadata');
+      assert(Object.keys(data).every(k => ['dependencies', 'optionalDependencies', 'peerDependencies', 'optionalPeers', 'bundled', 'hasInstallScript', 'bin', 'os', 'cpu'].includes(k)), 'Unsupported lock package metadata');
       if (data.bundled !== undefined) assert(typeof data.bundled === 'boolean', 'Unsupported bundled package flag');
+      // Bun 1.4.4+ records whether a package declares lifecycle scripts; workers install with --ignore-scripts.
+      if (data.hasInstallScript !== undefined) assert(typeof data.hasInstallScript === 'boolean', 'Unsupported install script flag');
       for (const key of ['optionalPeers']) if (data[key] !== undefined) assert(Array.isArray(data[key]) && (data[key] as unknown[]).every(v => typeof v === 'string'), 'Unsupported package list');
       for (const key of ['bin', 'os', 'cpu']) if (data[key] !== undefined) assert(typeof data[key] === 'string' || (key === 'bin' ? Object.values(record(data[key])).every(v => typeof v === 'string') : Array.isArray(data[key]) && (data[key] as unknown[]).every(v => typeof v === 'string')), 'Unsupported package metadata value');
       for (const key of ['dependencies', 'optionalDependencies', 'peerDependencies']) if (data[key] !== undefined) sources(data[key]);
