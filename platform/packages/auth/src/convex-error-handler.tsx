@@ -1,5 +1,7 @@
 "use client";
 
+import { errorCode } from "@web-app-starter/agentic/errors";
+
 import { useEffect, useRef, useCallback } from "react";
 import { ConvexError } from "convex/values";
 
@@ -21,25 +23,17 @@ export type ConvexErrorInfo = {
  *
  * ConvexError instances carry structured data in `.data`.
  */
-function extractErrorInfo(error: unknown): ConvexErrorInfo | null {
-  // Handle ConvexError (structured errors like rate limits)
+export function extractErrorInfo(error: unknown): ConvexErrorInfo | null {
+  const code = errorCode(error);
+  if (code === "RATE_LIMITED") {
+    const data = (error as { data?: Record<string, unknown> }).data;
+    const seconds = typeof data?.retryAfter === "number" ? Math.max(1, Math.ceil(data.retryAfter / 1000))
+      : typeof data?.retryAt === "number" ? Math.max(1, Math.ceil((data.retryAt - Date.now()) / 1000)) : 5;
+    return { code, message: `Too many requests. Please wait ${seconds} seconds.`, params: { seconds } };
+  }
+  if (code) return { code, message: code };
   if (error instanceof ConvexError) {
     const data = error.data;
-    if (data && typeof data === "object" && "kind" in data) {
-      const obj = data as Record<string, unknown>;
-      if (obj.kind === "RateLimited") {
-        const retryAt =
-          typeof obj.retryAt === "number" ? obj.retryAt : undefined;
-        const seconds = retryAt
-          ? Math.ceil((retryAt - Date.now()) / 1000)
-          : 5;
-        return {
-          code: "RATE_LIMITED",
-          message: `Too many requests. Please wait ${seconds} seconds.`,
-          params: { seconds },
-        };
-      }
-    }
     const msg =
       typeof data === "string"
         ? data
@@ -51,12 +45,17 @@ function extractErrorInfo(error: unknown): ConvexErrorInfo | null {
 
   if (error instanceof Error) {
     // Convex server function errors: [CONVEX M(path)] errorMessage\n  Called by client
-    const match = error.message.match(
-      /^\[CONVEX [A-Z]\([^\)]+\)\]\s*(.+?)(?:\n|$)/,
-    );
-    if (match) {
-      const rawMessage = match[1]!;
-      return { code: rawMessage, message: rawMessage };
+    // Parse the envelope in linear passes. Combining an unbounded whitespace
+    // match with a message capture can backtrack quadratically on blank input.
+    const prefix = /^\[CONVEX [A-Z]\(/.exec(error.message);
+    if (prefix) {
+      const close = error.message.indexOf(")", prefix[0].length);
+      if (close > prefix[0].length && error.message[close + 1] === "]") {
+        const body = error.message.slice(close + 2).trimStart();
+        const newline = body.indexOf("\n");
+        const rawMessage = newline < 0 ? body : body.slice(0, newline);
+        if (rawMessage) return { code: rawMessage, message: rawMessage };
+      }
     }
 
     // Network / infrastructure errors (Convex is down, no connectivity)
@@ -102,7 +101,7 @@ export function ConvexErrorHandler({
   const recentRef = useRef<Map<string, number>>(new Map());
 
   const handleRejection = useCallback(
-    (event: PromiseRejectionEvent) => {
+    (event: globalThis.PromiseRejectionEvent) => {
       const info = extractErrorInfo(event.reason);
       if (!info) return;
 

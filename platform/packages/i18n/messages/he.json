@@ -34,7 +34,8 @@
     "minute": "דקה",
     "dayPeriod": "לפני הצהריים או אחרי הצהריים",
     "daylightSaving": "שעון קיץ",
-    "breadcrumb": "נתיב ניווט"
+    "breadcrumb": "נתיב ניווט",
+    "loadMore": "טען עוד"
   },
   "theme": {
     "light": "ערכת נושא בהירה",

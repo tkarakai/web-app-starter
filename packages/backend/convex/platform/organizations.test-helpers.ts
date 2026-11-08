@@ -1,5 +1,6 @@
 // Shared by the organization tests. The extra dot keeps this file out of Convex deployment.
 import type { TestConvex } from "convex-test";
+import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 
 import { api, components, internal } from "../_generated/api";
 import type schema from "../schema";
@@ -52,6 +53,23 @@ export async function organizationFixture(t: TestConvex<typeof schema>) {
       } },
     });
 
+  /**
+   * Invitation rows sent `sentDaysAgo` (each send sets `expiresAt` 7 days on, as Better Auth
+   * does), inserted in one transaction so a test can seed thousands.
+   */
+  const seedInvitations = (rows: { organizationId: string; email: string; inviterId: string; status: string; sentDaysAgo: number; createdDaysAgo?: number }[]) =>
+    t.run(async (ctx) => {
+      const now = Date.now();
+      for (const row of rows) {
+        await ctx.runMutation(components.betterAuth.adapter.create, {
+          input: { model: "invitation", data: {
+            organizationId: row.organizationId, email: row.email, role: "member", status: row.status, inviterId: row.inviterId,
+            createdAt: now - (row.createdDaysAgo ?? row.sentDaysAgo) * DAY, expiresAt: now + (7 - row.sentDaysAgo) * DAY,
+          } },
+        });
+      }
+    });
+
   const organization = (organizationId: string) =>
     t.query(components.betterAuth.adapter.findOne, { model: "organization", where: [{ field: "_id", value: organizationId }] });
 
@@ -59,7 +77,24 @@ export async function organizationFixture(t: TestConvex<typeof schema>) {
     model: "invitation", where: [{ field: "organizationId", value: organizationId }], paginationOpts: { numItems: 1000, cursor: null },
   })).page as { _id: string; email: string; status: string }[];
 
-  return { t, user, addMember, members, invite, organization, invitations };
+  return { t, user, addMember, members, invite, seedInvitations, organization, invitations };
+}
+
+const DAY = 86_400_000;
+
+/**
+ * Run `read` as one transaction (as `runner`, a test deployment or a caller) and count the
+ * documents it read, component reads included (`ctx.meta.getTransactionMetrics()`).
+ */
+export async function countReads<T>(
+  runner: Pick<TestConvex<typeof schema>, "run">,
+  read: (ctx: Pick<GenericMutationCtx<GenericDataModel>, "runQuery">) => Promise<T>,
+): Promise<{ result: T; documentsRead: number }> {
+  return await runner.run(async (ctx) => {
+    const before = (await ctx.meta.getTransactionMetrics()).documentsRead.used;
+    const result = await read(ctx);
+    return { result, documentsRead: (await ctx.meta.getTransactionMetrics()).documentsRead.used - before };
+  });
 }
 
 export type Caller = Awaited<ReturnType<Awaited<ReturnType<typeof organizationFixture>>["user"]>>["caller"];

@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 /**
  * Shared rules for tenancy, plans and billing organizations (platform/docs/tenancy-and-billing.md).
  * The component (`components.platform.billing`) stores the rows; these helpers decide who may act
@@ -77,8 +78,8 @@ export async function billingRole(ctx: Pick<QueryCtx, "runQuery">, userId: strin
 
 export async function assertManagesBilling(ctx: Pick<QueryCtx, "runQuery">, userId: string, billingOrganizationId: string) {
   const access = await billingRole(ctx, userId, billingOrganizationId);
-  if (!access) throw new Error("BILLING_ORGANIZATION_NOT_FOUND");
-  if (!access.canManage) throw new Error("NOT_ALLOWED");
+  if (!access) refuse("BILLING_ORGANIZATION_NOT_FOUND");
+  if (!access.canManage) refuse("NOT_ALLOWED");
   return access.billing;
 }
 

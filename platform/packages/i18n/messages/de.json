@@ -34,7 +34,8 @@
     "minute": "Minute",
     "dayPeriod": "Vormittags oder nachmittags",
     "daylightSaving": "Sommerzeit",
-    "breadcrumb": "Brotkrümelnavigation"
+    "breadcrumb": "Brotkrümelnavigation",
+    "loadMore": "Mehr laden"
   },
   "theme": {
     "light": "Helles Design",

@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 import { v } from "convex/values";
 import { locales, type Locale } from "@web-app-starter/i18n";
 import { authedMutation, authedQuery, assertMaxLength } from "./functions";
@@ -55,17 +56,17 @@ export const upsert = authedMutation({
   handler: async (ctx, args) => {
     // Validate locale if provided
     if (args.locale && !isLocale(args.locale)) {
-      throw new Error("INVALID_LOCALE");
+      refuse("INVALID_LOCALE");
     }
     // Validate theme against allowlist
     if (args.theme && !(VALID_THEMES as readonly string[]).includes(args.theme)) {
-      throw new Error("INVALID_THEME");
+      refuse("INVALID_THEME");
     }
     // Validate timezone length to prevent abuse
     assertMaxLength(args.timezone, MAX_TIMEZONE_LENGTH, "TIMEZONE");
     // Validate avatarColor is a hex color
     if (args.avatarColor && !HEX_COLOR_RE.test(args.avatarColor)) {
-      throw new Error("INVALID_AVATAR_COLOR");
+      refuse("INVALID_AVATAR_COLOR");
     }
 
     const existing = await ctx.db
@@ -108,7 +109,7 @@ export const setLocale = authedMutation({
   args: { locale: v.string() },
   handler: async (ctx, args) => {
     if (!isLocale(args.locale)) {
-      throw new Error("INVALID_LOCALE");
+      refuse("INVALID_LOCALE");
     }
 
     const existing = await ctx.db

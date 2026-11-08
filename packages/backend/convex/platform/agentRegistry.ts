@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 import * as tasks from "./agentTaskAdmin";
 import * as grants from "./agentAccess";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
@@ -42,8 +43,8 @@ add("audit", audit, ["list"], "Read immutable audit events with filters and nati
 add("profile", profiles, ["get", "getLocale", "upsert", "setLocale"], "Read/change your own profile preferences, locale, theme, timezone and avatar colour.");
 add("integrations", integrations, ["getStatus"], "Read configured integration readiness and setup requirements, never environment secret values.");
 add("admins", protectedAdmins, ["listProtected"], "List protected administrator email identities; these accounts cannot be banned, deleted or demoted.");
-add("users", users, ["list", "get", "ban", "unban", "setRole", "update", "remove", "sessions", "revokeSession", "revokeSessions"], "Manage users and sessions through the native authentication store. Session results contain opaque IDs, never login tokens. Pagination uses numItems 1–100 and cursor null initially. Filter by role/status/emailVerified; email search normalizes to lowercase, name search is case-sensitive (native adapter semantics). Never disclose or collect passwords. ban needs successors ({organizationId, userId}) for every organization where the user is the only owner who can act (not banned, not a platform admin) while other members can, one per such organization and only those: read them from organizations_forUser (banSuccessor). setRole to admin needs the same successors (platform admins can't act in organizations). unban, or setRole back to user, needs successors where all of an organization's owners are banned; the successor may be the user themself. Refusals say OWNER_SUCCESSOR_REQUIRED.");
-add("organizations", organizations, ["list", "get", "forUser", "addOwner", "removeOwner", "cancelInvitation", "remove", "cleanups", "retryCleanup"], "Inspect every organization (members, roles, invitations; never its app data) and perform support actions. Every organization with members keeps at least one owner, and one who isn't banned while any member can sign in: removeOwner refuses such an owner and addOwner refuses banned members and platform admins, so add another owner first. forUser's banSuccessor lists organizations that need a successor before users_ban. forUser shows what deleting an account would do to each of its organizations. remove deletes the organization, its memberships, invitations and app data permanently; accounts are kept. App data is removed in the background: cleanups lists removals that failed (after retries) or are still running, and retryCleanup restarts a failed one. list uses native paginationOpts (numItems 1–100, cursor null initially); search matches names case-sensitively.");
+add("users", users, ["list", "get", "ban", "unban", "setRole", "update", "remove", "sessions", "revokeSession", "revokeSessions"], "Manage users and sessions through the native authentication store. Session results contain opaque IDs, never login tokens. Pagination uses numItems 1–100 and cursor null initially. Filter by role/status/emailVerified; email search normalizes to lowercase, name search is case-sensitive (native adapter semantics). Never disclose or collect passwords. ban needs successors ({organizationId, userId}) for every organization where the user is the only owner who can act (not banned, not a platform admin) while other members can, one per such organization and only those: read them from organizations_forUser (banSuccessor lists up to 10 candidates; any member who can act and is not an owner is accepted). setRole to admin needs the same successors (platform admins can't act in organizations). unban, or setRole back to user, needs successors where all of an organization's owners are banned; the successor may be the user themself. Refusals say OWNER_SUCCESSOR_REQUIRED. remove is refused with BILLING_ORGANIZATION_IN_USE or BILLING_OWNER_REQUIRED while the user is the last member or owner of a billing organization paying for other organizations; the user's memberships are then removed in the background, one organization at a time.");
+add("organizations", organizations, ["list", "get", "forUser", "addOwner", "removeOwner", "cancelInvitation", "remove", "cleanups", "retryCleanup"], "Inspect every organization (members, roles, invitations; never its app data) and perform support actions. Every organization with members keeps at least one owner, and one who isn't banned while any member can sign in: removeOwner refuses such an owner and addOwner refuses banned members and platform admins, so add another owner first. forUser's banSuccessor lists organizations that need a successor before users_ban. forUser shows what deleting an account would do to each of its organizations. remove deletes the organization, its memberships, invitations and app data permanently; accounts are kept. App data is removed in the background: cleanups lists removals that failed (after retries) or are still running, and retryCleanup restarts a failed one, or a stale one (still running, but its run stopped without reporting). list uses native paginationOpts (numItems 1–100, cursor null initially); search matches names case-sensitively.");
 add("tasks", tasks, ["get", "list", "cancel"], "Inspect/cancel your own durable A2A tasks from any enabled interface. list uses native pagination (up to 50) without artifacts. Completed business operations cannot be canceled. Use get after renewing authorization when a credentials-changing task may have completed.");
 add("grants", grants, ["listMine", "revoke"], "List/revoke your own grants by opaque ID, never access tokens. Revoking the current grant ends further requests; authenticate again to inspect the outcome.");
 add("surfaces", surfaces, ["configuration", "setEnabled"], "Read/change independent MCP, CLI, WebMCP and A2A feature controls. Disabling invalidates that surface's existing agent grants.");
@@ -52,7 +53,7 @@ add("surfaces", surfaces, ["configuration", "setEnabled"], "Read/change independ
 export const currentUser = authedQuery({ args: {}, handler: async ctx => ({ id: ctx.user._id, name: ctx.user.name, email: ctx.user.email, role: ctx.user.role }) });
 export const assurance = authedQuery({ args: {}, handler: async ctx => ctx.assurance });
 export const announcement = authedQuery({ args: { announcementId: v.string() }, handler: async (ctx, { announcementId }) => {
-  if (ctx.user.role !== "admin") throw new Error("NOT_ADMIN");
+  if (ctx.user.role !== "admin") refuse("NOT_ADMIN");
   const rows = await ctx.runQuery(components.platform.announcements.list, { includeArchived: true });
   return rows.find(row => row._id === announcementId) ?? null;
 } });
@@ -65,14 +66,14 @@ export const ownPasskeys = authedQuery({ args: { paginationOpts: v.optional(pagi
 } });
 export const renamePasskey = adminMutation({ args: { passkeyId: v.string(), name: v.string() }, handler: async (ctx, { passkeyId, name }) => {
   const key = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "passkey", where: [{ field: "_id", value: passkeyId }] });
-  if (!key || key.userId !== ctx.user._id) throw new Error("PASSKEY_NOT_FOUND");
-  if (!name.trim() || name.length > 100) throw new Error("INVALID_PASSKEY_NAME");
+  if (!key || key.userId !== ctx.user._id) refuse("PASSKEY_NOT_FOUND");
+  if (!name.trim() || name.length > 100) refuse("INVALID_PASSKEY_NAME");
   await ctx.runMutation(components.betterAuth.adapter.updateOne, { input: { model: "passkey", where: [{ field: "_id", value: passkeyId }], update: { name } } });
   await scheduleAuditEvent(ctx, { actor: ctx.user.email, authenticatedUserId: ctx.ownerId, sourceDetail: "agent-account", action: "auth.passkey.renamed", resource: `passkey:${passkeyId}`, status: "succeeded" });
 } });
 export const removePasskey = adminMutation({ args: { passkeyId: v.string() }, handler: async (ctx, { passkeyId }) => {
   const key = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "passkey", where: [{ field: "_id", value: passkeyId }] });
-  if (!key || key.userId !== ctx.user._id) throw new Error("PASSKEY_NOT_FOUND");
+  if (!key || key.userId !== ctx.user._id) refuse("PASSKEY_NOT_FOUND");
   await ctx.runMutation(components.betterAuth.adapter.deleteOne, { input: { model: "passkey", where: [{ field: "_id", value: passkeyId }] } });
   await scheduleAuditEvent(ctx, { actor: ctx.user.email, authenticatedUserId: ctx.ownerId, sourceDetail: "agent-account", action: "auth.passkey.deleted", resource: `passkey:${passkeyId}`, status: "succeeded" });
 } });
@@ -112,6 +113,6 @@ export const revokeOtherSessions = adminMutation({ args: {}, handler: async ctx 
       return { revoked: true, currentBrowserSessionPreserved: Boolean(currentSessionId), delegationPreserved: !currentSessionId };
     }
   }
-  throw new Error("TOO_MANY_SESSIONS");
+  refuse("TOO_MANY_SESSIONS");
 } });
 add("account", { revokeOtherSessions }, ["revokeOtherSessions"], "Sign out other browser devices. WebMCP preserves its current browser session. A remote agent has a separate delegation, so every browser session is another device; the delegation stays valid. Agent grants are managed separately.");

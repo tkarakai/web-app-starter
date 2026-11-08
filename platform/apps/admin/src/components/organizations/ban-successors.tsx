@@ -16,7 +16,7 @@ import {
 
 export type BanSuccessor = { organizationId: string; userId: string };
 type Candidate = { userId: string; name: string; email: string; role: string };
-type Needed = { organizationId: string; name: string; candidates: Candidate[]; suggested: string | null };
+type Needed = { organizationId: string; name: string; candidates: Candidate[]; moreCandidates: boolean; suggested: string | null };
 
 /**
  * Before a ban: every organization where this user is the only owner who isn't banned, while
@@ -29,7 +29,7 @@ export function BanSuccessors({ userId, onChange }: { userId: string; onChange: 
   const needed = React.useMemo<Needed[] | undefined>(() => {
     if (!Array.isArray(memberships)) return memberships === null ? [] : undefined;
     return memberships.flatMap((m) => m?.banSuccessor
-      ? [{ organizationId: m.organizationId, name: m.name, candidates: m.banSuccessor.candidates, suggested: m.banSuccessor.suggested }]
+      ? [{ organizationId: m.organizationId, name: m.name, candidates: m.banSuccessor.candidates, moreCandidates: m.banSuccessor.moreCandidates, suggested: m.banSuccessor.suggested }]
       : []);
   }, [memberships]);
   const [chosen, setChosen] = React.useState<Record<string, string>>({});
@@ -66,6 +66,7 @@ export function BanSuccessors({ userId, onChange }: { userId: string; onChange: 
               ))}
             </SelectContent>
           </Select>
+          {n.moreCandidates && <p className="text-xs text-muted-foreground">The longest-standing members who can act are listed; to choose someone else, make them an owner on the organization page first.</p>}
         </div>
       ))}
     </div>

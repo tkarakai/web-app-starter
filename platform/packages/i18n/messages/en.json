@@ -34,7 +34,8 @@
     "minute": "Minute",
     "dayPeriod": "AM or PM",
     "daylightSaving": "DST",
-    "breadcrumb": "Breadcrumb"
+    "breadcrumb": "Breadcrumb",
+    "loadMore": "Load more"
   },
   "theme": {
     "light": "Light theme",

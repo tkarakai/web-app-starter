@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 import { symmetricDecrypt, verifyPassword } from "better-auth/crypto";
 import { v } from "convex/values";
 
@@ -15,25 +16,25 @@ export const snapshot = internalQuery({
       model: "session", where: [{ field: "_id", value: sessionId }],
     });
     if (!session || session.userId !== userId || session.expiresAt <= Date.now()) {
-      throw new Error("NOT_AUTHENTICATED");
+      refuse("NOT_AUTHENTICATED");
     }
     const user = await ctx.runQuery(components.betterAuth.adapter.findOne, {
       model: "user", where: [{ field: "_id", value: userId }],
     });
-    if (!user || user.banned) throw new Error("NOT_AUTHENTICATED");
+    if (!user || user.banned) refuse("NOT_AUTHENTICATED");
     const pair = await readSession(ctx, userId, sessionId);
-    if (!pair || pair.session.authPurpose === "mcp-authorization") throw new Error("NOT_AUTHENTICATED");
+    if (!pair || pair.session.authPurpose === "mcp-authorization") refuse("NOT_AUTHENTICATED");
     const assurance = await evaluateSession(ctx, pair);
     // Bound enrollment may acknowledge its recovery set after fresh TOTP verification.
     if ((!assurance.allowed && assurance.reason !== "enrollment") || !assurance.strong || !assurance.recent) {
-      throw new Error("RECENT_AUTHENTICATION_REQUIRED");
+      refuse("RECENT_AUTHENTICATION_REQUIRED");
     }
     const credential = await ctx.runQuery(components.betterAuth.adapter.findOne, {
       model: "account", where: [
         { field: "userId", value: userId }, { field: "providerId", value: "credential" },
       ],
     });
-    if (!credential?.password) throw new Error("REAUTHENTICATION_REQUIRED");
+    if (!credential?.password) refuse("REAUTHENTICATION_REQUIRED");
     const factor = await ctx.runQuery(components.betterAuth.adapter.findOne, {
       model: "twoFactor", where: [{ field: "userId", value: userId }],
     });
@@ -46,18 +47,18 @@ export async function readBackupCodes(
   ctx: ActionCtx, userId: string, sessionId: string, password?: string,
 ): Promise<string[]> {
   const before = await ctx.runQuery(internal.platform.recoveryCodes.snapshot, { userId, sessionId });
-  if (!password || password.length > 128) throw new Error("REAUTHENTICATION_REQUIRED");
+  if (!password || password.length > 128) refuse("REAUTHENTICATION_REQUIRED");
   // Separate committed mutation: rejected password attempts must still consume their budget.
   const limit = await ctx.runMutation(internal.platform.rateLimits.consumeAuthRateLimit, {
     name: "authRecoverySecrets", key: userId,
   });
-  if (!limit.ok) throw new Error("RATE_LIMITED");
+  if (!limit.ok) refuse("RATE_LIMITED");
   if (!await verifyPassword({ password, hash: before.passwordHash })) {
-    throw new Error("REAUTHENTICATION_REQUIRED");
+    refuse("REAUTHENTICATION_REQUIRED");
   }
   // Password reset/revocation racing the expensive password check must invalidate disclosure.
   const after = await ctx.runQuery(internal.platform.recoveryCodes.snapshot, { userId, sessionId });
-  if (before.passwordHash !== after.passwordHash) throw new Error("REAUTHENTICATION_REQUIRED");
+  if (before.passwordHash !== after.passwordHash) refuse("REAUTHENTICATION_REQUIRED");
   if (!after.backupCodes) return [];
   let codes: unknown;
   try {
@@ -68,7 +69,7 @@ export async function readBackupCodes(
     codes = JSON.parse(await symmetricDecrypt({ key: secret, data: after.backupCodes }));
   }
   if (!Array.isArray(codes) || !codes.every((code): code is string => typeof code === "string")) {
-    throw new Error("INVALID_RECOVERY_CODES");
+    refuse("INVALID_RECOVERY_CODES");
   }
   return codes;
 }

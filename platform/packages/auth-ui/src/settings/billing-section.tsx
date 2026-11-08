@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
 import {
@@ -29,6 +29,8 @@ import { PaymentMethodField, PlanChoice, usePlanPrice, useSelectedPlan } from ".
 import { CreateOrganizationDialog } from "../components/create-organization-dialog";
 
 const NEW_PAYER = "new";
+/** Organizations a billing organization pays for, listed per page. */
+const PAID_PAGE_SIZE = 20;
 
 function useRun() {
   const t = useTranslations("billing");
@@ -235,13 +237,15 @@ function Upgrade({ organizationId, organizationName, plans, payers, individuals 
 }
 
 function BillingOrganizationCard({ billing, name, plans, canCreate }: {
-  billing: { id: string; paymentMethod: PaymentMethod | null; canManage: boolean; organizations: { organizationId: string; name: string; plan: PlanOption }[] };
+  billing: { id: string; paymentMethod: PaymentMethod | null; canManage: boolean };
   name: string;
   plans: PlanOption[];
   canCreate: boolean;
 }) {
   const t = useTranslations("billing");
+  const tCommon = useTranslations("common");
   const price = usePlanPrice();
+  const paid = usePaginatedQuery(api.platform.billing.paidOrganizations, {}, { initialNumItems: PAID_PAGE_SIZE });
   const [creating, setCreating] = React.useState(false);
   return (
     <Card data-testid="billing-organization">
@@ -255,11 +259,13 @@ function BillingOrganizationCard({ billing, name, plans, canCreate }: {
           : billing.paymentMethod && <p className="text-sm">{t("paymentMethod")}: {t(`paymentMethods.${billing.paymentMethod}`)}</p>}
         <div className="space-y-2">
           <div className="text-sm font-medium">{t("paysFor")}</div>
-          {billing.organizations.length === 0
+          {paid.status === "LoadingFirstPage"
+            ? <p className="text-sm text-muted-foreground">{tCommon("loading")}</p>
+            : paid.results.length === 0
             ? <p className="text-sm text-muted-foreground">{t("paysForNone")}</p>
             : (
-              <ul className="divide-y rounded-md border">
-                {billing.organizations.map((organization) => (
+              <ul className="divide-y rounded-md border" data-testid="paid-organizations">
+                {paid.results.map((organization) => (
                   <li key={organization.organizationId} className="space-y-3 px-3 py-2 text-sm">
                     <span className="truncate">{organization.name}</span>
                     <span className="ms-2 text-muted-foreground">{organization.plan.name} · {price(organization.plan)}</span>
@@ -268,6 +274,9 @@ function BillingOrganizationCard({ billing, name, plans, canCreate }: {
                 ))}
               </ul>
             )}
+          {paid.status === "CanLoadMore" && (
+            <Button variant="outline" size="sm" onClick={() => paid.loadMore(PAID_PAGE_SIZE)}>{tCommon("loadMore")}</Button>
+          )}
         </div>
         {billing.canManage && canCreate && (
           <>

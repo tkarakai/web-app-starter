@@ -34,12 +34,11 @@ Create `packages/backend/convex/privateNotes.ts`:
 
 <!-- data-access-file: privateNotes.ts -->
 ```ts
-import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import {
-  assertMaxLength, MAX_DESCRIPTION_LENGTH, orgMutation, orgQuery,
+  assertMaxLength, MAX_DESCRIPTION_LENGTH, orgMutation, orgPaginatedQuery, orgQuery,
 } from "./platform/functions";
 
 type AccessCtx = Pick<QueryCtx, "db"> & { organizationId: string; ownerId: string };
@@ -54,8 +53,8 @@ export async function requirePrivateNote(
   return note;
 }
 
-export const list = orgQuery({
-  args: { paginationOpts: paginationOptsValidator },
+export const list = orgPaginatedQuery({
+  args: {},
   handler: (ctx, args) => ctx.db.query("privateNotes")
     .withIndex("by_organization_owner", q => q
       .eq("organizationId", ctx.organizationId).eq("ownerId", ctx.ownerId))
@@ -110,7 +109,8 @@ Use the normal [organization UI](../organizations.md#ui-building-blocks), with a
 page instead of a shared notes page. Call `add` with `expectedOrganizationId` (see
 [organizations](../organizations.md#scoping-your-data)). Explain to users that notes are private from colleagues,
 but belong to the organization and become inaccessible after departure. Keep account settings
-and invitations reachable with zero memberships.
+and invitations reachable with zero memberships. In that state, `list` returns an empty
+finished page (`page: []`, `isDone: true`, `continueCursor: ""`), while `get` returns `null`.
 
 Add a bounded `privateNotes.by_organization` deletion batch to the app's organization cleanup,
 including notes whose owners left. Cleanup is privileged internal retention/deletion work;

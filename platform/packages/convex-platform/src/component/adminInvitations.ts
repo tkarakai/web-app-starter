@@ -1,3 +1,4 @@
+import { refuse } from "../errors";
 import { ensureAdminEmail } from "./adminEmails";
 /** Trusted app callers only; clients use the authenticated app wrappers. */
 import { v } from "convex/values";
@@ -46,7 +47,7 @@ export const invite = mutation({
 
     const email = args.email.trim().toLowerCase();
     if (!email || !EMAIL_PATTERN.test(email)) {
-      throw new Error("INVALID_EMAIL");
+      refuse("INVALID_EMAIL");
     }
 
     // Check for existing invitation
@@ -59,14 +60,14 @@ export const invite = mutation({
 
     if (existing) {
       if ((existing.status === "claimed" && existing.userId) || existing.status === "completed") {
-        throw new Error("ALREADY_CLAIMED");
+        refuse("ALREADY_CLAIMED");
       }
       const alreadyInvited =
         existing.status === "invited" &&
         (!existing.invitationExpiresAt ||
           Date.now() <= existing.invitationExpiresAt);
       if (alreadyInvited) {
-        throw new Error("ALREADY_INVITED");
+        refuse("ALREADY_INVITED");
       }
       // Re-invite (expired invitation)
       await ctx.db.patch(existing._id, {
@@ -110,9 +111,9 @@ export const remove = mutation({
   handler: async (ctx, args) => {
 
     const entry = await ctx.db.get(args.entryId);
-    if (!entry) throw new Error("ENTRY_NOT_FOUND");
+    if (!entry) refuse("ENTRY_NOT_FOUND");
     if (entry.status === "claimed" || entry.status === "completed") {
-      throw new Error("CANNOT_DELETE_CLAIMED");
+      refuse("CANNOT_DELETE_CLAIMED");
     }
 
     await ctx.db.delete(args.entryId);
@@ -281,16 +282,16 @@ const normalizeEmail = (email: string) => email.trim().toLowerCase();
 async function enrollmentSource(ctx: QueryCtx, tokenHash: string) {
   const admin = await ctx.db.query("adminInvitations").withIndex("by_token", q => q.eq("token", tokenHash)).unique();
   if (admin) {
-    if (admin.status !== "invited" || !admin.invitationExpiresAt || admin.invitationExpiresAt <= Date.now()) throw new Error("INVALID_INVITATION");
+    if (admin.status !== "invited" || !admin.invitationExpiresAt || admin.invitationExpiresAt <= Date.now()) refuse("INVALID_INVITATION");
     return { email: normalizeEmail(admin.email), expiresAt: admin.invitationExpiresAt, admin, bootstrap: null };
   }
   const bootstrap = await ctx.db.query("invitationTokens").withIndex("by_token", q => q.eq("token", tokenHash)).unique();
-  if (!bootstrap || !["sent", "claiming"].includes(bootstrap.status) || bootstrap.expiresAt <= Date.now()) throw new Error("INVALID_INVITATION");
+  if (!bootstrap || !["sent", "claiming"].includes(bootstrap.status) || bootstrap.expiresAt <= Date.now()) refuse("INVALID_INVITATION");
   const email = normalizeEmail(bootstrap.email);
   const protectedEmails = await ctx.db.query("adminEmails").collect();
-  if (!protectedEmails.some(row => normalizeEmail(row.email) === email)) throw new Error("INVALID_INVITATION");
+  if (!protectedEmails.some(row => normalizeEmail(row.email) === email)) refuse("INVALID_INVITATION");
   const entry = await ctx.db.get(bootstrap.waitlistEntryId);
-  if (!entry || entry.status === "claimed" || normalizeEmail(entry.email) !== email) throw new Error("INVALID_INVITATION");
+  if (!entry || entry.status === "claimed" || normalizeEmail(entry.email) !== email) refuse("INVALID_INVITATION");
   return { email, expiresAt: bootstrap.expiresAt, admin: null, bootstrap };
 }
 
@@ -332,7 +333,7 @@ export const enrollment = query({
   returns: v.object({ email: v.string(), userId: v.optional(v.string()) }),
   handler: async (ctx, args) => {
     const row = await ctx.db.query("adminEnrollments").withIndex("by_capability", q => q.eq("capabilityHash", args.capabilityHash)).unique();
-    if (!row || row.email !== normalizeEmail(args.email) || row.expiresAt <= Date.now()) throw new Error("INVALID_ENROLLMENT");
+    if (!row || row.email !== normalizeEmail(args.email) || row.expiresAt <= Date.now()) refuse("INVALID_ENROLLMENT");
     if (!row.userId) await enrollmentSource(ctx, row.tokenHash);
     return { email: row.email, userId: row.userId };
   },
@@ -343,8 +344,8 @@ export const consumeEnrollment = mutation({
   args: { capabilityHash: v.string(), email: v.string(), userId: v.string() }, returns: v.null(),
   handler: async (ctx, args) => {
     const row = await ctx.db.query("adminEnrollments").withIndex("by_capability", q => q.eq("capabilityHash", args.capabilityHash)).unique();
-    if (!row || row.email !== normalizeEmail(args.email) || row.expiresAt <= Date.now()) throw new Error("INVALID_ENROLLMENT");
-    if (row.userId) { if (row.userId !== args.userId) throw new Error("ENROLLMENT_ALREADY_USED"); return; }
+    if (!row || row.email !== normalizeEmail(args.email) || row.expiresAt <= Date.now()) refuse("INVALID_ENROLLMENT");
+    if (row.userId) { if (row.userId !== args.userId) refuse("ENROLLMENT_ALREADY_USED"); return; }
     const source = await enrollmentSource(ctx, row.tokenHash);
     const now = Date.now();
     if (source.admin) {
@@ -353,7 +354,7 @@ export const consumeEnrollment = mutation({
       await ctx.db.patch(source.bootstrap._id, { status: "claimed", claimedAt: now });
       await ctx.db.patch(source.bootstrap.waitlistEntryId, { status: "claimed", claimedAt: now });
       const existing = await ctx.db.query("adminInvitations").withIndex("by_email", q => q.eq("email", row.email)).first();
-      if (existing) throw new Error("ENROLLMENT_ALREADY_EXISTS");
+      if (existing) refuse("ENROLLMENT_ALREADY_EXISTS");
       await ctx.db.insert("adminInvitations", { email: row.email, status: "claimed", userId: args.userId, claimedAt: now, onboardingStep: 1, invitedAt: now, createdAt: now });
     }
     // Reserve the proven account for admin password/protection policy; no role grant.
@@ -376,7 +377,7 @@ export const finishBoundOnboarding = mutation({
   args: { email: v.string(), userId: v.string() }, returns: v.null(),
   handler: async (ctx, args) => {
     const doc = await ctx.db.query("adminInvitations").withIndex("by_email", q => q.eq("email", normalizeEmail(args.email))).unique();
-    if (!doc || doc.userId !== args.userId || doc.status === "invited") throw new Error("INVALID_ENROLLMENT");
+    if (!doc || doc.userId !== args.userId || doc.status === "invited") refuse("INVALID_ENROLLMENT");
     await ctx.db.patch(doc._id, { status: "completed", onboardingStep: undefined });
     await ensureAdminEmail(ctx, doc.email);
   },

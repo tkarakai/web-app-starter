@@ -1,8 +1,10 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 import { rememberNative, captureNativeBuilder } from "./nativeCapabilities";
 import {
   customCtx,
   customMutation,
 } from "convex-helpers/server/customFunctions";
+import { paginationOptsValidator, type PaginationOptions, type PaginationResult } from "convex/server";
 import { v, type ObjectType, type PropertyValidators } from "convex/values";
 
 import { authorizedSession, emailVerificationRequired } from "./sessionPolicy";
@@ -43,8 +45,8 @@ type AuthInfo = NonNullable<Awaited<ReturnType<typeof getAuth>>>;
  */
 async function writeOrganization(ctx: QueryCtx, auth: AuthInfo): Promise<ActiveOrganization> {
   const selection = await resolveOrganizationSelection(ctx, auth.user, auth.session);
-  if (!selection.active) throw new Error("NO_ORGANIZATION");
-  if (selection.stale) throw new Error("ORGANIZATION_CHANGED");
+  if (!selection.active) refuse("NO_ORGANIZATION");
+  if (selection.stale) refuse("ORGANIZATION_CHANGED");
   return selection.active;
 }
 
@@ -63,7 +65,7 @@ export async function getOrgAuth(ctx: QueryCtx, options: { write?: boolean } = {
   if (options.write) {
     const selection = await resolveOrganizationSelection(ctx, auth.user, auth.session);
     if (!selection.active) return null;
-    if (selection.stale) throw new Error("ORGANIZATION_CHANGED");
+    if (selection.stale) refuse("ORGANIZATION_CHANGED");
     return { ...auth, ...selection.active };
   }
   const organization = await resolveActiveOrganization(ctx, auth.user, auth.session);
@@ -107,7 +109,7 @@ export const authedMutation = captureNativeBuilder(customMutation(
   mutation,
   customCtx(async (ctx) => {
     const auth = await getAuth(ctx);
-    if (!auth) throw new Error("NOT_AUTHENTICATED");
+    if (!auth) refuse("NOT_AUTHENTICATED");
 
     await rateLimit(ctx, {
       name: "mutationGlobal",
@@ -149,6 +151,58 @@ export function orgQuery<
   });
 }
 
+/** What a paginated builder returns when there is no caller to read for. */
+const EMPTY_PAGE = { page: [], isDone: true, continueCursor: "" };
+
+/**
+ * `orgQuery` for a paginated list, for `usePaginatedQuery`: adds the `paginationOpts`
+ * argument, and returns an empty, finished page (never `null`) when `orgQuery` would return
+ * `null`. Return `query.paginate(args.paginationOpts)` (or a page mapped from it), and cap
+ * `numItems`. Use it instead of `.collect()` for any list that grows with use.
+ */
+export function orgPaginatedQuery<
+  ArgsValidator extends PropertyValidators,
+  Item,
+>(func: {
+  args: ArgsValidator;
+  handler: (
+    ctx: QueryCtx & AuthInfo & ActiveOrganization,
+    args: ObjectType<ArgsValidator> & { paginationOpts: PaginationOptions },
+  ) => Promise<PaginationResult<Item>>;
+}) {
+  return query({
+    args: { ...func.args, paginationOpts: paginationOptsValidator },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    handler: async (ctx: QueryCtx, args: any): Promise<PaginationResult<Item>> => {
+      const auth = await getOrgAuth(ctx);
+      if (!auth) return EMPTY_PAGE;
+      return await func.handler({ ...ctx, ...auth }, args);
+    },
+  });
+}
+
+/** `authedQuery` for a paginated list, like `orgPaginatedQuery`: an empty page without a caller. */
+export function authedPaginatedQuery<
+  ArgsValidator extends PropertyValidators,
+  Item,
+>(func: {
+  args: ArgsValidator;
+  handler: (
+    ctx: QueryCtx & AuthInfo,
+    args: ObjectType<ArgsValidator> & { paginationOpts: PaginationOptions },
+  ) => Promise<PaginationResult<Item>>;
+}) {
+  return query({
+    args: { ...func.args, paginationOpts: paginationOptsValidator },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    handler: async (ctx: QueryCtx, args: any): Promise<PaginationResult<Item>> => {
+      const auth = await getAuth(ctx);
+      if (!auth) return EMPTY_PAGE;
+      return await func.handler({ ...ctx, ...auth }, args);
+    },
+  });
+}
+
 /**
  * Organization-scoped mutation builder: use it for every write of app data.
  * Like `authedMutation`, plus `ctx.organizationId` and `ctx.organizationRole`. Stamp new
@@ -168,9 +222,9 @@ export const orgMutation = customMutation(mutation, {
   args: { expectedOrganizationId: v.optional(v.string()) },
   input: async (ctx, { expectedOrganizationId }) => {
     const auth = await getAuth(ctx);
-    if (!auth) throw new Error("NOT_AUTHENTICATED");
+    if (!auth) refuse("NOT_AUTHENTICATED");
     // Platform administrators manage organizations in the admin app; they don't use app data.
-    if (getPolicyScopeFromRole(auth.user.role) === "admin") throw new Error("NOT_APPLICATION_USER");
+    if (getPolicyScopeFromRole(auth.user.role) === "admin") refuse("NOT_APPLICATION_USER");
 
     await rateLimit(ctx, {
       name: "mutationGlobal",
@@ -179,10 +233,10 @@ export const orgMutation = customMutation(mutation, {
     });
 
     const blocker = await appBlocker(ctx, auth.user._id);
-    if (blocker) throw new Error(blocker);
+    if (blocker) refuse(blocker);
     const organization = await writeOrganization(ctx, auth);
     if (expectedOrganizationId !== undefined && expectedOrganizationId !== organization.organizationId) {
-      throw new Error("ORGANIZATION_CHANGED");
+      refuse("ORGANIZATION_CHANGED");
     }
     return { ctx: { ...auth, ...organization }, args: {} };
   },
@@ -208,9 +262,9 @@ export const adminMutation = captureNativeBuilder(customMutation(
   mutation,
   customCtx(async ctx => {
     const auth = await getAuth(ctx);
-    if (!auth) throw new Error("NOT_AUTHENTICATED");
-    if (getPolicyScopeFromRole(auth.user.role) !== "admin") throw new Error("NOT_ADMIN");
-    if (!auth.assurance.recent) throw new Error("RECENT_AUTHENTICATION_REQUIRED");
+    if (!auth) refuse("NOT_AUTHENTICATED");
+    if (getPolicyScopeFromRole(auth.user.role) !== "admin") refuse("NOT_ADMIN");
+    if (!auth.assurance.recent) refuse("RECENT_AUTHENTICATION_REQUIRED");
     await rateLimit(ctx, { name: "mutationGlobal", key: auth.ownerId, throws: true });
     return auth;
   }),

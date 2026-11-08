@@ -1,9 +1,11 @@
+import { refuse } from "../errors";
 /**
  * Plans, billing organizations and organization plans (platform/docs/tenancy-and-billing.md).
  * Trusted app callers only: the app checks who may act and that organizations exist; this
  * module keeps the billing rules that need no Better Auth data. Billing rows are history and
  * are never deleted.
  */
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./functions";
@@ -42,13 +44,13 @@ function audit(ctx: Pick<MutationCtx, "scheduler">, who: Actor, action: Paramete
 
 function assertName(name: string): string {
   const trimmed = name.trim();
-  if (!trimmed) throw new Error("PLAN_NAME_REQUIRED");
+  if (!trimmed) refuse("PLAN_NAME_REQUIRED");
   assertMaxLength(trimmed, MAX_NAME_LENGTH, "name");
   return trimmed;
 }
 
 function assertPrice(cents: number): number {
-  if (!Number.isInteger(cents) || cents < 0 || cents > MAX_PRICE_CENTS) throw new Error("INVALID_PRICE");
+  if (!Number.isInteger(cents) || cents < 0 || cents > MAX_PRICE_CENTS) refuse("INVALID_PRICE");
   return cents;
 }
 
@@ -66,11 +68,18 @@ async function billingFor(ctx: QueryCtx, organizationId: string): Promise<Doc<"b
   return await ctx.db.query("billingOrganizations").withIndex("by_organization", (q) => q.eq("organizationId", organizationId)).first();
 }
 
-/** Current organization plans paid by a billing organization. */
-async function paidRows(ctx: QueryCtx, billingOrganizationId: Id<"billingOrganizations">): Promise<Doc<"organizationPlans">[]> {
-  return await ctx.db.query("organizationPlans")
-    .withIndex("by_billing_organization", (q) => q.eq("billingOrganizationId", billingOrganizationId).eq("endedAt", undefined))
-    .collect();
+/** Current organization plans paid by a billing organization, as a query to read a bounded part of. */
+function paidRows(ctx: QueryCtx, billingOrganizationId: Id<"billingOrganizations">) {
+  return ctx.db.query("organizationPlans")
+    .withIndex("by_billing_organization", (q) => q.eq("billingOrganizationId", billingOrganizationId).eq("endedAt", undefined));
+}
+
+/**
+ * Whether the billing organization pays for a current plan besides `organizationId`'s own. Reads
+ * at most two rows: an organization has one current plan, so a second row is another's.
+ */
+async function paysForOthers(ctx: QueryCtx, billingOrganizationId: Id<"billingOrganizations">, organizationId: string): Promise<boolean> {
+  return (await paidRows(ctx, billingOrganizationId).take(2)).some((row) => row.organizationId !== organizationId);
 }
 
 async function seededPlan(ctx: QueryCtx): Promise<Doc<"plans"> | null> {
@@ -122,7 +131,7 @@ export const createPlan = mutation({
   handler: async (ctx, args) => {
     const name = assertName(args.name);
     const price = assertPrice(args.priceMonthlyUsdCents);
-    if (args.isFreeForever && price !== 0) throw new Error("FREE_FOREVER_PRICE_MUST_BE_ZERO");
+    if (args.isFreeForever && price !== 0) refuse("FREE_FOREVER_PRICE_MUST_BE_ZERO");
     const now = Date.now();
     const id = await ctx.db.insert("plans", {
       name, priceMonthlyUsdCents: price, isFreeForever: args.isFreeForever, isSeeded: false, isDefault: false,
@@ -146,20 +155,20 @@ export const updatePlan = mutation({
   handler: async (ctx, args) => {
     const id = ctx.db.normalizeId("plans", args.planId);
     const plan = id ? await ctx.db.get(id) : null;
-    if (!plan) throw new Error("PLAN_NOT_FOUND");
+    if (!plan) refuse("PLAN_NOT_FOUND");
     const patch: Partial<Doc<"plans">> = {};
     if (args.name !== undefined && args.name.trim() !== plan.name) {
-      if (plan.isSeeded) throw new Error("SEEDED_PLAN_LOCKED");
+      if (plan.isSeeded) refuse("SEEDED_PLAN_LOCKED");
       patch.name = assertName(args.name);
     }
     if (args.priceMonthlyUsdCents !== undefined && args.priceMonthlyUsdCents !== plan.priceMonthlyUsdCents) {
-      if (plan.isSeeded) throw new Error("SEEDED_PLAN_LOCKED");
-      if (plan.isFreeForever) throw new Error("FREE_FOREVER_PRICE_MUST_BE_ZERO");
-      if (await planInUse(ctx, plan._id)) throw new Error("PLAN_IN_USE");
+      if (plan.isSeeded) refuse("SEEDED_PLAN_LOCKED");
+      if (plan.isFreeForever) refuse("FREE_FOREVER_PRICE_MUST_BE_ZERO");
+      if (await planInUse(ctx, plan._id)) refuse("PLAN_IN_USE");
       patch.priceMonthlyUsdCents = assertPrice(args.priceMonthlyUsdCents);
     }
     if (args.status !== undefined && args.status !== plan.status) {
-      if (plan.isDefault && args.status !== "active") throw new Error("DEFAULT_PLAN_MUST_BE_ACTIVE");
+      if (plan.isDefault && args.status !== "active") refuse("DEFAULT_PLAN_MUST_BE_ACTIVE");
       patch.status = args.status;
     }
     if (Object.keys(patch).length === 0) return null;
@@ -175,8 +184,8 @@ export const setDefaultPlan = mutation({
   handler: async (ctx, args) => {
     const id = ctx.db.normalizeId("plans", args.planId);
     const plan = id ? await ctx.db.get(id) : null;
-    if (!plan) throw new Error("PLAN_NOT_FOUND");
-    if (plan.status !== "active") throw new Error("DEFAULT_PLAN_MUST_BE_ACTIVE");
+    if (!plan) refuse("PLAN_NOT_FOUND");
+    if (plan.status !== "active") refuse("DEFAULT_PLAN_MUST_BE_ACTIVE");
     if (plan.isDefault) return null;
     const now = Date.now();
     const updatedBy = args.actor.userId ?? args.actor.email;
@@ -213,7 +222,7 @@ export const createBilling = mutation({
   args: { organizationId: v.string(), organizationName: v.string(), paymentMethod: v.optional(paymentMethodValidator), actor },
   returns: v.id("billingOrganizations"),
   handler: async (ctx, args) => {
-    if (await billingFor(ctx, args.organizationId)) throw new Error("BILLING_ORGANIZATION_EXISTS");
+    if (await billingFor(ctx, args.organizationId)) refuse("BILLING_ORGANIZATION_EXISTS");
     const id = await ctx.db.insert("billingOrganizations", {
       organizationId: args.organizationId,
       organizationName: args.organizationName,
@@ -231,7 +240,7 @@ export const setPaymentMethod = mutation({
   handler: async (ctx, args) => {
     const id = ctx.db.normalizeId("billingOrganizations", args.billingOrganizationId);
     const billing = id ? await ctx.db.get(id) : null;
-    if (!billing || billing.deletedAt) throw new Error("BILLING_ORGANIZATION_NOT_FOUND");
+    if (!billing || billing.deletedAt) refuse("BILLING_ORGANIZATION_NOT_FOUND");
     if (billing.paymentMethod === args.paymentMethod) return null;
     await ctx.db.patch(billing._id, { paymentMethod: args.paymentMethod });
     await audit(ctx, args.actor, "billing.payment_method_changed", `organization:${billing.organizationId}`, { from: billing.paymentMethod, to: args.paymentMethod });
@@ -239,18 +248,19 @@ export const setPaymentMethod = mutation({
   },
 });
 
-/** Current organization plans a billing organization pays for, with their plans. */
+/** Current organization plans a billing organization pays for, with their plans, a page at a time. */
 export const paidBy = query({
-  args: { billingOrganizationId: v.string() },
-  returns: v.array(v.object({ row: organizationPlanRow, plan: planRow })),
+  args: { billingOrganizationId: v.string(), paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(v.object({ row: organizationPlanRow, plan: planRow })),
   handler: async (ctx, args) => {
     const id = ctx.db.normalizeId("billingOrganizations", args.billingOrganizationId);
-    if (!id) return [];
-    const rows = await paidRows(ctx, id);
-    return (await Promise.all(rows.map(async (row) => {
+    if (!id) return { page: [], isDone: true, continueCursor: "" };
+    const result = await paidRows(ctx, id).paginate(args.paginationOpts);
+    const page = (await Promise.all(result.page.map(async (row) => {
       const plan = await ctx.db.get(row.planId);
       return plan ? { row, plan } : null;
     }))).filter((entry): entry is { row: Doc<"organizationPlans">; plan: Doc<"plans"> } => entry !== null);
+    return { page, isDone: result.isDone, continueCursor: result.continueCursor };
   },
 });
 
@@ -265,7 +275,7 @@ export const billingInUse = query({
   handler: async (ctx, args) => {
     const billing = await billingFor(ctx, args.organizationId);
     if (!billing || billing.deletedAt) return false;
-    return (await paidRows(ctx, billing._id)).some((row) => row.organizationId !== args.organizationId);
+    return await paysForOthers(ctx, billing._id, args.organizationId);
   },
 });
 
@@ -278,8 +288,8 @@ export const organizationDeleted = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const billing = await billingFor(ctx, args.organizationId);
-    if (billing && !billing.deletedAt && (await paidRows(ctx, billing._id)).some((row) => row.organizationId !== args.organizationId)) {
-      throw new Error("BILLING_ORGANIZATION_IN_USE");
+    if (billing && !billing.deletedAt && await paysForOthers(ctx, billing._id, args.organizationId)) {
+      refuse("BILLING_ORGANIZATION_IN_USE");
     }
     const now = Date.now();
     const current = await currentRow(ctx, args.organizationId);
@@ -325,16 +335,16 @@ export const startPlan = mutation({
   handler: async (ctx, args) => {
     const planId = ctx.db.normalizeId("plans", args.planId);
     const plan = planId ? await ctx.db.get(planId) : null;
-    if (!plan) throw new Error("PLAN_NOT_FOUND");
+    if (!plan) refuse("PLAN_NOT_FOUND");
     let billing: Doc<"billingOrganizations"> | null = null;
     if (args.billingOrganizationId !== undefined) {
       const billingId = ctx.db.normalizeId("billingOrganizations", args.billingOrganizationId);
       billing = billingId ? await ctx.db.get(billingId) : null;
-      if (!billing || billing.deletedAt) throw new Error("BILLING_ORGANIZATION_NOT_FOUND");
+      if (!billing || billing.deletedAt) refuse("BILLING_ORGANIZATION_NOT_FOUND");
     }
     if (!plan.isFreeForever) {
-      if (!billing) throw new Error("PAYER_REQUIRED");
-      if (!billing.paymentMethod) throw new Error("PAYMENT_METHOD_REQUIRED");
+      if (!billing) refuse("PAYER_REQUIRED");
+      if (!billing.paymentMethod) refuse("PAYMENT_METHOD_REQUIRED");
     }
     const now = Date.now();
     const current = await currentRow(ctx, args.organizationId);
