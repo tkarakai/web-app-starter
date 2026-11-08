@@ -61,11 +61,17 @@ async function fixture(role = "user") {
     userId: user._id, accountId: user._id, providerId: "credential", password: passwordHash, createdAt: now, updatedAt: now,
   } } });
   const setting = (key: string, value: unknown) => t.mutation(components.platform.appSettings.putRaw, { key, value: JSON.stringify(value) });
-  const request = (path: string, body?: unknown, token?: string, cookie?: string) => t.fetch(`/api/auth${path}`, {
-    method: body === undefined ? "GET" : "POST",
-    headers: { origin: "http://localhost:3001", "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}), ...(cookie ? { cookie } : {}) },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
+  // convex-test pins each transaction's clock at or after the last commit, so proofs written while
+  // the fake clock is frozen can sit a millisecond ahead of it. Real requests are never simultaneous:
+  // step the clock before each one so session policy never sees a proof from the future.
+  const request = (path: string, body?: unknown, token?: string, cookie?: string) => {
+    vi.setSystemTime(Date.now() + 1);
+    return t.fetch(`/api/auth${path}`, {
+      method: body === undefined ? "GET" : "POST",
+      headers: { origin: "http://localhost:3001", "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}), ...(cookie ? { cookie } : {}) },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+  };
   async function signIn(extra = {}) {
     const response = await request("/sign-in/email", { email, password, ...extra });
     const body = await response.json();

@@ -329,7 +329,10 @@ describe("announcements", () => {
 
     expect(currentAfter?.isLive).toBe(false);
     expect(targetAfter?.isLive).toBe(true);
-    expect(targetAfter?.scheduleStart).toBe(now);
+    // convex-test pins each transaction's clock at or after its snapshot, so it can run a
+    // millisecond ahead of the frozen test clock.
+    expect(targetAfter?.scheduleStart).toBeGreaterThanOrEqual(now);
+    expect(targetAfter?.scheduleStart).toBeLessThan(now + 60_000);
     expect(targetAfter?.publishJobId).toBeUndefined();
   });
 
@@ -406,7 +409,8 @@ describe("announcements", () => {
 
     const liveAfter = await t.run(async (ctx) => ctx.db.get(liveId));
     expect(liveAfter?.isLive).toBe(false);
-    expect(liveAfter?.scheduleEnd).toBe(now);
+    expect(liveAfter?.scheduleEnd).toBeGreaterThanOrEqual(now);
+    expect(liveAfter?.scheduleEnd).toBeLessThan(now + 120_000);
     expect(liveAfter?.unpublishJobId).toBeUndefined();
 
     await expect(
