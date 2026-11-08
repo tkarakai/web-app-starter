@@ -179,7 +179,7 @@ export function TenancySetup() {
           {!check.plans.ready && (
             <Alert>
               <AlertDescription>
-                First define at least one plan besides the seeded free plan, and make sure the default plan is active and free forever.{" "}
+                The default plan must be active and free forever. The seeded Free plan is sufficient.{" "}
                 <Link href="/manage/plans" className="underline">Manage plans</Link>
               </AlertDescription>
             </Alert>

@@ -13,6 +13,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Fixed
+
+- Tenancy setup accepts the seeded Free plan alone; additional plans are optional. The default must still be active and free forever.
+
 ### Added
 
 - **Tenancy modes, plans and billing organizations.** The platform admin chooses, once,

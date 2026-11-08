@@ -353,7 +353,7 @@ async function eligibilityFrom(ctx: Reader, check: CheckRow) {
   const plans = await ctx.runQuery(components.platform.billing.listPlans, {});
   const defaultPlan = plans.find((plan) => plan.isDefault) ?? null;
   const otherPlans = plans.filter((plan) => !plan.isSeeded).length;
-  const plansReady = otherPlans > 0 && !!defaultPlan && defaultPlan.isFreeForever && defaultPlan.status === "active";
+  const plansReady = !!defaultPlan && defaultPlan.isFreeForever && defaultPlan.status === "active";
   return {
     complete: check.complete,
     appUserCount: check.appUserCount,
@@ -420,7 +420,7 @@ export const status = authedQuery({
 /**
  * Turn on a mode, against a fresh check (`check`, at most `CHECK_FRESH_MS` old:
  * `TENANCY_CHECK_REQUIRED`, `TENANCY_CHECK_EXPIRED`); the plans and owners are read again here.
- * Needs a plan besides the seeded one and a free-forever default. Individuals:
+ * Needs an active free-forever default; the seeded Free plan is sufficient. Individuals:
  * every organization has one member and every user one organization. Organizations on an install
  * with users and no shared organizations: the billing user and admin (may be the same user) and
  * the names of the billing organization and the shared organization.
@@ -498,7 +498,7 @@ export const runSetup = internalMutation({
     if (!setup || setup.state !== "running") return;
     if (setup.billingUserId && (!setup.billingOrganizationId || !setup.sharedOrganizationId)) await requireSetupOwners(ctx, setup.billingUserId, setup.adminUserId);
     const plans = await ctx.runQuery(components.platform.billing.listPlans, {});
-    if (!plans.some(plan => !plan.isSeeded) || !plans.some(plan => plan.isDefault && plan.isFreeForever && plan.status === "active")) refuse("TENANCY_PLANS_REQUIRED");
+    if (!plans.some(plan => plan.isDefault && plan.isFreeForever && plan.status === "active")) refuse("TENANCY_PLANS_REQUIRED");
     const actor = setup.startedBy ? { userId: setup.startedBy, email: (await findById(ctx, "user", setup.startedBy))?.email ?? "admin" } : SYSTEM_ACTOR;
     const planId = await initialPlanId(ctx);
 
