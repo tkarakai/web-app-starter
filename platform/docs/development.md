@@ -132,6 +132,12 @@ database hooks still run. Ordinary signup, password changes and resets retain th
 check, including on local deployments. This keeps unrelated E2E tests independent of an
 external password-service outage.
 
+Use `bun run dev:nuke-db` to discard this checkout's local database. It stops only
+recorded services owned by this checkout, removes `packages/backend/.convex/local/default`
+and clears the backend's generated deployment/URL entries. It preserves other environment
+settings and your global Convex login and deployments, and never creates a cloud project.
+The next `bun run dev` creates and seeds a fresh anonymous local backend.
+
 The seed is idempotent. Restart `bun run dev` after resetting the database, or after upgrading
 a running dev backend to provision its new fixture authorization. Delete `.env.e2e.local` and
 restart to rotate the capability; the previous capability then stops working. Neither local app

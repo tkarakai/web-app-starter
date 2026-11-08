@@ -32,16 +32,8 @@ if [ "$AUTO_CONFIRM" = false ] && [ -t 0 ]; then
     fi
 fi
 
-TIMESTAMP="$(date +%Y%m%d%H%M%S)"
-PROJECT_SLUG="local-reset-${TIMESTAMP}"
-
-echo -e "${BLUE}▶ Creating fresh local Convex deployment...${NC}"
-echo -e "  Project slug: ${YELLOW}${PROJECT_SLUG}${NC}"
-
-(
-    cd "$CONVEX_DIR"
-    CONVEX_AGENT_MODE=anonymous npx convex dev --once --configure=new --dev-deployment=local --project "$PROJECT_SLUG"
-)
+echo -e "${BLUE}▶ Resetting checkout-local Convex state...${NC}"
+"$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/dev-reset-db.ts"
 
 echo ""
 echo -e "${GREEN}✔ Local Convex database reset complete${NC}"
