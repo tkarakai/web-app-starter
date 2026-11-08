@@ -104,7 +104,8 @@ export function DashboardClient() {
               }}
             />
           ) : (
-            <ProjectsOverview onSelectProject={setSelectedProjectId} />
+            // Each workspace needs its own pagination journal and cursors.
+            <ProjectsOverview key={organizations?.activeOrganizationId} onSelectProject={setSelectedProjectId} />
           )}
         </div>
         <footer className="sticky bottom-0 shrink-0 h-5 border-t border-border/40 bg-background" />

@@ -87,8 +87,18 @@ the plans and the owners it is given, and an individuals setup re-checks every o
 user in its own batches. An install with more than 2,000 users or organizations can't turn a
 mode on from the admin page (`TENANCY_INSTALL_TOO_LARGE`).
 
-**Fresh install:** after the first platform admin is set up, the admin app shows only the tenancy
-step. **Existing deployment:** the upgrade's migration gives every organization a free-forever
+**Fresh install:** after the first platform admin is set up, a mandatory bootstrap dialog asks
+who the app serves. Normal admin navigation and pages stay unmounted until setup completes.
+There is no plan-selection step: the seeded Free plan is sufficient. Confirm the installation-wide,
+irreversible choice before applying it. Setup progress and failures stay in the dialog; retry keeps
+completed work. Account security and sign-out remain available. If an existing installation has
+an invalid default plan, the dialog links to plan repair.
+
+
+The shell keeps setup subscribed across navigation, retaining the current choice and check progress.
+
+**Existing deployment:** the upgrade’s migration gives every organization a free-forever
+
 `organizationPlan`, independent of mode.
 
 ### Individuals

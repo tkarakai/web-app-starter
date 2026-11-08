@@ -4,8 +4,10 @@ import { errorCode } from "@web-app-starter/agentic/errors";
 
 import * as React from "react";
 import Link from "next/link";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { toast } from "sonner";
+
+import { useTenancyStatus } from "./tenancy-required";
 
 import { api } from "@repo/backend";
 import {
@@ -50,7 +52,7 @@ const MODE_COPY: Record<Mode, { title: string; description: string }> = {
  * background when there is none or it has expired; turning a mode on needs a fresh one.
  */
 export function TenancySetup() {
-  const status = useQuery(api.platform.tenancy.status);
+  const status = useTenancyStatus();
   const configure = useMutation(api.platform.tenancy.configure);
   const runCheck = useMutation(api.platform.tenancy.check);
   const [now, setNow] = React.useState(() => Date.now());
@@ -73,6 +75,7 @@ export function TenancySetup() {
   const [replacementAdminUserId, setReplacementAdminUserId] = React.useState("");
   const [billingName, setBillingName] = React.useState("");
   const [sharedName, setSharedName] = React.useState("");
+  const [confirmed, setConfirmed] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
 
   if (status === undefined) return <p className="text-sm text-muted-foreground">Loading…</p>;
@@ -142,13 +145,13 @@ export function TenancySetup() {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!confirmed || blocked) return;
     setBusy(true);
     try {
       await configure({
         mode,
         ...(shared ? { billingUserId, adminUserId, billingOrganizationName: billingName.trim(), sharedOrganizationName: sharedName.trim() } : {}),
       });
-      toast.success(`Turning on ${MODE_COPY[mode].title}.`);
     } catch (error) {
       toast.error(message(error));
     } finally {
@@ -171,8 +174,8 @@ export function TenancySetup() {
   return (
     <Card data-testid="tenancy-setup">
       <CardHeader>
-        <CardTitle className="text-lg">Choose a tenancy mode</CardTitle>
-        <CardDescription>Nobody can sign up until you do. The choice is final.</CardDescription>
+        <CardTitle className="text-lg">Choose your tenancy model</CardTitle>
+        <CardDescription>{check.plans.ready ? "Your free-forever default plan is ready. You can add more plans after setup." : "An active, free-forever default plan is needed before setup can finish."}</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="grid gap-6" onSubmit={(event) => void submit(event)}>
@@ -191,7 +194,7 @@ export function TenancySetup() {
             {status.check.state !== "running" && <Button type="button" variant="link" className="h-auto p-0" onClick={checkAgain}>Check again</Button>}
           </p>
           {!check.complete && <Alert><AlertDescription>This install has too many users or organizations to turn a mode on from here.</AlertDescription></Alert>}
-          <RadioGroup value={mode} onValueChange={(value) => setMode(value as Mode)} className="grid gap-3">
+          <RadioGroup value={mode} onValueChange={(value) => { setMode(value as Mode); setConfirmed(false); }} className="grid gap-3">
             {(Object.keys(MODE_COPY) as Mode[]).map((key) => (
               <label key={key} htmlFor={`mode-${key}`} className="flex cursor-pointer gap-3 rounded-md border p-4 has-[[data-state=checked]]:border-primary">
                 <RadioGroupItem id={`mode-${key}`} value={key} className="mt-1" />
@@ -222,9 +225,13 @@ export function TenancySetup() {
               </div>
             </div>
           )}
+          <label className="flex items-start gap-3 rounded-lg border bg-muted/30 p-4 text-sm">
+            <input type="checkbox" className="mt-1 size-4 shrink-0 accent-primary" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />
+            <span>I confirm <strong>{MODE_COPY[mode].title}</strong>. This applies to the whole installation and cannot be changed after setup.</span>
+          </label>
           <div>
-            <Button type="submit" disabled={busy || blocked || (shared && (!billingUserId || !adminUserId || !billingName.trim() || !sharedName.trim()))}>
-              Turn on {MODE_COPY[mode].title}
+            <Button type="submit" disabled={!confirmed || busy || blocked || (shared && (!billingUserId || !adminUserId || !billingName.trim() || !sharedName.trim()))}>
+              {busy ? "Starting setup…" : "Confirm and finish setup"}
             </Button>
           </div>
         </form>
