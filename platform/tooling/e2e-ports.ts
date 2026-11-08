@@ -25,8 +25,7 @@ export function e2eOrigin(app: AppId): string {
     });
     process.env.PLATFORM_E2E_PORTS = JSON.stringify(ports);
   }
-  const ports = JSON.parse(process.env.PLATFORM_E2E_PORTS) as Record<string, number>;
-  return `http://localhost:${ports[app]}`;
+  return `http://localhost:${plannedPort(app)}`;
 }
 
 // Playwright transpiles config imports, while the launcher reads this same plan
