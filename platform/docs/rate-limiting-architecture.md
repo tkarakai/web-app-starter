@@ -194,7 +194,7 @@ try {
 
 ## Layer 3: Edge Proxy (HTTP Requests)
 
-**Scope**: All HTTP page requests to the web and admin apps (excludes API routes, static assets, and prefetch requests)
+**Scope**: All HTTP page requests to the web and admin apps (including prefetch requests; excludes API routes and static assets)
 
 **How it works**: An in-memory fixed window counter (`Map<ip, {count, resetAt}>`) in the Next.js proxy (Edge Runtime). Checks happen before auth redirects and CSP header generation, so abusive requests are rejected immediately with minimal processing.
 
@@ -235,7 +235,7 @@ The in-memory IP tracker has a configurable maximum size (default 10,000 entries
 
 - **Per-instance only**: Each serverless/edge instance has its own counter. The effective limit scales with the number of instances.
 - **Not persistent**: Counters reset on deployment. This is acceptable because the edge layer is a first line of defense, not the primary rate limiting.
-- **Excluded routes**: API routes (`/api/*`), static assets (`/_next/static/*`, `/_next/image/*`), and prefetch requests are not rate limited at the edge. Auth API routes are protected by Layer 1; other API routes need their own protection.
+- **Excluded routes**: API routes (`/api/*`), static assets (`/_next/static/*`, `/_next/image/*`), are not rate limited at the edge. Prefetch requests consume the same per-IP page budget as ordinary navigations; client-controlled headers never exempt a page from the proxy. Auth API routes are protected by Layer 1; other API routes need their own protection.
 
 ### What Happens When Rate Limited
 
