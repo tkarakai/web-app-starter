@@ -26,10 +26,11 @@ database reads or authorize individual rows for you**. The app's functions do th
 
 Unauthenticated or limited sessions get `null` from queries and refusal from mutations. With
 no organization membership, org queries return `null` and org mutations throw `NO_ORGANIZATION`;
-personal functions continue to work. A stale organization selection falls back to another
-current membership, if one exists, so creates pass `expectedOrganizationId` (the organization
-the form was opened for) and are refused with `ORGANIZATION_CHANGED` instead of writing to the
-fallback. See [organizations](organizations.md#scoping-your-data) for membership and UI.
+personal functions continue to work. When the selected organization is lost, reads move to
+another current membership, if one exists, but org mutations refuse with `ORGANIZATION_CHANGED`
+until the session switches (`OrganizationAccessNotice` does this). Creates also pass
+`expectedOrganizationId` (the organization the form was opened for), so a switch in another tab
+is refused the same way. See [organizations](organizations.md#scoping-your-data) for membership and UI.
 
 Use `ctx.ownerId` consistently for app ownership. It can differ from `ctx.user._id` on migrated
 accounts; Better Auth membership IDs and app owner IDs are not interchangeable. Do not use

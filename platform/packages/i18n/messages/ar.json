@@ -618,8 +618,72 @@
     },
     "empty": {
       "title": "أنت لست عضوًا في أي مؤسسة",
-      "description": "أنشئ مؤسسة أو اقبل دعوة للبدء.",
-      "createDescription": "أنشئ مؤسسة للبدء."
+      "description": "اقبل دعوة للبدء.",
+      "createDescription": "اطلب من مالك مؤسسة أو أحد مسؤوليها دعوتك."
     }
+  },
+  "billing": {
+    "title": "الخطة والفوترة",
+    "description": "الخطة التي تستخدمها {organization} ومن يدفع ثمنها.",
+    "individualDescription": "خطتك وطريقة دفعك.",
+    "plan": "الخطة",
+    "free": "مجاني",
+    "perMonth": "{price} شهريًا",
+    "paidBy": "يدفعها {name}",
+    "noPayer": "لا حاجة إلى دافع",
+    "paymentMethod": "طريقة الدفع",
+    "paymentMethods": {
+      "cash": "نقدًا",
+      "check": "شيك"
+    },
+    "changePlan": "تغيير الخطة",
+    "planChanged": "تم تغيير الخطة إلى {plan}.",
+    "managedByPayer": "لا يغيّر هذه الخطة إلا مالكو {name} ومسؤولوها.",
+    "upgradeTitle": "الترقية إلى خطة مدفوعة",
+    "upgradeDescription": "اختر خطة مدفوعة ومن يدفع ثمنها.",
+    "payer": "يدفعها",
+    "newPayer": "مؤسسة فوترة جديدة",
+    "payerName": "اسم مؤسسة الفوترة",
+    "upgradeAction": "الترقية الآن",
+    "upgraded": "تستخدم {organization} الآن خطة {plan}.",
+    "billingTitle": "مؤسسة الفوترة",
+    "billingDescription": "تدفع {name} ثمن المؤسسات أدناه. يدير مالكوها ومسؤولوها الخطط والدفع، ويمكن للأعضاء العرض فقط.",
+    "paysFor": "تدفع عن",
+    "paysForNone": "لا تدفع عن أي مؤسسة بعد.",
+    "savePaymentMethod": "حفظ طريقة الدفع",
+    "paymentMethodSaved": "تم حفظ طريقة الدفع.",
+    "createAction": "إنشاء مؤسسة",
+    "createTitle": "مؤسسة جديدة",
+    "createDescription": "تدفع {billing} ثمنها. ستكون مالكها.",
+    "createNameLabel": "الاسم",
+    "created": "تم إنشاء {name}. أنت تعمل فيها الآن.",
+    "pickerTitle": "اختر خطتك",
+    "pickerDescription": "يمكنك تغييرها لاحقًا من الإعدادات.",
+    "pickerContinue": "متابعة",
+    "errors": {
+      "generic": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+      "paymentMethodRequired": "اختر طريقة دفع.",
+      "nameRequired": "أدخل اسمًا.",
+      "notAllowed": "ليست لديك صلاحية للقيام بذلك.",
+      "inUse": "لا تزال مؤسسة الفوترة هذه تدفع عن مؤسسات أخرى."
+    },
+    "activationPending": "تم إنشاء {name}. افتح المؤسسة لبدء العمل فيها.",
+    "retryActivation": "فتح المؤسسة"
+  },
+  "userDeletion": {
+    "title": "حذف المستخدم",
+    "description": "يُحذف مستخدمك بعد {days, plural, zero {# يوم} one {يوم واحد} two {يومين} few {# أيام} many {# يومًا} other {# يوم}} من طلبك. يتم تسجيل خروجك من كل مكان فورًا، ويمكنك الإلغاء بتسجيل الدخول قبل ذلك.",
+    "action": "حذف المستخدم",
+    "confirmTitle": "هل تريد حذف مستخدمك؟",
+    "confirmDescription": "سيتم تسجيل خروجك من كل مكان الآن. يتم الحذف بعد {days, plural, zero {# يوم} one {يوم واحد} two {يومين} few {# أيام} many {# يومًا} other {# يوم}} ما لم تسجّل الدخول وتلغِه.",
+    "scheduledTitle": "تمت جدولة حذف مستخدمك",
+    "scheduledDescription": "سيُحذف في {date}. ألغِ الحذف لمواصلة استخدامه.",
+    "blockedTitle": "تعذّر حذف مستخدمك",
+    "blockedInUse": "أنت آخر عضو في مؤسسة فوترة تدفع عن مؤسسات أخرى. ادعُ مالكًا آخر أو خفّض خطط تلك المؤسسات، ثم اطلب الحذف مرة أخرى.",
+    "blockedOwnerRequired": "أنت آخر مالك لمؤسسة فوترة تدفع عن مؤسسات أخرى. اجعل عضوًا آخر مالكًا، ثم اطلب الحذف مرة أخرى.",
+    "cancel": "إلغاء الحذف",
+    "continue": "متابعة الحذف وتسجيل الخروج",
+    "canceled": "تم إلغاء الحذف.",
+    "reauthenticate": "سجّل الدخول مرة أخرى لتأكيد هويتك، ثم حاول مجددًا."
   }
 }

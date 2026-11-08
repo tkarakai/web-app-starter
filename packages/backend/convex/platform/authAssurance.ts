@@ -44,6 +44,10 @@ const ORGANIZATION = new Set([
   "/organization/remove-member", "/organization/update-member-role", "/organization/leave",
   "/organization/delete",
 ]);
+const INDIVIDUALS_REFUSED = new Set([
+  "/organization/delete", "/organization/leave", "/organization/invite-member", "/organization/remove-member",
+  "/organization/update-member-role", "/organization/accept-invitation", "/organization/reject-invitation",
+]);
 const ROLE_CHANGE = new Set(["/organization/invite-member", "/organization/update-member-role"]);
 const ORGANIZATION_ROLES = new Set<unknown>(["owner", "admin", "member"]);
 // These methods have no supported platform flow. Installing a plugin is not authorization.
@@ -159,7 +163,15 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
     if (!assurance.allowed) refuse("SECURITY_ENROLLMENT_REQUIRED");
     // Organizations are for application users; administrators cannot use the web app.
     if (policy === "organization") {
+      if (await actionCtx().runQuery(internal.platform.userDeletion.pending, { userId: pair.user._id })) refuse("USER_DELETION_SCHEDULED");
       if (assurance.scope === "admin") refuse("NOT_APPLICATION_USER");
+      // Organizations are created with their plan by platform functions (billing.ts).
+      if (path === "/organization/create") refuse("ORGANIZATION_CREATION_DISABLED");
+      // Individuals have one organization, managed by the platform: no membership changes.
+      if (INDIVIDUALS_REFUSED.has(path)) {
+        const mode = await actionCtx().runQuery(components.platform.appSettings.getRaw, { key: "tenancyMode" });
+        if (mode?.value === "individuals") refuse("NOT_AVAILABLE_FOR_INDIVIDUALS");
+      }
       // Exactly one built-in role. Better Auth trims role lists when validating but not when
       // checking for the owner role, so "admin, owner" would let an admin mint an owner.
       if (ROLE_CHANGE.has(path) && !ORGANIZATION_ROLES.has(endpoint.body?.role)) refuse("INVALID_ROLE");

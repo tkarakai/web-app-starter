@@ -19,11 +19,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@web-app-starter/design-system";
-import { AccountPageCloseButton, OrganizationInvitations, useAuthUser } from "@web-app-starter/auth-ui";
+import { AccountPageCloseButton, BillingSection, DeleteUserSection, OrganizationInvitations, useAuthUser, useTenancyMode } from "@web-app-starter/auth-ui";
 import { AppSidebar } from "@/components/projects/app-sidebar";
 import { AnnouncementBannerHost } from "@/components/announcement-banner-host";
 import { ProfileSection } from "@/components/settings/profile-section";
 import { SecuritySection } from "@/components/settings/security-section";
+
+type AccountTab = "profile" | "security" | "billing";
 
 export function AccountClient() {
   const router = useRouter();
@@ -31,9 +33,10 @@ export function AccountClient() {
   const authUser = useAuthUser();
   const tc = useTranslations("common");
   const td = useTranslations("dashboard");
-  const [tab, setTab] = React.useState<"profile" | "security">(
-    searchParams.get("tab") === "security" ? "security" : "profile",
-  );
+  const tb = useTranslations("billing");
+  const individuals = useTenancyMode() === "individuals";
+  const tabFrom = (value: string | null): AccountTab => value === "security" || value === "billing" ? value : "profile";
+  const [tab, setTab] = React.useState<AccountTab>(tabFrom(searchParams.get("tab")));
 
   const urlTab = searchParams.get("tab");
   const previousUrlTab = React.useRef(urlTab);
@@ -41,7 +44,7 @@ export function AccountClient() {
     // Activity reconnects effects; only navigation should replace local selection.
     if (previousUrlTab.current === urlTab) return;
     previousUrlTab.current = urlTab;
-    setTab(urlTab === "security" ? "security" : "profile");
+    setTab(tabFrom(urlTab));
   }, [urlTab]);
 
   const displayName = authUser?.name ?? tc("anonymous");
@@ -92,14 +95,21 @@ export function AccountClient() {
 
             <Separator />
 
-            <Tabs value={tab} onValueChange={(value) => setTab(value === "security" ? "security" : "profile")}>
+            <Tabs value={tab === "billing" && !individuals ? "profile" : tab} onValueChange={(value) => setTab(tabFrom(value))}>
               <TabsList>
                 <TabsTrigger value="profile">{td("profile.title")}</TabsTrigger>
                 <TabsTrigger value="security">{td("security")}</TabsTrigger>
+                {individuals && <TabsTrigger value="billing">{tb("title")}</TabsTrigger>}
               </TabsList>
-              <TabsContent value="profile" className="mt-4">
+              <TabsContent value="profile" className="mt-4 space-y-6">
                 <ProfileSection />
+                <DeleteUserSection />
               </TabsContent>
+              {individuals && (
+                <TabsContent value="billing" className="mt-4">
+                  <BillingSection />
+                </TabsContent>
+              )}
               <TabsContent value="security" className="mt-4">
                 <SecuritySection />
               </TabsContent>

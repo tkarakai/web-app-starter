@@ -618,8 +618,72 @@
     },
     "empty": {
       "title": "Nem vagy egyetlen szervezet tagja sem",
-      "description": "A kezdéshez hozz létre egy szervezetet, vagy fogadj el egy meghívást.",
-      "createDescription": "A kezdéshez hozz létre egy szervezetet."
+      "description": "A kezdéshez fogadj el egy meghívást.",
+      "createDescription": "Kérd meg egy szervezet tulajdonosát vagy adminját, hogy hívjon meg."
     }
+  },
+  "billing": {
+    "title": "Csomag és számlázás",
+    "description": "A(z) {organization} csomagja, és hogy ki fizet érte.",
+    "individualDescription": "Az Ön csomagja és fizetési módja.",
+    "plan": "Csomag",
+    "free": "Ingyenes",
+    "perMonth": "Havi {price}",
+    "paidBy": "Fizeti: {name}",
+    "noPayer": "Nincs szükség fizetőre",
+    "paymentMethod": "Fizetési mód",
+    "paymentMethods": {
+      "cash": "Készpénz",
+      "check": "Csekk"
+    },
+    "changePlan": "Csomag módosítása",
+    "planChanged": "A csomag módosult: {plan}.",
+    "managedByPayer": "Ezt a csomagot csak a(z) {name} tulajdonosai és adminjai módosíthatják.",
+    "upgradeTitle": "Váltás fizetős csomagra",
+    "upgradeDescription": "Válasszon fizetős csomagot, és hogy ki fizet érte.",
+    "payer": "Fizeti",
+    "newPayer": "Egy új számlázási szervezet",
+    "payerName": "A számlázási szervezet neve",
+    "upgradeAction": "Váltás most",
+    "upgraded": "A(z) {organization} mostantól a(z) {plan} csomagot használja.",
+    "billingTitle": "Számlázási szervezet",
+    "billingDescription": "A(z) {name} fizet az alábbi szervezetekért. Tulajdonosai és adminjai kezelik a csomagokat és a fizetést; a tagok csak megtekinthetik.",
+    "paysFor": "Fizet értük",
+    "paysForNone": "Még egyetlen szervezetért sem fizet.",
+    "savePaymentMethod": "Fizetési mód mentése",
+    "paymentMethodSaved": "A fizetési mód mentve.",
+    "createAction": "Szervezet létrehozása",
+    "createTitle": "Új szervezet",
+    "createDescription": "A(z) {billing} fizet érte. Ön lesz a tulajdonosa.",
+    "createNameLabel": "Név",
+    "created": "A(z) {name} létrejött. Most ebben dolgozik.",
+    "pickerTitle": "Válasszon csomagot",
+    "pickerDescription": "Később a beállításokban módosíthatja.",
+    "pickerContinue": "Tovább",
+    "errors": {
+      "generic": "Hiba történt. Kérjük, próbálja újra.",
+      "paymentMethodRequired": "Válasszon fizetési módot.",
+      "nameRequired": "Adjon meg egy nevet.",
+      "notAllowed": "Ehhez nincs jogosultsága.",
+      "inUse": "Ez a számlázási szervezet még más szervezetekért is fizet."
+    },
+    "activationPending": "A(z) {name} szervezet létrejött. Nyisd meg a munka megkezdéséhez.",
+    "retryActivation": "Szervezet megnyitása"
+  },
+  "userDeletion": {
+    "title": "Felhasználó törlése",
+    "description": "A felhasználóját a kérés után {days} nappal töröljük. Azonnal mindenhol kijelentkeztetjük, és addig bejelentkezéssel visszavonhatja.",
+    "action": "Felhasználó törlése",
+    "confirmTitle": "Törli a felhasználóját?",
+    "confirmDescription": "Most mindenhol kijelentkeztetjük. A törlés {days} nap múlva történik meg, hacsak be nem jelentkezik és vissza nem vonja.",
+    "scheduledTitle": "A felhasználója törlésre van ütemezve",
+    "scheduledDescription": "Törlés napja: {date}. Vonja vissza, ha tovább szeretné használni.",
+    "blockedTitle": "A felhasználóját nem sikerült törölni",
+    "blockedInUse": "Ön az utolsó tagja egy olyan számlázási szervezetnek, amely más szervezetekért fizet. Hívjon meg egy másik tulajdonost, vagy váltsa ezeket a szervezeteket ingyenes csomagra, majd kérje újra.",
+    "blockedOwnerRequired": "Ön az utolsó tulajdonosa egy olyan számlázási szervezetnek, amely más szervezetekért fizet. Tegyen meg egy másik tagot tulajdonosnak, majd kérje újra.",
+    "cancel": "Törlés visszavonása",
+    "continue": "Törlés folytatása és kijelentkezés",
+    "canceled": "A törlést visszavonta.",
+    "reauthenticate": "Jelentkezzen be újra, hogy megerősítse a személyazonosságát, majd próbálja újra."
   }
 }

@@ -62,7 +62,13 @@ const rateLimitDefs = {
     capacity: positiveInt(process.env.MUTATION_RATE_LIMIT_CAPACITY, 10),
   },
 
-  /** Public waitlist join endpoint — keyed by IP address. */
+  /** Public waitlist join endpoint: every join, whatever its source. */
+  waitlistJoinGlobal: {
+    kind: "token bucket",
+    rate: positiveInt(process.env.WAITLIST_GLOBAL_RATE_PER_MINUTE, 60), period: MINUTE,
+    capacity: positiveInt(process.env.WAITLIST_GLOBAL_BURST, 30),
+  },
+  /** Public waitlist join endpoint, per client IP: only from a verified ingress header (`AUTH_TRUSTED_IP_HEADER`). */
   waitlistJoin: {
     kind: "token bucket",
     rate: positiveInt(process.env.WAITLIST_RATE_LIMIT_RATE, 5),

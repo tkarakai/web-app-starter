@@ -15,6 +15,23 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- **Tenancy modes, plans and billing organizations.** The platform admin chooses, once,
+  **Plans for Individuals** (each user's organization is also their billing organization, shown
+  as Billing details) or **Plans for Organizations** (billing organizations pay for shared
+  organizations and create them) under **Configure → Tenancy**, after defining plans under
+  **Manage → Plans** (a free-forever plan is seeded; USD monthly prices; a price is fixed once a
+  plan is in use). Until then sign-ups are refused (`TENANCY_NOT_CONFIGURED`). New users pick a
+  plan after sign-up when there is a choice; a paid plan needs a payment method (cash or check,
+  a stand-in for a payment provider). Plan and payer history is kept in
+  `organizationPlans`; billing rows survive deleted organizations. See
+  [tenancy and billing](docs/tenancy-and-billing.md).
+
+- **Users can delete themselves.** Settings has **Delete user**: it runs after a grace period the
+  admin sets (default 14 days), signs the user out everywhere, and signing in before the date
+  offers cancelling it. The admin app lists scheduled and blocked deletions. A user who is the
+  last member or owner of a billing organization paying for other organizations can't be deleted
+  until someone else takes it over.
+
 - **Organizations in the admin app.** **Manage → Organizations** lists every organization with
   its owners, members and invitations. Administrators can make a member an owner, remove an
   owner who is not the only one, cancel pending invitations and delete an organization (its app
@@ -74,6 +91,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Changed
 
+- **Organizations are created only by billing organizations.** Better Auth's
+  `/organization/create` is refused (`ORGANIZATION_CREATION_DISABLED`); the switcher and the
+  no-organization state no longer offer **Create organization**, and `CreateOrganizationDialog`
+  now takes a billing organization and its plans. In organizations mode, a sign-up through an
+  organization invitation no longer gets a personal organization.
+
 - The sample's `projects.organizationId` is required in the Convex schema. Deploys reject
   unassigned projects; tasks and uploads continue to inherit their organization's access
   through their project.
@@ -88,6 +111,15 @@ version. Release-specific compatibility and deployment steps are listed explicit
   Local CLI/container checks without GitHub registration are unchanged.
 
 ### Action required
+
+- After deploying, a platform admin must create a plan and choose a tenancy mode under
+  **Configure → Tenancy** before anyone can sign up. Existing organizations get the free plan
+  when the mode is turned on. Apps that compose `CreateOrganizationDialog` or rely on users
+  creating organizations must move that to a billing organization's page (`BillingSection`).
+
+- **Apps that still rely on the legacy `waitlistEnabled: false` setting** (no onboarding type
+  ever saved) now default to invite-only instead of public sign-up. If you want public sign-up,
+  choose it under **Configure → Features** in the admin app.
 
 - **Apps retaining the sample projects with existing data:** before deploying the required
   `projects.organizationId`, deploy the intermediate optional-field schema and run
@@ -124,6 +156,30 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- **Org mutations no longer write to a fallback organization.** When the session's selected
+  organization is no longer valid (the user was removed, or it was deleted), reads still move to
+  the oldest membership, but `orgMutation`, and `getOrgAuth(ctx, { write: true })`, now refuse
+  with `ORGANIZATION_CHANGED` instead of writing to that membership, whether or not the caller
+  passes `expectedOrganizationId`. `organizations.mine` adds `selectionStale`, and
+  `OrganizationAccessNotice` switches the session to the organization the page shows, so writes
+  resume and a later re-invitation can't silently restore the old selection. Keep
+  `OrganizationAccessNotice` mounted, as `ProtectedLayout` does. A session that never selected an
+  organization still writes to the oldest membership.
+- **Defaults that failed open now fail closed:**
+  - Organization lookups by ID no longer turn every adapter error into "not found". They also no
+    longer return another table's row: `db.get` accepts any table's ID.
+  - The password-strength check gives an account whose email can't be resolved (password change
+    or reset) the administrator minimum, and matches administrator addresses case-insensitively.
+  - The waitlist rate limit no longer trusts `X-Forwarded-For` / `X-Real-IP`, which a client can
+    set to get a fresh budget. Every join counts against a new global budget
+    (`WAITLIST_GLOBAL_RATE_PER_MINUTE`, `WAITLIST_GLOBAL_BURST`); the per-client budget applies
+    only with a verified `AUTH_TRUSTED_IP_HEADER`.
+  - `isEmailVerificationRequired` reads policy exactly as enforcement does: any stored value
+    other than `false` counts as required.
+  - An invalid stored passkey policy now reads as `required` everywhere, as enforcement already
+    treated it.
+  - A leftover legacy `waitlistEnabled: false` setting no longer turns on public sign-up (see
+    Action required).
 - **Ban, unban and role changes keep organizations owned, on every path.** The owner check for
   `/admin/ban-user` ran before, not with, the write, so a demotion committing in between could
   leave members without an owner who can act. A Better Auth `user` trigger now checks every change

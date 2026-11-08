@@ -164,8 +164,9 @@ These components own the auth operations and localized feedback; your app owns t
 Choose each table's [data access model](docs/data-access-models.md): user-owned (`authed*` plus
 owner checks), organization-shared (`org*` plus org checks), organization-private (`org*` plus
 org and owner checks), or a composition. Builders provide verified context; handlers enforce
-row and list access. Better Auth manages organizations: signup creates a personal one, and
-users can create or join others. Org builders resolve organization IDs from the session, never
+row and list access. Better Auth manages organizations: signup creates a personal one with its
+plan, and users join others by invitation; billing organizations create more
+([tenancy and billing](docs/tenancy-and-billing.md)). Org builders resolve organization IDs from the session, never
 arguments. Delete org-owned rows in `convex/organizationData.ts`, keeping user-owned data separate.
 Accounts can have zero memberships: keep account controls and invitations available. For
 org workspaces, hide organization workspace controls and show `NoOrganization`; user-owned
@@ -284,6 +285,7 @@ environment-specific and silently breaks artifact reuse
 | Trying authenticated announcement MCP and the pi test agent | [docs/agentic-announcements.md](docs/agentic-announcements.md) |
 | Writing components, Convex functions or styles | [docs/code-style.md](docs/code-style.md) |
 | Organizations, members, invitations, or scoping app data to them | [docs/organizations.md](docs/organizations.md) |
+| Tenancy modes, plans, billing organizations, or deleting users | [docs/tenancy-and-billing.md](docs/tenancy-and-billing.md) |
 | Individual accounts, shared workspaces, private data per org member, or private/shared composition | [docs/data-access-models.md](docs/data-access-models.md) |
 | Working on auth, route protection, rate limiting or React patterns | [docs/architecture.md](docs/architecture.md), [docs/authentication-and-onboarding.md](docs/authentication-and-onboarding.md), [docs/rate-limiting-architecture.md](docs/rate-limiting-architecture.md) |
 | Setting up or debugging the dev environment | [docs/development.md](docs/development.md) |
