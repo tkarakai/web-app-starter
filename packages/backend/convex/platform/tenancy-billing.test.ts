@@ -256,15 +256,22 @@ describe("billing organizations", () => {
 });
 
 describe("turning on a tenancy mode", () => {
-  test("needs another plan and a free-forever default; organizations creates a billing and a shared organization", async () => {
+  test("a default that is not free forever still blocks setup", async () => {
+    const f = await fixture();
+    const paid = await f.paidPlan();
+    await f.boss.caller.mutation(api.platform.billing.setDefaultPlan, { planId: paid });
+    expect((await f.boss.caller.query(api.platform.tenancy.status, {}))!.eligibility?.plans.ready).toBe(false);
+    await expect(f.boss.caller.mutation(api.platform.tenancy.configure, { mode: "individuals" })).rejects.toThrow("TENANCY_PLANS_REQUIRED");
+  });
+
+  test("the seeded plan is sufficient; organizations creates a billing and a shared organization", async () => {
     vi.useFakeTimers();
     const f = await fixture();
     const alice = await f.user("alice");
     const bob = await f.user("bob");
     await alice.provision();
     await bob.provision();
-    await expect(f.boss.caller.mutation(api.platform.tenancy.configure, { mode: "organizations" })).rejects.toThrow("TENANCY_PLANS_REQUIRED");
-    await f.paidPlan();
+    expect(await f.plans()).toHaveLength(1);
     const status = (await f.boss.caller.query(api.platform.tenancy.status, {}))!;
     expect(status.eligibility).toMatchObject({ individualsAllowed: true, sharedStep: true, appUserCount: 2, plans: { ready: true } });
     await expect(f.boss.caller.mutation(api.platform.tenancy.configure, { mode: "organizations" })).rejects.toThrow("TENANCY_USER_REQUIRED");
@@ -288,7 +295,7 @@ describe("turning on a tenancy mode", () => {
     const bob = await f.user("bob");
     const own = await alice.provision();
     await bob.provision();
-    await f.paidPlan();
+    expect(await f.plans()).toHaveLength(1);
     await f.addMember(own, bob.userId, "member");
     await expect(f.boss.caller.mutation(api.platform.tenancy.configure, { mode: "individuals" })).rejects.toThrow("TENANCY_INDIVIDUALS_NOT_ALLOWED");
     const [bobMembership] = (await f.members(own)).filter((m) => m.userId === bob.userId);

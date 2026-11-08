@@ -71,7 +71,7 @@ that the organization exists. `planId` and `billingOrganizationId` are real `v.i
 mode. Until chosen, sign-ups and organization creation are refused (`TENANCY_NOT_CONFIGURED`);
 existing users keep working. One-way; individuals → organizations may come later.
 
-Turning on either mode needs at least one plan besides the seeded one, and a default.
+Turning on either mode needs an active, free-forever default plan. The seeded Free plan is sufficient; additional plans are optional.
 
 **Fresh install:** after the first platform admin is set up, the admin app shows only the tenancy
 step. **Existing deployment:** the upgrade's migration gives every organization a free-forever

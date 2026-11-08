@@ -140,7 +140,7 @@ async function eligibility(ctx: Reader) {
   const defaultPlan = plans.find((plan) => plan.isDefault) ?? null;
   const otherPlans = plans.filter((plan) => !plan.isSeeded).length;
   const complete = users.complete && organizations.complete;
-  const plansReady = otherPlans > 0 && !!defaultPlan && defaultPlan.isFreeForever && defaultPlan.status === "active";
+  const plansReady = !!defaultPlan && defaultPlan.isFreeForever && defaultPlan.status === "active";
   return {
     complete,
     appUserCount: appUsers.length,
@@ -244,7 +244,7 @@ export const runSetup = internalMutation({
     if (!setup || setup.state !== "running") return;
     if (setup.billingUserId && (!setup.billingOrganizationId || !setup.sharedOrganizationId)) await requireSetupOwners(ctx, setup.billingUserId, setup.adminUserId);
     const plans = await ctx.runQuery(components.platform.billing.listPlans, {});
-    if (!plans.some(plan => !plan.isSeeded) || !plans.some(plan => plan.isDefault && plan.isFreeForever && plan.status === "active")) throw new Error("TENANCY_PLANS_REQUIRED");
+    if (!plans.some(plan => plan.isDefault && plan.isFreeForever && plan.status === "active")) throw new Error("TENANCY_PLANS_REQUIRED");
     const actor = setup.startedBy ? { userId: setup.startedBy, email: (await findById(ctx, "user", setup.startedBy))?.email ?? "admin" } : SYSTEM_ACTOR;
     const planId = await initialPlanId(ctx);
 
