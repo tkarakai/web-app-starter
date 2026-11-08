@@ -1,3 +1,4 @@
+import { refuse } from "../errors";
 /** Migration-only API. These builders deliberately bypass the normal maintenance guard. */
 import { v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
@@ -15,7 +16,7 @@ export const begin = mutation({
   handler: async (ctx, { deployment }) => {
     const existing = await state(ctx);
     if (existing) {
-      if (existing.deployment !== deployment) throw new Error("MIGRATION_DEPLOYMENT_CHANGED");
+      if (existing.deployment !== deployment) refuse("MIGRATION_DEPLOYMENT_CHANGED");
       return existing.phase;
     }
     // A fresh installation and an existing v2 app must not be silently merged.
@@ -61,7 +62,7 @@ export const verifyRows = query({
         const actual: Record<string, unknown> = { ...row };
         if (table === "invitationTokens") {
           const original = JSON.parse(receipt.snapshot) as Record<string, unknown>;
-          if (typeof original.waitlistEntryId !== "string") throw new Error("MIGRATION_INVALID_RECEIPT");
+          if (typeof original.waitlistEntryId !== "string") refuse("MIGRATION_INVALID_RECEIPT");
           const parent = await mapping(ctx, "waitlistEntries", original.waitlistEntryId);
           if (actual.waitlistEntryId === parent?.componentId) actual.waitlistEntryId = original.waitlistEntryId;
         }
@@ -88,7 +89,7 @@ export const markVerified = mutation({
   returns: v.null(),
   handler: async ctx => {
     const current = await state(ctx);
-    if (!current || current.phase !== "copying") throw new Error("MIGRATION_NOT_COPYING");
+    if (!current || current.phase !== "copying") refuse("MIGRATION_NOT_COPYING");
     for (const table of migrationTables) {
       const done = await ctx.db.query("migrationProgress").withIndex("by_table", q => q.eq("table", table)).unique();
       if (!done?.complete) throw new Error("MIGRATION_INCOMPLETE:" + table);
@@ -102,7 +103,7 @@ export const activateSchedules = mutation({
   returns: paginationResultValidator(v.string()),
   handler: async (ctx, { paginationOpts }) => {
     const current = await state(ctx);
-    if (!current || !["verified", "activating", "complete"].includes(current.phase)) throw new Error("MIGRATION_NOT_VERIFIED");
+    if (!current || !["verified", "activating", "complete"].includes(current.phase)) refuse("MIGRATION_NOT_VERIFIED");
     if (current.phase !== "complete") await ctx.db.patch(current._id, { phase: "activating" });
     const page = await paginator(ctx.db, schema).query("migrationRows").withIndex("by_table_activated", q => q.eq("table", "announcements").eq("schedulesActivated", false)).paginate(paginationOpts);
     for (const row of page.page) {
@@ -113,13 +114,13 @@ export const activateSchedules = mutation({
       let publishJobId: Id<"_scheduled_functions"> | undefined;
       let unpublishJobId: Id<"_scheduled_functions"> | undefined;
       if (row.publishAt !== undefined) {
-        if (announcement.scheduleStart === undefined) throw new Error("MIGRATION_SCHEDULE_START_MISSING");
+        if (announcement.scheduleStart === undefined) refuse("MIGRATION_SCHEDULE_START_MISSING");
         publishJobId = await ctx.scheduler.runAt(Math.max(Date.now(), row.publishAt), api.announcements.handleScheduledStart, {
           announcementId, expectedScheduleStart: announcement.scheduleStart, expectedScheduleEnd: announcement.scheduleEnd,
         });
       }
       if (row.unpublishAt !== undefined) {
-        if (announcement.scheduleEnd === undefined) throw new Error("MIGRATION_SCHEDULE_END_MISSING");
+        if (announcement.scheduleEnd === undefined) refuse("MIGRATION_SCHEDULE_END_MISSING");
         unpublishJobId = await ctx.scheduler.runAt(Math.max(Date.now(), row.unpublishAt), api.announcements.handleScheduledEnd, {
           announcementId, expectedScheduleEnd: announcement.scheduleEnd,
         });
@@ -130,7 +131,7 @@ export const activateSchedules = mutation({
     if (page.isDone && current.phase !== "complete") {
       // Query all outstanding receipts through the index to make a forged cursor unable to unlock early.
       const pending = await ctx.db.query("migrationRows").withIndex("by_table_activated", q => q.eq("table", "announcements").eq("schedulesActivated", false)).first();
-      if (pending) throw new Error("MIGRATION_SCHEDULES_INCOMPLETE");
+      if (pending) refuse("MIGRATION_SCHEDULES_INCOMPLETE");
       await ctx.db.patch(current._id, { phase: "complete", completedAt: Date.now() });
     }
     return { ...page, page: page.page.map(row => row.legacyId) };

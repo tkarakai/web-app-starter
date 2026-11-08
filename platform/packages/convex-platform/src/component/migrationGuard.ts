@@ -1,3 +1,4 @@
+import { refuse } from "../errors";
 import type { QueryCtx } from "./_generated/server";
 import { MIGRATION_NAME } from "./migrationTables";
 
@@ -8,5 +9,5 @@ export async function migrationInProgress(ctx: Pick<QueryCtx, "db">): Promise<bo
 }
 
 export async function assertMigrationComplete(ctx: Pick<QueryCtx, "db">): Promise<void> {
-  if (await migrationInProgress(ctx)) throw new Error("PLATFORM_MIGRATION_IN_PROGRESS");
+  if (await migrationInProgress(ctx)) refuse("PLATFORM_MIGRATION_IN_PROGRESS");
 }

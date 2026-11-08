@@ -86,6 +86,40 @@ describe("organization routes", () => {
     expect(sendAuthEmail).toHaveBeenCalledTimes(10);
   });
 
+  test("an invitation kept alive by resends stays listed and counted past 30 days", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const f = await fixture();
+      const alice = await f.user("alice");
+      const acme = await alice.provision();
+      const day = 86_400_000;
+      await f.t.mutation(components.betterAuth.adapter.updateOne, {
+        input: { model: "session", where: [{ field: "_id", value: alice.sessionId }], update: { expiresAt: Date.now() + 90 * day } },
+      });
+      const send = async (resend: boolean) => {
+        const response = await f.post("/organization/invite-member", { organizationId: acme, email: "carol@example.test", role: "member", resend }, f.token("alice"));
+        expect(response.status, await response.clone().text()).toBe(200);
+      };
+      await send(false);
+      for (let i = 0; i < 7; i++) {
+        vi.setSystemTime(Date.now() + 6 * day);
+        await send(true);
+      }
+      const [row] = await f.invitations(acme) as unknown as { createdAt: number; expiresAt: number }[];
+      expect(Date.now() - row!.createdAt).toBeGreaterThan(40 * day);
+      expect(row!.expiresAt).toBeGreaterThan(Date.now() + 6 * day);
+
+      const { invitations } = (await alice.caller.query(api.platform.organizations.active, {}))!;
+      expect(invitations).toMatchObject([{ email: "carol@example.test", status: "pending" }]);
+      const boss = await f.user("boss", { role: "admin" });
+      expect(await boss.caller.query(api.platform.adminOrganizations.get, { organizationId: acme })).toMatchObject({ pendingInvitations: 1 });
+      const list = await boss.caller.query(api.platform.adminOrganizations.list, { paginationOpts: { numItems: 10, cursor: null } });
+      expect(list.page.find((o) => o.id === acme)).toMatchObject({ pendingInvitations: 1 });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test("an unverified invitee can verify on request even when the verification policy is off", async () => {
     const f = await fixture();
     const alice = await f.user("alice");

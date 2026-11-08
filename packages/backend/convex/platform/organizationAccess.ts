@@ -4,20 +4,21 @@
  * Organizations, members and invitations are Better Auth organization-plugin rows in the
  * Better Auth component. Writes go through Better Auth's endpoints, which check roles;
  * this file only reads them, plus `ensurePersonalOrganization`, which gives a user with
- * no membership their initial organization at sign-up, and `removeMemberships`, which
- * account deletion runs. Membership writes keep every organization owned
+ * no membership their initial organization at sign-up, and `removeMembership`, which
+ * account deletion runs per organization. Membership writes keep every organization owned
  * (organizationOwnership.ts). See platform/docs/organizations.md.
  */
 import { components, internal } from "../_generated/api";
-import { createFunctionHandle } from "convex/server";
+import { createFunctionHandle, type PaginationResult } from "convex/server";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
-import { deleteMember, needsSuccessor, organizationSeats, pickSuccessor, setMemberRole } from "./organizationOwnership";
+import { deleteMember, findSuccessor, setMemberRole, successorNeeded } from "./organizationOwnership";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
+import { startOrganizationCleanup } from "./organizationCleanup";
 
 type Reader = Pick<QueryCtx, "runQuery">;
 type Writer = Pick<MutationCtx, "runQuery" | "runMutation">;
-type Deleter = Writer & Pick<MutationCtx, "scheduler">;
+type Deleter = Writer & Pick<MutationCtx, "scheduler" | "db">;
 
 export type OrganizationRole = "owner" | "admin" | "member";
 
@@ -31,6 +32,14 @@ export type ActiveOrganization = {
 
 /** Page size for reading component rows; readers that decide anything read every page. */
 const MAX_ROWS = 200;
+
+/**
+ * How long an invitation stays valid. Better Auth sets `expiresAt` to this long after every
+ * send, both the first invite and each resend (organizationPlugin.ts), so `expiresAt` minus
+ * this is when the invitation was last sent.
+ */
+export const INVITATION_EXPIRY_DAYS = 7;
+export const INVITATION_EXPIRY_MS = INVITATION_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
 
 /**
  * Organizations one user may belong to. Better Auth's `organizationLimit` counts only the ones a
@@ -83,6 +92,55 @@ export async function listMemberships(ctx: Reader, userId: string): Promise<Doc<
 /** All of the organization's members, oldest first. */
 export async function listOrganizationMembers(ctx: Reader, organizationId: string): Promise<Doc<"member">[]> {
   return (await findAll<Doc<"member">>(ctx, "member", [{ field: "organizationId", value: organizationId }])).sort(oldestFirst);
+}
+
+type MemberWhere = { field: "organizationId" | "role" | "userId"; value: string }[];
+
+/** Member rows, a page at a time, so a caller that has its answer stops reading. */
+async function* memberRows(ctx: Reader, where: MemberWhere, pageSize: number): AsyncGenerator<Doc<"member">> {
+  let cursor: string | null = null;
+  do {
+    const result: { page: unknown[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+      model: "member",
+      where,
+      paginationOpts: { numItems: pageSize, cursor },
+    });
+    for (const row of result.page as Doc<"member">[]) yield row;
+    cursor = result.isDone ? null : result.continueCursor;
+  } while (cursor);
+}
+
+/**
+ * The organization's members with this role, oldest first (index `organizationId_role_createdAt`).
+ * Roles are stored as one canonical role (organizationPlugin.ts refuses role lists).
+ */
+export function membersWithRole(ctx: Reader, organizationId: string, role: OrganizationRole, pageSize = 25): AsyncGenerator<Doc<"member">> {
+  return memberRows(ctx, [{ field: "organizationId", value: organizationId }, { field: "role", value: role }], pageSize);
+}
+
+/** The organization's members in no particular order, read only as far as the caller iterates. */
+export function organizationMembers(ctx: Reader, organizationId: string, pageSize = 50): AsyncGenerator<Doc<"member">> {
+  return memberRows(ctx, [{ field: "organizationId", value: organizationId }], pageSize);
+}
+
+/** At most `limit` of the organization's members: enough to tell "none", "one" or "more". */
+export async function firstMembers(ctx: Reader, organizationId: string, limit: number): Promise<Doc<"member">[]> {
+  const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+    model: "member",
+    where: [{ field: "organizationId", value: organizationId }],
+    paginationOpts: { numItems: limit, cursor: null },
+  });
+  return result.page as Doc<"member">[];
+}
+
+/** Whether the organization has a member besides the membership `except`. */
+export async function otherMemberExists(ctx: Reader, organizationId: string, except?: string): Promise<boolean> {
+  return (await firstMembers(ctx, organizationId, 2)).some((member) => member._id !== except);
+}
+
+/** The user's oldest membership, or `null`. */
+export async function firstMembership(ctx: Reader, userId: string): Promise<Doc<"member"> | null> {
+  return (await listMemberships(ctx, userId))[0] ?? null;
 }
 
 export async function findMembership(
@@ -254,23 +312,33 @@ export async function personalOrganizationForOwner(ctx: Writer, ownerId: string)
 }
 
 /**
- * Pending invitations to this address that have not expired. Reads every page: accepted,
- * canceled and expired invitations accumulate, so a fixed-size first page could hide one.
+ * Invitations of one organization, or to one address, with this status that expire after
+ * `expiresAfter`, latest expiry first: every page, or the first `limit` rows. The index range
+ * skips older history, which only grows: Better Auth never rewrites an expired invitation's
+ * status, so it stays `pending`.
  */
-export async function pendingInvitationsFor(ctx: Reader, email: string): Promise<Doc<"invitation">[]> {
-  const now = Date.now();
-  const pending: Doc<"invitation">[] = [];
+export async function invitationsExpiringAfter(
+  ctx: Reader,
+  scope: { organizationId: string } | { email: string },
+  status: string,
+  expiresAfter: number,
+  limit = Infinity,
+): Promise<Doc<"invitation">[]> {
+  const rows: Doc<"invitation">[] = [];
   let cursor: string | null = null;
   do {
-    const result: { page: unknown[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(components.betterAuth.adapter.findMany, {
-      model: "invitation",
-      where: [{ field: "email", value: email.trim().toLowerCase() }, { field: "status", value: "pending" }],
-      paginationOpts: { numItems: MAX_ROWS, cursor },
-    });
-    pending.push(...(result.page as Doc<"invitation">[]).filter((invitation) => invitation.expiresAt > now));
+    const result = await ctx.runQuery(components.betterAuth.adapter.invitationsByExpiry, {
+      ...scope, status, expiresAfter, paginationOpts: { numItems: Math.min(MAX_ROWS, limit - rows.length), cursor },
+    }) as PaginationResult<Doc<"invitation">>;
+    rows.push(...result.page);
     cursor = result.isDone ? null : result.continueCursor;
-  } while (cursor);
-  return pending;
+  } while (cursor && rows.length < limit);
+  return rows;
+}
+
+/** Pending invitations to this address that have not expired; expired ones are not read. */
+export async function pendingInvitationsFor(ctx: Reader, email: string): Promise<Doc<"invitation">[]> {
+  return await invitationsExpiringAfter(ctx, { email: email.trim().toLowerCase() }, "pending", Date.now());
 }
 
 /**
@@ -289,21 +357,27 @@ export async function findUserByOwnerId(ctx: Reader, ownerId: string): Promise<D
 export type AccountDeletionActor = { email: string; userId?: string };
 
 /**
- * Account deletion: drop the user's memberships. An organization that would be left without an
- * owner (or without one who can sign in, while members can) first passes ownership to its
- * longest-standing admin, else member, preferring people who aren't banned, so it always stays
- * administrable (the ownership guard refuses the deletion otherwise). One left
- * with no members at all is deleted, as if its owner had deleted it (every account has a
- * personal organization, so this is the common case). Call it from every path that deletes a user.
+ * Account deletion, one organization: drop the user's membership `member`. An organization that
+ * would be left without an owner (or without one who can sign in, while members can) first
+ * passes ownership to its longest-standing admin, else member, preferring people who aren't
+ * banned, so it always stays administrable (the ownership guard refuses the deletion
+ * otherwise). One left with no members at all is deleted, as if its owner had deleted it (every
+ * account has a personal organization, so this is the common case). Reads the organization's
+ * owners, and other members only while choosing a successor. Account deletion runs it one
+ * organization per transaction (`userDeletion.ts`, the membership removal job).
  */
+export async function removeMembership(ctx: Deleter, member: Doc<"member">, userId: string, actor: AccountDeletionActor): Promise<void> {
+  const successor = parseRole(member.role) === "owner" && await successorNeeded(ctx, member.organizationId, member._id)
+    ? await findSuccessor(ctx, member.organizationId, member._id)
+    : undefined;
+  if (successor) await setMemberRole(ctx, successor.member._id, "owner");
+  await deleteMember(ctx, member._id);
+  if (!(await otherMemberExists(ctx, member.organizationId))) await deleteEmptyOrganization(ctx, member.organizationId, userId, actor);
+}
+
+/** Every membership of the user in one transaction (`removeMembership` each): fixtures and tests only. */
 export async function removeMemberships(ctx: Deleter, userId: string, actor: AccountDeletionActor): Promise<void> {
-  for (const member of await listMemberships(ctx, userId)) {
-    const others = (await organizationSeats(ctx, member.organizationId)).filter((s) => s.member._id !== member._id);
-    const successor = parseRole(member.role) === "owner" && needsSuccessor(others) ? pickSuccessor(others) : undefined;
-    if (successor) await setMemberRole(ctx, successor.member._id, "owner");
-    await deleteMember(ctx, member._id);
-    if (others.length === 0) await deleteEmptyOrganization(ctx, member.organizationId, userId, actor);
-  }
+  for (const member of await listMemberships(ctx, userId)) await removeMembership(ctx, member, userId, actor);
 }
 
 /**
@@ -336,7 +410,7 @@ async function deleteEmptyOrganization(
     reason: "last_member_deleted",
     meta: JSON.stringify({ deletedUserId }),
   });
-  await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationAppData, { organizationId });
+  await startOrganizationCleanup(ctx, organizationId);
 }
 
 /**

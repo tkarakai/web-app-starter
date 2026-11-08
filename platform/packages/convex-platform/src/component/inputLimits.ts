@@ -1,3 +1,4 @@
+import { refuse } from "../errors";
 /** Maximum lengths for user-supplied string fields (defense against resource exhaustion). */
 export const MAX_NAME_LENGTH = 255;
 export const MAX_DESCRIPTION_LENGTH = 5000;
@@ -9,6 +10,6 @@ export function assertMaxLength(
   fieldName: string,
 ): void {
   if (value !== undefined && value.length > maxLength) {
-    throw new Error(`${fieldName}_TOO_LONG`);
+    refuse(`${fieldName}_TOO_LONG`);
   }
 }

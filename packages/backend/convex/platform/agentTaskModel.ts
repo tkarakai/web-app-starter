@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 import type { QueryCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 export const taskTerminalStates = new Set(["TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED", "TASK_STATE_REJECTED"]);
@@ -9,6 +10,6 @@ export function taskDto(row: Doc<"agentTasks">, artifacts = true): TaskDto {
 }
 export async function ownedTask(ctx: QueryCtx, userId: string, id: string) {
   const key = ctx.db.normalizeId("agentTasks", id); const row = key ? await ctx.db.get(key) : null;
-  if (!row || row.userId !== userId || row.expiresAt <= Date.now()) throw new Error("TASK_NOT_FOUND");
+  if (!row || row.userId !== userId || row.expiresAt <= Date.now()) refuse("TASK_NOT_FOUND");
   return row;
 }

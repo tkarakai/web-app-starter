@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 /** Operator-only v2 migration. See platform/docs/component-data-migration.md. */
 import { v, type Infer } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
@@ -11,10 +12,10 @@ const migration = components.platform.migration;
 const self = internal.platform.componentMigration;
 const confirmation = { confirmDeployment: v.string(), writersStopped: v.literal(true) };
 function confirm(deployment: string): void {
-  if (!process.env.CONVEX_CLOUD_URL || deployment !== process.env.CONVEX_CLOUD_URL) throw new Error("MIGRATION_WRONG_DEPLOYMENT");
+  if (!process.env.CONVEX_CLOUD_URL || deployment !== process.env.CONVEX_CLOUD_URL) refuse("MIGRATION_WRONG_DEPLOYMENT");
 }
 function batchLimit(value: number): number {
-  if (!Number.isInteger(value) || value < 1 || value > 100) throw new Error("MIGRATION_INVALID_BATCH_SIZE");
+  if (!Number.isInteger(value) || value < 1 || value > 100) refuse("MIGRATION_INVALID_BATCH_SIZE");
   return value;
 }
 

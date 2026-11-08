@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 /**
  * Disposable user fixtures for E2E tests.
  *
@@ -71,7 +72,7 @@ export const prepareE2eInvitation = internalMutation({
   handler: async (ctx, args) => {
     assertLocalFixtures();
     if (!E2E_EMAIL_PATTERN.test(args.email)) {
-      throw new Error("E2E_EMAIL_REJECTED");
+      refuse("E2E_EMAIL_REJECTED");
     }
 
 
@@ -85,7 +86,7 @@ export const finalizeE2eInvitation = internalMutation({
   handler: async (ctx, args) => {
     assertLocalFixtures();
     if (!E2E_EMAIL_PATTERN.test(args.email)) {
-      throw new Error("E2E_EMAIL_REJECTED");
+      refuse("E2E_EMAIL_REJECTED");
     }
 
     await ctx.runMutation(components.platform.invitationFixtures.finalize, args);

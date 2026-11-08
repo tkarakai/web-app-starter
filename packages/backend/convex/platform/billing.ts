@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 /**
  * Plans and billing for users and platform admins (platform/docs/tenancy-and-billing.md).
  *
@@ -6,11 +7,12 @@
  * methods and creating organizations from a billing organization. Platform admins: the plan
  * catalog. Every write is checked here and stored by `components.platform.billing`.
  */
+import type { PaginationResult } from "convex/server";
 import { v } from "convex/values";
 import { components } from "../_generated/api";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
-import { adminMutation, authedMutation, authedQuery } from "./functions";
+import { adminMutation, authedMutation, authedPaginatedQuery, authedQuery } from "./functions";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import {
   activePlans,
@@ -39,29 +41,29 @@ type PaymentMethod = "cash" | "check";
 type Ctx = Pick<MutationCtx, "runQuery" | "runMutation" | "db" | "scheduler">;
 
 function requireAdmin(user: Doc<"user">) {
-  if (user.role !== "admin") throw new Error("NOT_ADMIN");
+  if (user.role !== "admin") refuse("NOT_ADMIN");
 }
 
 function requireAppUser(user: Doc<"user">) {
-  if (user.role === "admin") throw new Error("NOT_APPLICATION_USER");
+  if (user.role === "admin") refuse("NOT_APPLICATION_USER");
 }
 
 function organizationName(name: string | undefined): string {
   const trimmed = name?.trim() ?? "";
-  if (!trimmed) throw new Error("ORGANIZATION_NAME_REQUIRED");
+  if (!trimmed) refuse("ORGANIZATION_NAME_REQUIRED");
   assertMaxLength(trimmed, 100, "name");
   return trimmed;
 }
 
 async function activePlan(ctx: Pick<MutationCtx, "runQuery">, planId: string) {
   const plan = await ctx.runQuery(components.platform.billing.getPlan, { planId });
-  if (!plan || plan.status !== "active") throw new Error("PLAN_NOT_AVAILABLE");
+  if (!plan || plan.status !== "active") refuse("PLAN_NOT_AVAILABLE");
   return plan;
 }
 
 async function organizationOrThrow(ctx: Pick<MutationCtx, "runQuery">, organizationId: string) {
   const organization = await findById(ctx, "organization", organizationId);
-  if (!organization || isDeleting(organization)) throw new Error("ORGANIZATION_NOT_FOUND");
+  if (!organization || isDeleting(organization)) refuse("ORGANIZATION_NOT_FOUND");
   return organization;
 }
 
@@ -119,7 +121,8 @@ export const myStatus = authedQuery({
 
 /**
  * The active organization's plan and payer, what the caller may do about them, and, when the
- * active organization is a billing organization, what it pays for.
+ * active organization is a billing organization, its payment method (`paidOrganizations` lists
+ * what it pays for, a page at a time).
  */
 export const overview = authedQuery({
   args: {},
@@ -139,17 +142,7 @@ export const overview = authedQuery({
     const ownBilling = await ctx.runQuery(components.platform.billing.billingByOrganization, { organizationId: organization._id });
     let billing = null;
     if (ownBilling && !ownBilling.deletedAt) {
-      const paid = await ctx.runQuery(components.platform.billing.paidBy, { billingOrganizationId: ownBilling._id });
-      billing = {
-        id: ownBilling._id,
-        paymentMethod: ownBilling.paymentMethod ?? null,
-        canManage: orgCanManage,
-        organizations: await Promise.all(paid.map(async ({ row, plan }) => ({
-          organizationId: row.organizationId,
-          name: (await findById(ctx, "organization", row.organizationId))?.name ?? row.organizationName,
-          plan: planView(plan),
-        }))),
-      };
+      billing = { id: ownBilling._id, paymentMethod: ownBilling.paymentMethod ?? null, canManage: orgCanManage };
     }
     return {
       mode,
@@ -167,6 +160,37 @@ export const overview = authedQuery({
   },
 });
 
+/** Organizations listed per page of `paidOrganizations`. */
+const MAX_PAID_PAGE = 50;
+
+/**
+ * The organizations the active organization pays for, as a billing organization, with their
+ * plans: a page at a time (at most 50). Empty when it isn't one. Any member may see them, as
+ * `overview` shows its billing card to every member.
+ */
+export const paidOrganizations = authedPaginatedQuery({
+  args: {},
+  handler: async (ctx, args): Promise<PaginationResult<{ organizationId: string; name: string; plan: ReturnType<typeof planView> }>> => {
+    if (args.paginationOpts.numItems > MAX_PAID_PAGE) refuse("INVALID_PAGE_SIZE");
+    const none = { page: [], isDone: true, continueCursor: "" };
+    if (ctx.user.role === "admin") return none;
+    const active = await resolveActiveOrganization(ctx, ctx.user, ctx.session);
+    if (!active) return none;
+    const ownBilling = await ctx.runQuery(components.platform.billing.billingByOrganization, { organizationId: active.organizationId });
+    if (!ownBilling || ownBilling.deletedAt) return none;
+    const paid = await ctx.runQuery(components.platform.billing.paidBy, { billingOrganizationId: ownBilling._id, paginationOpts: args.paginationOpts });
+    return {
+      isDone: paid.isDone,
+      continueCursor: paid.continueCursor,
+      page: await Promise.all(paid.page.map(async ({ row, plan }) => ({
+        organizationId: row.organizationId,
+        name: (await findById(ctx, "organization", row.organizationId))?.name ?? row.organizationName,
+        plan: planView(plan),
+      }))),
+    };
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Users
 // ---------------------------------------------------------------------------
@@ -180,9 +204,9 @@ export const choosePlan = authedMutation({
   args: { planId: v.string(), paymentMethod: v.optional(paymentMethod), billingOrganizationName: v.optional(v.string()) },
   handler: async (ctx, args) => {
     requireAppUser(ctx.user);
-    if (await scheduledDeletion(ctx, ctx.user._id)) throw new Error("USER_DELETION_SCHEDULED");
+    if (await scheduledDeletion(ctx, ctx.user._id)) refuse("USER_DELETION_SCHEDULED");
     const choice = await pendingPlanChoice(ctx, ctx.user._id);
-    if (!choice) throw new Error("NO_PLAN_CHOICE");
+    if (!choice) refuse("NO_PLAN_CHOICE");
     const plan = await activePlan(ctx, args.planId);
     const organization = await organizationOrThrow(ctx, choice.organizationId);
     const actor = actorOf(ctx.user);
@@ -195,7 +219,7 @@ export const choosePlan = authedMutation({
         });
       }
     } else {
-      if (!args.paymentMethod) throw new Error("PAYMENT_METHOD_REQUIRED");
+      if (!args.paymentMethod) refuse("PAYMENT_METHOD_REQUIRED");
       const billingOrganizationId = await payerFor(ctx, ctx.user, organization, { billingOrganizationId: current?.billing && !current.billing.deletedAt ? current.billing._id : undefined, newBillingOrganizationName: args.billingOrganizationName, paymentMethod: args.paymentMethod }, actor);
       await ctx.runMutation(components.platform.billing.startPlan, {
         organizationId: organization._id, organizationName: organization.name, planId: plan._id, billingOrganizationId, actor,
@@ -214,7 +238,7 @@ export const changePlan = authedMutation({
   args: { organizationId: v.string(), planId: v.string() },
   handler: async (ctx, args) => {
     requireAppUser(ctx.user);
-    if (await scheduledDeletion(ctx, ctx.user._id)) throw new Error("USER_DELETION_SCHEDULED");
+    if (await scheduledDeletion(ctx, ctx.user._id)) refuse("USER_DELETION_SCHEDULED");
     const organization = await organizationOrThrow(ctx, args.organizationId);
     const plan = await activePlan(ctx, args.planId);
     const current = await ctx.runQuery(components.platform.billing.currentPlan, { organizationId: organization._id });
@@ -223,8 +247,8 @@ export const changePlan = authedMutation({
       await assertManagesBilling(ctx, ctx.user._id, payer._id);
     } else {
       const member = await findMembership(ctx, ctx.user._id, organization._id);
-      if (!member || parseRole(member.role) === "member") throw new Error("NOT_ALLOWED");
-      if (!plan.isFreeForever) throw new Error("PAYER_REQUIRED");
+      if (!member || parseRole(member.role) === "member") refuse("NOT_ALLOWED");
+      if (!plan.isFreeForever) refuse("PAYER_REQUIRED");
     }
     if (current?.plan._id === plan._id) return;
     const individuals = (await readTenancyMode(ctx)) === "individuals";
@@ -251,16 +275,16 @@ export const upgrade = authedMutation({
   },
   handler: async (ctx, args) => {
     requireAppUser(ctx.user);
-    if (await scheduledDeletion(ctx, ctx.user._id)) throw new Error("USER_DELETION_SCHEDULED");
+    if (await scheduledDeletion(ctx, ctx.user._id)) refuse("USER_DELETION_SCHEDULED");
     const organization = await organizationOrThrow(ctx, args.organizationId);
     const member = await findMembership(ctx, ctx.user._id, organization._id);
-    if (!member || parseRole(member.role) === "member") throw new Error("NOT_ALLOWED");
+    if (!member || parseRole(member.role) === "member") refuse("NOT_ALLOWED");
     const current = await ctx.runQuery(components.platform.billing.currentPlan, { organizationId: organization._id });
     const individuals = (await readTenancyMode(ctx)) === "individuals";
     const ownPayer = individuals && current?.billing?.organizationId === organization._id;
-    if (current?.billing && !current.billing.deletedAt && !ownPayer) throw new Error("ORGANIZATION_HAS_PAYER");
+    if (current?.billing && !current.billing.deletedAt && !ownPayer) refuse("ORGANIZATION_HAS_PAYER");
     const plan = await activePlan(ctx, args.planId);
-    if (plan.isFreeForever) throw new Error("PLAN_NOT_PAID");
+    if (plan.isFreeForever) refuse("PLAN_NOT_PAID");
     const billingOrganizationId = await payerFor(ctx, ctx.user, organization, args, actorOf(ctx.user));
     await ctx.runMutation(components.platform.billing.startPlan, {
       organizationId: organization._id, organizationName: organization.name, planId: plan._id, billingOrganizationId, actor: actorOf(ctx.user),
@@ -272,7 +296,7 @@ export const setPaymentMethod = authedMutation({
   args: { billingOrganizationId: v.string(), paymentMethod },
   handler: async (ctx, args) => {
     requireAppUser(ctx.user);
-    if (await scheduledDeletion(ctx, ctx.user._id)) throw new Error("USER_DELETION_SCHEDULED");
+    if (await scheduledDeletion(ctx, ctx.user._id)) refuse("USER_DELETION_SCHEDULED");
     await assertManagesBilling(ctx, ctx.user._id, args.billingOrganizationId);
     await ctx.runMutation(components.platform.billing.setPaymentMethod, { ...args, actor: actorOf(ctx.user) });
   },
@@ -286,11 +310,11 @@ export const createOrganization = authedMutation({
   args: { billingOrganizationId: v.string(), name: v.string(), planId: v.string() },
   handler: async (ctx, args) => {
     requireAppUser(ctx.user);
-    if (await scheduledDeletion(ctx, ctx.user._id)) throw new Error("USER_DELETION_SCHEDULED");
-    if ((await readTenancyMode(ctx)) !== "organizations") throw new Error("ORGANIZATION_CREATION_DISABLED");
+    if (await scheduledDeletion(ctx, ctx.user._id)) refuse("USER_DELETION_SCHEDULED");
+    if ((await readTenancyMode(ctx)) !== "organizations") refuse("ORGANIZATION_CREATION_DISABLED");
     const billing = await assertManagesBilling(ctx, ctx.user._id, args.billingOrganizationId);
     const plan = await activePlan(ctx, args.planId);
-    if (!plan.isFreeForever && !billing.paymentMethod) throw new Error("PAYMENT_METHOD_REQUIRED");
+    if (!plan.isFreeForever && !billing.paymentMethod) refuse("PAYMENT_METHOD_REQUIRED");
     const name = organizationName(args.name);
     const organizationId = await createOrganizationWithOwner(ctx, name, ctx.user._id);
     await ctx.runMutation(components.platform.billing.startPlan, {
@@ -351,7 +375,7 @@ export const setDefaultPlan = adminMutation({
     requireAdmin(ctx.user);
     const running = await ctx.db.query("tenancySetups").order("desc").first();
     const plan = await ctx.runQuery(components.platform.billing.getPlan, { planId: args.planId });
-    if (running?.state === "running" && plan && !plan.isFreeForever) throw new Error("TENANCY_SETUP_RUNNING");
+    if (running?.state === "running" && plan && !plan.isFreeForever) refuse("TENANCY_SETUP_RUNNING");
     await ctx.runMutation(components.platform.billing.setDefaultPlan, { planId: args.planId, actor: actorOf(ctx.user) });
   },
 });

@@ -34,7 +34,8 @@
     "minute": "Minuto",
     "dayPeriod": "Mattina o pomeriggio",
     "daylightSaving": "Ora legale",
-    "breadcrumb": "Percorso di navigazione"
+    "breadcrumb": "Percorso di navigazione",
+    "loadMore": "Carica altri"
   },
   "theme": {
     "light": "Tema chiaro",

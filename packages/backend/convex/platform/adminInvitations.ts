@@ -1,3 +1,5 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
+import { invalidateTenancyCheck } from "./organizationOwnership";
 import { rememberNative } from "./nativeCapabilities";
 import type { QueryCtx } from "../_generated/server";
 import type { ObjectType } from "convex/values";
@@ -8,7 +10,7 @@ import { hashPassword } from "better-auth/crypto";
 import { sha256Hex } from "./tokenHash";
 import { validatePasswordStrength } from "./passwordStrength";
 import { ConvexError, v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
+import { createFunctionHandle, paginationOptsValidator } from "convex/server";
 import { components, internal } from "../_generated/api";
 import { action, internalMutation, internalQuery, mutation, query } from "../_generated/server";
 import { identitySession, evaluateSession } from "./sessionPolicy";
@@ -38,10 +40,11 @@ export const invite = adminMutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
-    if (role !== "admin") throw new Error("NOT_ADMIN");
+    if (role !== "admin") refuse("NOT_ADMIN");
     const email = args.email.trim().toLowerCase();
     const existing = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: email }] });
-    if (existing) throw new Error("ACCOUNT_ALREADY_EXISTS");
+    if (existing) refuse("ACCOUNT_ALREADY_EXISTS");
+    await invalidateTenancyCheck(ctx);
     const result = await ctx.runMutation(components.platform.adminInvitations.invite, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
     await ctx.scheduler.runAfter(0, internal.platform.adminInvitationActions.generateTokenAndSendEmail, result);
   },
@@ -51,7 +54,8 @@ export const remove = adminMutation({
   args: { entryId: v.string() },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
-    if (role !== "admin") throw new Error("NOT_ADMIN");
+    if (role !== "admin") refuse("NOT_ADMIN");
+    await invalidateTenancyCheck(ctx);
     return await ctx.runMutation(components.platform.adminInvitations.remove, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
   },
 });
@@ -62,6 +66,7 @@ export const createForSeed = internalMutation({
   },
   handler: async (ctx, args) => {
     assertLocalFixtures();
+    await invalidateTenancyCheck(ctx);
     return await ctx.runMutation(components.platform.adminInvitations.createForSeed, args);
   },
 });
@@ -90,7 +95,7 @@ export const claimInvitation = action({
   handler: async (ctx, { token }) => {
     const capability = Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, "0")).join("");
     const limit = await ctx.runMutation(internal.platform.rateLimits.consumeAuthRateLimit, { name: "tokenClaim", key: sha256Hex(token) });
-    if (!limit.ok) throw new Error("RATE_LIMITED");
+    if (!limit.ok) refuse("RATE_LIMITED");
     const result = await ctx.runMutation(components.platform.adminInvitations.exchangeEnrollment, { token, capabilityHash: sha256Hex(capability) });
     return { ...result, capability };
   },
@@ -105,17 +110,17 @@ export const advanceOnboardingStep = mutation({
     if (!user || pair?.session.authPurpose === "mcp-authorization") throw new ConvexError("NOT_AUTHENTICATED");
 
     const bound = await ctx.runQuery(components.platform.adminInvitations.boundOnboarding, { email: user.email, userId: user._id });
-    if (!bound && user.role !== "admin") throw new Error("INVALID_ENROLLMENT");
-    if (!Number.isInteger(args.step) || args.step < 1 || args.step > 3) throw new Error("INVALID_STEP");
+    if (!bound && user.role !== "admin") refuse("INVALID_ENROLLMENT");
+    if (!Number.isInteger(args.step) || args.step < 1 || args.step > 3) refuse("INVALID_STEP");
     if (args.step >= 2) {
       const assurance = await evaluateSession(ctx, pair!);
-      if (assurance.reason === "email_verification" || assurance.reason === "recovery" || !assurance.strong || !assurance.recent || !assurance.hasTotp) throw new Error("MFA_REQUIRED");
+      if (assurance.reason === "email_verification" || assurance.reason === "recovery" || !assurance.strong || !assurance.recent || !assurance.hasTotp) refuse("MFA_REQUIRED");
     }
     await ctx.runMutation(components.platform.adminInvitations.advanceOnboardingStep, { ...args, email: user.email });
     const saved = bound
       ? await ctx.runQuery(components.platform.adminInvitations.boundOnboarding, { email: user.email, userId: user._id })
       : await ctx.runQuery(components.platform.adminInvitations.getMyOnboardingStatus, { email: user.email });
-    if (!saved || saved.step !== args.step) throw new Error("ONBOARDING_PROGRESS_NOT_SAVED");
+    if (!saved || saved.step !== args.step) refuse("ONBOARDING_PROGRESS_NOT_SAVED");
   },
 });
 
@@ -125,26 +130,30 @@ export const completeOnboarding = mutation({
 
     const pair = await identitySession(ctx);
     const user = pair?.user;
-    if (!user || pair?.session.authPurpose === "mcp-authorization") throw new Error("NOT_AUTHENTICATED");
+    if (!user || pair?.session.authPurpose === "mcp-authorization") refuse("NOT_AUTHENTICATED");
 
     const assurance = await evaluateSession(ctx, pair!);
-    if (!assurance.strong || !assurance.recent || !assurance.hasTotp || user.banned || !user.emailVerified || user.twoFactorEnabled !== true) throw new Error("MFA_REQUIRED");
+    if (!assurance.strong || !assurance.recent || !assurance.hasTotp || user.banned || !user.emailVerified || user.twoFactorEnabled !== true) refuse("MFA_REQUIRED");
     const factor = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "twoFactor", where: [{ field: "userId", value: user._id }] });
-    if (!factor?.verified) throw new Error("MFA_REQUIRED");
+    if (!factor?.verified) refuse("MFA_REQUIRED");
     const bound = await ctx.runQuery(components.platform.adminInvitations.boundOnboarding, { email: user.email, userId: user._id });
     if (bound) {
-      if (!bound.completed && bound.step < 3) throw new Error("ONBOARDING_INCOMPLETE");
+      if (!bound.completed && bound.step < 3) refuse("ONBOARDING_INCOMPLETE");
       const policy = await ctx.runQuery(components.platform.appSettings.getInternal, { key: "adminPasskeyPolicy" });
       if (policy === "required") {
         const passkey = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "passkey", where: [{ field: "userId", value: user._id }] });
-        if (!passkey) throw new Error("PASSKEY_REQUIRED");
+        if (!passkey) refuse("PASSKEY_REQUIRED");
       }
       await ctx.runMutation(components.platform.adminInvitations.finishBoundOnboarding, { email: user.email, userId: user._id });
-      await ctx.runMutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: user._id }], update: { role: "admin", updatedAt: Date.now() } } });
+      // Through the user trigger: becoming an administrator must not leave an organization without an owner who can act.
+      await ctx.runMutation(components.betterAuth.adapter.updateOne, {
+        input: { model: "user", where: [{ field: "_id", value: user._id }], update: { role: "admin", updatedAt: Date.now() } },
+        onUpdateHandle: await createFunctionHandle(internal.platform.authTriggers.onUpdate),
+      });
       await scheduleAuditEvent(ctx, { actor: user.email, authenticatedUserId: user._id, sourceDetail: "admin-enrollment", action: "admin.onboarding.completed", resource: `user:${user._id}`, status: "succeeded" });
     } else {
       // Already-established legacy administrators retain their existing identity.
-      if (user.role !== "admin") throw new Error("INVALID_ENROLLMENT");
+      if (user.role !== "admin") refuse("INVALID_ENROLLMENT");
       await ctx.runMutation(components.platform.adminInvitations.completeOnboarding, { ...args, email: user.email });
     }
   },
@@ -183,15 +192,15 @@ export const register = action({
     // Retrying a completed request is harmless; this never creates a session.
     if (enrollment.userId) return;
     const limit = await ctx.runMutation(internal.platform.rateLimits.consumeAuthRateLimit, { name: "tokenClaim", key: capabilityHash });
-    if (!limit.ok) throw new Error("RATE_LIMITED");
-    if (!args.name.trim() || args.name.length > 200 || args.password.length > 128) throw new Error("INVALID_ACCOUNT_DETAILS");
+    if (!limit.ok) refuse("RATE_LIMITED");
+    if (!args.name.trim() || args.name.length > 200 || args.password.length > 128) refuse("INVALID_ACCOUNT_DETAILS");
     const strength = validatePasswordStrength(args.password, email, "admin");
     if (!strength.valid) throw new Error(strength.reason);
     const digest = new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode(args.password)));
     const sha1 = Array.from(digest, byte => byte.toString(16).padStart(2, "0")).join("").toUpperCase();
     const response = await fetch(`https://api.pwnedpasswords.com/range/${sha1.slice(0, 5)}`, { headers: { "Add-Padding": "true" } });
-    if (!response.ok) throw new Error("PASSWORD_CHECK_UNAVAILABLE");
-    if ((await response.text()).split("\n").some(line => line.split(":")[0].trim() === sha1.slice(5))) throw new Error("PASSWORD_COMPROMISED");
+    if (!response.ok) refuse("PASSWORD_CHECK_UNAVAILABLE");
+    if ((await response.text()).split("\n").some(line => line.split(":")[0].trim() === sha1.slice(5))) refuse("PASSWORD_COMPROMISED");
     const passwordHash = await hashPassword(args.password);
     await ctx.runMutation(internal.platform.adminInvitations.registerAccount, { capabilityHash, email, name: args.name.trim(), passwordHash });
   },
@@ -205,8 +214,9 @@ export const registerAccount = internalMutation({
     const enrollment = await ctx.runQuery(components.platform.adminInvitations.enrollment, { capabilityHash: args.capabilityHash, email: args.email });
     if (enrollment.userId) return;
     const existing = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: enrollment.email }] });
-    if (existing) throw new Error("ACCOUNT_ALREADY_EXISTS");
+    if (existing) refuse("ACCOUNT_ALREADY_EXISTS");
     const now = Date.now();
+    await invalidateTenancyCheck(ctx);
     const user = await ctx.runMutation(components.betterAuth.adapter.create, { input: { model: "user", data: {
       email: enrollment.email, name: args.name, emailVerified: true, role: "user", createdAt: now, updatedAt: now,
     } } });

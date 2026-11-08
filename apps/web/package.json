@@ -19,6 +19,7 @@
     "size:check": "size-limit --json"
   },
   "dependencies": {
+    "@web-app-starter/agentic": "workspace:*",
     "@convex-dev/better-auth": "0.12.6",
     "@web-app-starter/app-config": "workspace:*",
     "@web-app-starter/auth": "workspace:*",

@@ -1,5 +1,7 @@
 "use client";
 
+import { errorCode } from "@web-app-starter/agentic/errors";
+
 import * as React from "react";
 import { useMutation, useQuery } from "convex/react";
 import {
@@ -200,7 +202,7 @@ function toAnnouncementMutationErrorMessage(error: unknown, fallback: string): s
   ];
 
   for (const [code, message] of errorMessages) {
-    if (raw.includes(code)) return message;
+    if (errorCode(error) === code) return message;
   }
 
   if (raw.includes("Server Error")) {

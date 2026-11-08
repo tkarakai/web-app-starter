@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 import type { GenericCtx } from "@convex-dev/better-auth";
 import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import type { BetterAuthPlugin } from "better-auth";
@@ -180,7 +181,7 @@ export const convexRateLimitPlugin = (convexCtx: GenericCtx<DataModel>): BetterA
 /** Delivery budget is independent of route names, client headers and session transport. */
 export async function sendLimitedAuthEmail(ctx: GenericCtx<DataModel>, options: Parameters<typeof sendAuthEmail>[0]): Promise<void> {
   const recipient = normalizeAuthRecipient(options.to);
-  if (!recipient) throw new Error("INVALID_EMAIL_RECIPIENT");
+  if (!recipient) refuse("INVALID_EMAIL_RECIPIENT");
   await reserveAuthEmail(ctx, recipient);
   await sendAuthEmail({ ...options, to: recipient });
 }
@@ -200,9 +201,9 @@ async function reserveAuthEmail(ctx: GenericCtx<DataModel>, recipient: string): 
 
 export async function sendAuthOtp(email: string, endpoint?: { context: unknown }): Promise<void> {
   const delivery = (endpoint?.context as { authOtpDelivery?: OtpDelivery } | undefined)?.authOtpDelivery;
-  if (!delivery) throw new Error("AUTH_OTP_RESERVATION_REQUIRED");
-  if (delivery.recipient !== normalizeAuthRecipient(email)) throw new Error("INVALID_EMAIL_RECIPIENT");
+  if (!delivery) refuse("AUTH_OTP_RESERVATION_REQUIRED");
+  if (delivery.recipient !== normalizeAuthRecipient(email)) refuse("INVALID_EMAIL_RECIPIENT");
   const code = delivery.code();
-  if (!code) throw new Error("AUTH_OTP_CHALLENGE_REQUIRED");
+  if (!code) refuse("AUTH_OTP_CHALLENGE_REQUIRED");
   await sendAuthEmail({ to: delivery.recipient, type: "email-otp", urlOrCode: code });
 }

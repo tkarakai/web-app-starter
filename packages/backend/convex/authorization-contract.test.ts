@@ -5,6 +5,9 @@ import { describe, expect, test } from "vitest";
 import { api, components, internal } from "./_generated/api";
 import authSchema from "./platform/betterAuth/schema";
 
+/** One page of a paginated list, enough for every test here. */
+const PAGE = { numItems: 100, cursor: null };
+
 const authModules = import.meta.glob("./platform/betterAuth/**/*.*s");
 
 async function createFixture() {
@@ -103,12 +106,12 @@ const protectedWrites = [
 ] as const;
 
 describe("registered backend authorization contract", () => {
-  test("anonymous queries return null for existing private resources", async () => {
+  test("anonymous queries return null (paginated lists an empty page) for existing private resources", async () => {
     const f = await createFixture();
     expect(await f.t.query(api.platform.auth.getCurrentUser, {})).toBeNull();
-    expect(await f.t.query(api.projects.list, {})).toBeNull();
+    expect((await f.t.query(api.projects.list, { paginationOpts: PAGE })).page).toEqual([]);
     expect(await f.t.query(api.projects.get, { id: f.projectId })).toBeNull();
-    expect(await f.t.query(api.tasks.listByProject, { projectId: f.projectId })).toBeNull();
+    expect((await f.t.query(api.tasks.listByProject, { projectId: f.projectId, paginationOpts: PAGE })).page).toEqual([]);
     expect(await f.t.query(api.files.listUploads, { projectId: f.projectId })).toBeNull();
   });
 
@@ -117,9 +120,9 @@ describe("registered backend authorization contract", () => {
     expect(await f.owner.query(api.projects.get, { id: f.projectId })).toMatchObject({
       _id: f.projectId, name: "Private project",
     });
-    expect((await f.owner.query(api.projects.list, {}))?.map((p) => p._id)).toEqual([f.projectId]);
-    expect((await f.nonOwner.query(api.projects.list, {}))?.map((p) => p._id)).toEqual([f.otherProjectId]);
-    expect(await f.owner.query(api.tasks.listByProject, { projectId: f.projectId })).toMatchObject([
+    expect(((await f.owner.query(api.projects.list, { paginationOpts: PAGE })).page)?.map((p) => p._id)).toEqual([f.projectId]);
+    expect(((await f.nonOwner.query(api.projects.list, { paginationOpts: PAGE })).page)?.map((p) => p._id)).toEqual([f.otherProjectId]);
+    expect((await f.owner.query(api.tasks.listByProject, { projectId: f.projectId, paginationOpts: PAGE })).page).toMatchObject([
       { _id: f.taskId, title: "Private task" },
     ]);
     expect(await f.owner.query(api.files.listUploads, { projectId: f.projectId })).toMatchObject([
@@ -130,7 +133,7 @@ describe("registered backend authorization contract", () => {
   test("a signed-in non-owner cannot read project, task or upload details", async () => {
     const f = await createFixture();
     expect(await f.nonOwner.query(api.projects.get, { id: f.projectId })).toBeNull();
-    await expect(f.nonOwner.query(api.tasks.listByProject, { projectId: f.projectId })).rejects.toThrow("PROJECT_NOT_FOUND");
+    await expect(f.nonOwner.query(api.tasks.listByProject, { projectId: f.projectId, paginationOpts: PAGE })).rejects.toThrow("PROJECT_NOT_FOUND");
     await expect(f.nonOwner.query(api.files.listUploads, { projectId: f.projectId })).rejects.toThrow("PROJECT_NOT_FOUND");
   });
 
@@ -159,12 +162,12 @@ describe("registered backend authorization contract", () => {
     await f.owner.mutation(api.projects.update, { id: f.projectId, name: "Renamed" });
     await f.owner.mutation(api.tasks.update, { id: f.taskId, status: "done" });
     expect(await f.owner.query(api.projects.get, { id: f.projectId })).toMatchObject({ name: "Renamed" });
-    expect(await f.owner.query(api.tasks.listByProject, { projectId: f.projectId })).toMatchObject([{ status: "done" }]);
+    expect((await f.owner.query(api.tasks.listByProject, { projectId: f.projectId, paginationOpts: PAGE })).page).toMatchObject([{ status: "done" }]);
     await expect(f.owner.mutation(api.files.generateUploadUrl, {})).rejects.toThrow("USE_AUTHENTICATED_UPLOAD");
 
     await f.owner.mutation(api.tasks.remove, { id: f.taskId });
     await f.owner.mutation(api.files.deleteUpload, { id: f.uploadId });
-    expect(await f.owner.query(api.tasks.listByProject, { projectId: f.projectId })).toEqual([]);
+    expect((await f.owner.query(api.tasks.listByProject, { projectId: f.projectId, paginationOpts: PAGE })).page).toEqual([]);
     expect(await f.owner.query(api.files.listUploads, { projectId: f.projectId })).toEqual([]);
     expect(await f.t.run((ctx) => ctx.storage.get(f.storageId))).toBeNull();
   });

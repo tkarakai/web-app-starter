@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 /** Explicit opt-in to native definitions, without impersonating ctx.auth or running wrappers twice. */
 import { v, type PropertyValidators, type ValidatorJSON } from "convex/values";
 import { validate } from "convex-helpers/validators";
@@ -23,7 +24,7 @@ export function captureNativeBuilder<T extends (definition: never) => object>(bu
 }
 export function nativeDefinition(registered: object) {
   const definition = definitions.get(registered);
-  if (!definition) throw new Error("NATIVE_CAPABILITY_NOT_REGISTERED");
+  if (!definition) refuse("NATIVE_CAPABILITY_NOT_REGISTERED");
   return definition;
 }
 export async function invokeNative(registered: object, ctx: QueryCtx | MutationCtx, auth: unknown, input: unknown) {
@@ -42,7 +43,7 @@ export function validatorSchema(validator: ValidatorJSON): Record<string, unknow
     case "object": return { type: "object", properties: Object.fromEntries(Object.entries(validator.value).map(([name, field]) => [name, validatorSchema(field.fieldType)])), required: Object.entries(validator.value).filter(([, field]) => !field.optional).map(([name]) => name), additionalProperties: false };
     case "record": return { type: "object", additionalProperties: validatorSchema(validator.values.fieldType) };
     case "any": return {};
-    default: throw new Error("CAPABILITY_REQUIRES_NON_JSON_INPUT");
+    default: refuse("CAPABILITY_REQUIRES_NON_JSON_INPUT");
   }
 }
 export function nativeSchema(registered: object) { return validatorSchema((v.object(nativeDefinition(registered).args) as unknown as { json: ValidatorJSON }).json); }

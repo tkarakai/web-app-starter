@@ -1,3 +1,4 @@
+import { refuse } from "../errors";
 /** Idempotent imports, called by host copy mutations in the same transaction. */
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
@@ -20,7 +21,7 @@ export const copy = mutation({
   returns: v.object({ inserted: v.number(), skipped: v.number() }),
   handler: async (ctx, { batch, nextCursor, complete }) => {
     await requireCopying(ctx);
-    if (batch.rows.length > 100) throw new Error("MIGRATION_BATCH_TOO_LARGE");
+    if (batch.rows.length > 100) refuse("MIGRATION_BATCH_TOO_LARGE");
     let inserted = 0;
     let skipped = 0;
     switch (batch.table) {

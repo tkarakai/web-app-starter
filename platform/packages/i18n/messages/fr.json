@@ -34,7 +34,8 @@
     "minute": "Minute",
     "dayPeriod": "Matin ou après-midi",
     "daylightSaving": "Heure d’été",
-    "breadcrumb": "Fil d’Ariane"
+    "breadcrumb": "Fil d’Ariane",
+    "loadMore": "Charger plus"
   },
   "theme": {
     "light": "Thème clair",
