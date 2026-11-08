@@ -25,20 +25,20 @@ describe("pi tool bridge", () => {
     expect(tool.description).toBe("Run an authorized operation");
     expect(tool.parameters.required).toEqual(["name"]);
     expect(tool.executionMode).toBe("sequential");
-    const result = await tool.execute("call-1", { name: "announcements_create" }, abort.signal);
+    const result = await tool.execute("call-1", { name: "announcements_create" }, abort.signal, undefined, {} as never);
     expect(calls).toEqual([[{ name: "capabilities_execute", arguments: { name: "announcements_create" } }, undefined, { signal: abort.signal }]]);
-    expect(JSON.parse(result.content[0].text)).toEqual({ content: [{ type: "text", text: "created" }] });
+    expect(JSON.parse((result.content[0].type === "text" ? result.content[0].text : ""))).toEqual({ content: [{ type: "text", text: "created" }] });
   });
 
   test("uses the renewed connection and preserves remote refusals", async () => {
     let active = connection(async () => { throw new Error("expired credential"); });
     const [tool] = await discoverTools(() => active);
-    const failed = await tool.execute("call-1", {});
-    expect(failed.content[0].text).toContain("Use /auth");
-    expect(failed.content[0].text).toContain("checking whether the previous write succeeded");
-    expect(failed.content[0].text).not.toContain("expired credential");
+    const failed = await tool.execute("call-1", {}, undefined, undefined, {} as never);
+    expect((failed.content[0].type === "text" ? failed.content[0].text : "")).toContain("Use /auth");
+    expect((failed.content[0].type === "text" ? failed.content[0].text : "")).toContain("checking whether the previous write succeeded");
+    expect((failed.content[0].type === "text" ? failed.content[0].text : "")).not.toContain("expired credential");
     active = connection(async () => ({ isError: true, content: [{ type: "text", text: "Forbidden" }] }));
-    const renewed = await tool.execute("call-2", {});
-    expect(JSON.parse(renewed.content[0].text)).toEqual({ isError: true, content: [{ type: "text", text: "Forbidden" }] });
+    const renewed = await tool.execute("call-2", {}, undefined, undefined, {} as never);
+    expect(JSON.parse((renewed.content[0].type === "text" ? renewed.content[0].text : ""))).toEqual({ isError: true, content: [{ type: "text", text: "Forbidden" }] });
   });
 });
