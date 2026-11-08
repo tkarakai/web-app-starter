@@ -117,10 +117,7 @@ export const config = {
   matcher: [
     {
       source: "/((?!api|_next/static|_next/image|favicon\\.ico|icon\\.svg|apple-touch-icon\\.png).*)",
-      missing: [
-        { type: "header", key: "next-router-prefetch" },
-        { type: "header", key: "purpose", value: "prefetch" },
-      ],
+      // Prefetch headers are client-controlled: page requests must share the rate limit.
     },
   ],
 };

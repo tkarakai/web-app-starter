@@ -279,11 +279,17 @@ export function AppSidebar({
 function OrganizationProjects({ selectedProjectId, onSelectProject, onCreate }: Pick<AppSidebarProps, "selectedProjectId" | "onSelectProject"> & { onCreate: () => void }) {
   const tc = useTranslations("common");
   const tp = useTranslations("projects");
-  const projectPages = usePaginatedQuery(api.projects.list, {}, { initialNumItems: PROJECTS_PAGE });
+  const projectPages = usePaginatedQuery(api.projects.list, { expectedOrganizationId: useOrganizations()?.activeOrganizationId ?? "" }, { initialNumItems: PROJECTS_PAGE });
   const projects: Project[] = projectPages.results;
   return (
     <SidebarMenu>
-      {projects.length === 0 ? (
+      {projectPages.status === "LoadingFirstPage" ? (
+        <SidebarMenuItem>
+          <SidebarMenuButton disabled>
+            <span role="status">{tc("loading")}</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      ) : projects.length === 0 ? (
         <SidebarMenuItem>
           <SidebarMenuButton
             className="text-muted-foreground italic"

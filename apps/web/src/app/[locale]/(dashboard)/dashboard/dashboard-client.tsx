@@ -165,7 +165,7 @@ function ProjectsOverview({
 }) {
   const tc = useTranslations("common");
   const td = useTranslations("dashboard");
-  const projects = usePaginatedQuery(api.projects.listWithStats, {}, { initialNumItems: PROJECTS_PAGE });
+  const projects = usePaginatedQuery(api.projects.listWithStats, { expectedOrganizationId: useOrganizations()?.activeOrganizationId ?? "" }, { initialNumItems: PROJECTS_PAGE });
 
   if (projects.status === "LoadingFirstPage") {
     return (
