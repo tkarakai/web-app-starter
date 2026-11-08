@@ -122,6 +122,7 @@ export const AUDIT_ACTIONS = [
   "user.deletion.canceled",
   "user.deletion.completed",
   "user.deletion.blocked",
+  "user.deletion.retried",
 
   // waitlist.*
   "waitlist.joined",

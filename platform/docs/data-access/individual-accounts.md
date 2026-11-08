@@ -23,14 +23,13 @@ Create `packages/backend/convex/personalNotes.ts`:
 
 <!-- data-access-file: personalNotes.ts -->
 ```ts
-import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import {
-  assertMaxLength, authedMutation, authedQuery, MAX_DESCRIPTION_LENGTH,
+  assertMaxLength, authedMutation, authedPaginatedQuery, authedQuery, MAX_DESCRIPTION_LENGTH,
 } from "./platform/functions";
 
-export const list = authedQuery({
-  args: { paginationOpts: paginationOptsValidator },
+export const list = authedPaginatedQuery({
+  args: {},
   handler: (ctx, args) => ctx.db.query("personalNotes")
     .withIndex("by_owner", q => q.eq("ownerId", ctx.ownerId))
     .order("desc").paginate(args.paginationOpts),
@@ -83,7 +82,9 @@ and organization deletion do not change this rule.
 Build the dashboard around personal data, without requiring `useOrganizations()` to report an
 active org before rendering it. Keep the platform protected layout and account security UI;
 omit organization management from your app navigation if it is irrelevant. Do not gate this
-personal page behind the sample's `NoOrganization` workspace state.
+personal page behind the sample's `NoOrganization` workspace state. Without an authorized
+caller, `list` returns an empty finished page (`page: []`, `isDone: true`,
+`continueCursor: ""`), while `get` returns `null`.
 
 This produces an individual-service experience with the current primitives. **It does not
 disable the organization backend.** Signup still creates a personal organization, and its

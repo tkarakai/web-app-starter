@@ -1,5 +1,7 @@
 "use client";
 
+import { errorCode } from "@web-app-starter/agentic/errors";
+
 import { useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
@@ -20,10 +22,10 @@ export function formatPrice(cents: number, locale: string): string {
 
 /** The `billing.errors.*` key for a Convex error thrown by `api.platform.billing.*`. */
 export function billingErrorKey(error: unknown): "paymentMethodRequired" | "nameRequired" | "notAllowed" | "inUse" | "generic" {
-  const message = error instanceof Error ? error.message : String(error ?? "");
-  if (message.includes("PAYMENT_METHOD_REQUIRED")) return "paymentMethodRequired";
-  if (message.includes("ORGANIZATION_NAME_REQUIRED")) return "nameRequired";
-  if (message.includes("BILLING_ORGANIZATION_IN_USE")) return "inUse";
-  if (message.includes("NOT_ALLOWED") || message.includes("BILLING_ORGANIZATION_NOT_FOUND")) return "notAllowed";
+  const code = errorCode(error);
+  if (code === "PAYMENT_METHOD_REQUIRED") return "paymentMethodRequired";
+  if (code === "ORGANIZATION_NAME_REQUIRED") return "nameRequired";
+  if (code === "BILLING_ORGANIZATION_IN_USE") return "inUse";
+  if (code === "NOT_ALLOWED" || code === "BILLING_ORGANIZATION_NOT_FOUND") return "notAllowed";
   return "generic";
 }

@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 import type { HttpRouter } from "convex/server";
 import { isRateLimitError } from "convex-helpers/server/rateLimit";
 
@@ -127,10 +128,10 @@ export function registerPlatformRoutes(http: HttpRouter): void {
         try {
           body = await request.json();
         } catch {
-          throw new Error("INVALID_REQUEST");
+          refuse("INVALID_REQUEST");
         }
         if (body === null || typeof body !== "object" || Array.isArray(body)) {
-          throw new Error("INVALID_REQUEST");
+          refuse("INVALID_REQUEST");
         }
         const { email, meta } = body as Record<string, unknown>;
 

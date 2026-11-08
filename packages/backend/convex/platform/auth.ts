@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 import { createClient, type AuthFunctions, type GenericCtx } from "@convex-dev/better-auth";
 import { makeFunctionReference } from "convex/server";
 import { requireActionCtx } from "@convex-dev/better-auth/utils";
@@ -30,7 +31,7 @@ import { createAssuranceHooks } from "./authAssurance";
 import { sessionFields, userFields } from "./sessionFields";
 import { identitySession } from "./sessionPolicy";
 import { organizationPlugin } from "./organizationPlugin";
-import { memberTriggers, SUCCESSOR_REQUIRED, successorRequiredMessage, userTriggers } from "./organizationOwnership";
+import { memberTriggers, organizationTriggers, SUCCESSOR_REQUIRED, successorRequiredMessage, userTriggers } from "./organizationOwnership";
 
 /** Truncate a string to at most `max` characters. */
 function truncate(value: string | undefined, max: number): string | undefined {
@@ -280,7 +281,7 @@ export const authComponent = createClient<DataModel, typeof authSchema>(
       onUpdate: makeFunctionReference<"mutation">("platform/authTriggers:onUpdate"),
       onDelete: makeFunctionReference<"mutation">("platform/authTriggers:onDelete"),
     } as unknown as AuthFunctions,
-    triggers: { member: memberTriggers, user: userTriggers },
+    triggers: { member: memberTriggers, user: userTriggers, organization: organizationTriggers },
   },
 );
 
@@ -806,13 +807,13 @@ export const createAuthOptions = (
               { email: user.email },
             );
             if (!isSignupOnboarding(onboardingType) && !hasWaitlistInvitation && !hasAdminInvitation && !hasOrganizationInvitation) {
-              throw new Error("SIGNUP_DISABLED");
+              refuse("SIGNUP_DISABLED");
             }
 
             // Reserved administrator addresses require the bound enrollment flow.
             // This applies to every account-creation method, including public signup.
             if (await actionCtx.runQuery(components.platform.adminInvitations.requiresEnrollment, { email: user.email })) {
-              throw new Error("ADMIN_ENROLLMENT_REQUIRED");
+              refuse("ADMIN_ENROLLMENT_REQUIRED");
             }
 
             // Nobody signs up until the platform admin has chosen a tenancy mode
@@ -849,18 +850,18 @@ export const createAuthOptions = (
           before: async (user) => {
             const userId = (user as Record<string, unknown>).id;
             if (typeof userId !== "string") return;
-            const blocker = await requireActionCtx(ctx).runQuery(internal.platform.userDeletion.blockerFor, { userId });
-            if (blocker) throw new APIError("CONFLICT", { code: blocker.code, message: blocker.code });
             const ownerId = (user as Record<string, unknown>).userId;
-            await requireActionCtx(ctx).runMutation(internal.platform.userDeletion.prepareCleanup, {
+            // The same deletion path as `agentUsers.remove` (userDeletion.ts): blockers, then cleanup inputs.
+            const blocker = await requireActionCtx(ctx).runMutation(internal.platform.userDeletion.beginDeletion, {
               userId, ownerId: typeof ownerId === "string" ? ownerId : userId, email: user.email, name: user.name ?? "",
             });
+            if (blocker) throw new APIError("CONFLICT", { code: blocker.code, message: blocker.code });
           },
           after: async (user) => {
             const userId = (user as Record<string, unknown>).id;
             if (typeof userId !== "string") return;
             try {
-              await requireActionCtx(ctx).runMutation(internal.platform.organizations.removeUserMemberships, { userId, email: user.email });
+              // Memberships, then app-owned and platform-owned data (`finishUserDeletion`).
               const migratedOwnerId = (user as Record<string, unknown>).userId;
               await requireActionCtx(ctx).runMutation(internal.platform.userDeletion.forget, {
                 userId, ownerId: typeof migratedOwnerId === "string" ? migratedOwnerId : userId,
@@ -974,7 +975,7 @@ export const viewBackupCodes = action({
   args: { password: v.optional(v.string()) },
   handler: async (ctx, { password }): Promise<string[]> => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity || typeof identity.sessionId !== "string") throw new Error("NOT_AUTHENTICATED");
+    if (!identity || typeof identity.sessionId !== "string") refuse("NOT_AUTHENTICATED");
     return await readBackupCodes(ctx, identity.subject, identity.sessionId, password);
   },
 });

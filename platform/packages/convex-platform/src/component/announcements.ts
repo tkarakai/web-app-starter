@@ -1,3 +1,4 @@
+import { refuse } from "../errors";
 import { mutation as scheduledMutation } from "./_generated/server";
 import { migrationInProgress } from "./migrationGuard";
 import { v } from "convex/values";
@@ -88,7 +89,7 @@ function isValidHttpUrl(value: string): boolean {
 function assertFiniteTimestamp(value: number | undefined, fieldName: string): void {
   if (value === undefined) return;
   if (!Number.isFinite(value)) {
-    throw new Error(`INVALID_${fieldName.toUpperCase()}`);
+    refuse(`INVALID_${fieldName.toUpperCase()}`);
   }
 }
 
@@ -105,10 +106,10 @@ function validateAnnouncementInput(input: AnnouncementEditableFields): void {
   );
 
   if (!input.name.trim()) {
-    throw new Error("NAME_REQUIRED");
+    refuse("NAME_REQUIRED");
   }
   if (!input.bannerText.trim()) {
-    throw new Error("BANNER_TEXT_REQUIRED");
+    refuse("BANNER_TEXT_REQUIRED");
   }
 
   assertFiniteTimestamp(input.scheduleStart, "scheduleStart");
@@ -119,21 +120,21 @@ function validateAnnouncementInput(input: AnnouncementEditableFields): void {
     input.scheduleEnd !== undefined &&
     input.scheduleStart >= input.scheduleEnd
   ) {
-    throw new Error("INVALID_SCHEDULE_WINDOW");
+    refuse("INVALID_SCHEDULE_WINDOW");
   }
 
   if (input.callToActionName && !input.callToActionUrl) {
-    throw new Error("CTA_URL_REQUIRED");
+    refuse("CTA_URL_REQUIRED");
   }
   if (input.callToActionUrl && !isValidHttpUrl(input.callToActionUrl)) {
-    throw new Error("CTA_URL_INVALID");
+    refuse("CTA_URL_INVALID");
   }
   if (input.callToActionUrl && !input.callToActionName) {
-    throw new Error("CTA_NAME_REQUIRED");
+    refuse("CTA_NAME_REQUIRED");
   }
 
   if (input.learnMoreName && !input.learnMoreContent) {
-    throw new Error("LEARN_MORE_CONTENT_REQUIRED");
+    refuse("LEARN_MORE_CONTENT_REQUIRED");
   }
 }
 
@@ -408,12 +409,12 @@ async function publishAnnouncementNowInternal(
   }
 ): Promise<{ disabledIds: Id<"announcements">[] }> {
   const announcement = await ctx.db.get(args.announcementId);
-  if (!announcement) throw new Error("ANNOUNCEMENT_NOT_FOUND");
-  if (isArchived(announcement)) throw new Error("ANNOUNCEMENT_ARCHIVED");
+  if (!announcement) refuse("ANNOUNCEMENT_NOT_FOUND");
+  if (isArchived(announcement)) refuse("ANNOUNCEMENT_ARCHIVED");
 
   const now = Date.now();
   if (args.requireEligibility && !isPublishNowEligible(announcement, now)) {
-    throw new Error("PUBLISH_NOW_NOT_ALLOWED");
+    refuse("PUBLISH_NOW_NOT_ALLOWED");
   }
 
   const disabledIds = await disableLiveAnnouncementsExcept(
@@ -459,10 +460,10 @@ async function unpublishAnnouncementNowInternal(
   }
 ): Promise<void> {
   const announcement = await ctx.db.get(args.announcementId);
-  if (!announcement) throw new Error("ANNOUNCEMENT_NOT_FOUND");
+  if (!announcement) refuse("ANNOUNCEMENT_NOT_FOUND");
 
   if (args.requireLive && !announcement.isLive) {
-    throw new Error("ANNOUNCEMENT_NOT_LIVE");
+    refuse("ANNOUNCEMENT_NOT_LIVE");
   }
 
   if (args.clearScheduledJob && args.cancelScheduledJob !== false) {
@@ -1002,7 +1003,7 @@ export const update = mutation({
   handler: async (ctx, args) => {
 
     const existing = await ctx.db.get(args.announcementId);
-    if (!existing) throw new Error("ANNOUNCEMENT_NOT_FOUND");
+    if (!existing) refuse("ANNOUNCEMENT_NOT_FOUND");
 
     const patch: Partial<AnnouncementEditableFields> = {};
     const hasName = Object.prototype.hasOwnProperty.call(args.patch, "name");
@@ -1278,7 +1279,7 @@ export const archive = mutation({
   handler: async (ctx, args) => {
 
     const existing = await ctx.db.get(args.announcementId);
-    if (!existing) throw new Error("ANNOUNCEMENT_NOT_FOUND");
+    if (!existing) refuse("ANNOUNCEMENT_NOT_FOUND");
     if (isArchived(existing)) return;
 
     await tryCancelScheduledJob(ctx, existing.publishJobId);
@@ -1325,7 +1326,7 @@ export const remove = mutation({
   handler: async (ctx, args) => {
 
     const existing = await ctx.db.get(args.announcementId);
-    if (!existing) throw new Error("ANNOUNCEMENT_NOT_FOUND");
+    if (!existing) refuse("ANNOUNCEMENT_NOT_FOUND");
 
     await tryCancelScheduledJob(ctx, existing.publishJobId);
     await tryCancelScheduledJob(ctx, existing.unpublishJobId);

@@ -1,3 +1,4 @@
+import { refuse } from "@web-app-starter/convex-platform/errors";
 import { rememberNative } from "./nativeCapabilities";
 import type { QueryCtx } from "../_generated/server";
 import type { ObjectType } from "convex/values";
@@ -33,7 +34,7 @@ export const join = internalMutation({
     );
     const onboardingType = parseOnboardingType(onboardingTypeRaw);
     if (!isWaitlistOnboarding(onboardingType)) {
-      throw new Error("WAITLIST_NOT_ENABLED");
+      refuse("WAITLIST_NOT_ENABLED");
     }
 
     return await ctx.runMutation(components.platform.waitlist.join, args);
@@ -63,7 +64,7 @@ export const invite = adminMutation({
   args: { entryId: v.string() },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
-    if (role !== "admin") throw new Error("NOT_ADMIN");
+    if (role !== "admin") refuse("NOT_ADMIN");
     const result = await ctx.runMutation(components.platform.waitlist.invite, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
     await ctx.scheduler.runAfter(0, internal.platform.waitlistActions.generateTokenAndSendEmail, result);
   },
@@ -73,7 +74,7 @@ export const inviteMany = adminMutation({
   args: { emails: v.array(v.string()) },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
-    if (role !== "admin") throw new Error("NOT_ADMIN");
+    if (role !== "admin") refuse("NOT_ADMIN");
     const result = await ctx.runMutation(components.platform.waitlist.inviteMany, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
     for (const delivery of result.deliveries) {
       await ctx.scheduler.runAfter(0, internal.platform.waitlistActions.generateTokenAndSendEmail, delivery);
@@ -86,7 +87,7 @@ export const uninvite = adminMutation({
   args: { entryId: v.string() },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
-    if (role !== "admin") throw new Error("NOT_ADMIN");
+    if (role !== "admin") refuse("NOT_ADMIN");
     return await ctx.runMutation(components.platform.waitlist.uninvite, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
   },
 });
@@ -95,7 +96,7 @@ export const remove = adminMutation({
   args: { entryId: v.string() },
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
-    if (role !== "admin") throw new Error("NOT_ADMIN");
+    if (role !== "admin") refuse("NOT_ADMIN");
     return await ctx.runMutation(components.platform.waitlist.remove, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
   },
 });

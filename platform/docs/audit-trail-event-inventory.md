@@ -187,9 +187,9 @@ Administrator enrollment follows the [bound enrollment contract](authentication-
 | `admin.organization.deleted` | `server:admin-organizations` | platform administrator | `name` |
 | `admin.organization.cleanup_retried` | `server:admin-organizations` | platform administrator | — |
 
-The `server:account-deletion` row is written by `removeMemberships`
+The `server:account-deletion` row is written by `removeMembership`
 (`packages/backend/convex/platform/organizationAccess.ts`) when deleting an account leaves an
-organization with no members.
+organization with no members (the account-deletion cleanup job, `userDeletion.ts`).
 
 Personal organizations created at sign-up, by the upgrade migration or for a signed-in user
 with none are not audited separately; `auth.sign_up` covers the sign-up case.

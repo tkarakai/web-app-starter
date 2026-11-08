@@ -30,8 +30,9 @@ describe("organization cleanup", () => {
   test("errors are retried with backoff, then the cleanup stops as failed until an administrator retries it", async () => {
     const f = await fixture();
     const organizationId = "org-under-cleanup";
-    const record = (outcome: "progress" | "error" | "done") =>
-      f.t.mutation(internal.platform.organizations.recordCleanup, { organizationId, batches: 1, outcome, error: outcome === "error" ? "transient" : undefined });
+    // Each run carries the row's run token; a retry starts a new one.
+    const record = async (outcome: "progress" | "error" | "done") =>
+      f.t.mutation(internal.platform.organizations.recordCleanup, { organizationId, runId: (await f.row(organizationId))?.runId, batches: 1, outcome, error: outcome === "error" ? "transient" : undefined });
 
     expect(await f.t.mutation(internal.platform.organizations.beginCleanup, { organizationId })).toBe(true);
     await record("progress");

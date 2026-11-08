@@ -214,3 +214,19 @@ trusted backend entry points and cannot be called directly by clients.
 `userProfiles`, Better Auth sessions and rate-limit state stay in `convex/platform/`
 and the host database/components. They do not read the platform component database
 directly; settings and protected-address queries cross its typed API boundary.
+
+
+## Public Convex refusals
+
+Use `refuse(code, details?)` from `@web-app-starter/convex-platform/errors` for public
+refusals, including inside platform components. It throws `ConvexError({ ...details, code })`.
+Put explicit client-safe detail in `details` only: Convex preserves this data even when production
+redacts the error message and stack. Organization successor refusals include an `organizations`
+array with IDs and names; agents receive a fixed hint instead of that detail.
+
+Clients read `errorCode(error)` from `@web-app-starter/agentic/errors`. It checks `data.code`,
+normalizes `data.kind === "RateLimited"`, and supports whole legacy code tokens in development
+messages. Do not match substrings of `error.message`: production redaction removes the code,
+and names such as `CTA_NAME_REQUIRED` contain other code names. Map recognized codes to local
+messages and give unknown codes a generic fallback. The global Convex handler uses the same
+parser, so existing app translation maps continue to work with structured refusals.

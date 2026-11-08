@@ -34,7 +34,8 @@
     "minute": "Minuta",
     "dayPeriod": "Dopoledne nebo odpoledne",
     "daylightSaving": "Letní čas",
-    "breadcrumb": "Drobečková navigace"
+    "breadcrumb": "Drobečková navigace",
+    "loadMore": "Načíst další"
   },
   "theme": {
     "light": "Světlý motiv",

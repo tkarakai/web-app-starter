@@ -1,3 +1,5 @@
+
+import { errorCode } from "@web-app-starter/agentic/errors";
 import { api } from "@repo/backend";
 import { A2A_VERSION, a2aError, messageRequest, a2aWireValue } from "@web-app-starter/agentic/a2a";
 import { safeCapabilityError } from "@web-app-starter/agentic/errors";
@@ -41,8 +43,8 @@ export async function POST(request: Request) {
     else return privateJson(a2aError(id, -32601, "Method not found"), 400);
     return privateJson({ jsonrpc: "2.0", id, result: a2aWireValue(result) });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    const code = message.includes("TASK_NOT_FOUND") ? -32001 : message.includes("TASK_NOT_CANCELABLE") ? -32002 : message.includes("PUSH_NOT_SUPPORTED") ? -32003 : message.includes("CONTENT_TYPE_NOT_SUPPORTED") ? -32005 : -32602;
+    const publicCode = errorCode(error);
+    const code = publicCode === "TASK_NOT_FOUND" ? -32001 : publicCode === "TASK_NOT_CANCELABLE" ? -32002 : publicCode === "PUSH_NOT_SUPPORTED" ? -32003 : publicCode === "CONTENT_TYPE_NOT_SUPPORTED" ? -32005 : -32602;
     const text = code === -32001 ? "TaskNotFoundError" : code === -32002 ? "TaskNotCancelableError" : code === -32003 ? "PushNotificationNotSupportedError" : code === -32005 ? "ContentTypeNotSupportedError" : safeCapabilityError(error);
     const errorResult = a2aError(id, code, text);
     return privateJson(pendingTaskId ? { ...errorResult, error: { ...errorResult.error, data: [{ "@type": "type.googleapis.com/google.rpc.ErrorInfo", reason: "INSPECT_TASK_BEFORE_RETRY", metadata: { taskId: pendingTaskId } }] } } : errorResult, 400);

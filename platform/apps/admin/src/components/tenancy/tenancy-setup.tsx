@@ -1,5 +1,7 @@
 "use client";
 
+import { errorCode } from "@web-app-starter/agentic/errors";
+
 import * as React from "react";
 import Link from "next/link";
 import { useMutation, useQuery } from "convex/react";
@@ -27,7 +29,7 @@ import {
 } from "@web-app-starter/design-system";
 
 type Mode = "individuals" | "organizations";
-const message = (error: unknown) => (error instanceof Error ? error.message.replace(/^.*Uncaught Error: /, "").split("\n")[0] : "Failed");
+const message = (error: unknown) => errorCode(error) ?? "Action failed. Please try again.";
 
 const MODE_COPY: Record<Mode, { title: string; description: string }> = {
   individuals: {
@@ -44,11 +46,25 @@ const MODE_COPY: Record<Mode, { title: string; description: string }> = {
  * Choose the tenancy mode, once (platform/docs/tenancy-and-billing.md). Until then nobody can
  * sign up. Turning a mode on gives every organization its plan; on an install with users and no
  * shared organizations, organizations mode also creates a billing organization and one shared
- * organization with every user.
+ * organization with every user. What the install allows comes from a stored check, run in the
+ * background when there is none or it has expired; turning a mode on needs a fresh one.
  */
 export function TenancySetup() {
   const status = useQuery(api.platform.tenancy.status);
   const configure = useMutation(api.platform.tenancy.configure);
+  const runCheck = useMutation(api.platform.tenancy.check);
+  const [now, setNow] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+  const checkState = status && !status.mode && !status.running ? status.check : undefined;
+  const expired = !!checkState?.freshUntil && checkState.freshUntil < now;
+  // Start a check when there is none, or the last one expired; a failed or stalled one waits for the button.
+  const needsCheck = checkState === null || (checkState?.state === "done" && expired);
+  React.useEffect(() => {
+    if (needsCheck) void runCheck({}).catch((error: unknown) => toast.error(message(error)));
+  }, [needsCheck, runCheck]);
   const retry = useMutation(api.platform.tenancy.retry);
   const [mode, setMode] = React.useState<Mode>("organizations");
   const [billingUserId, setBillingUserId] = React.useState("");
@@ -74,14 +90,19 @@ export function TenancySetup() {
   }
   if (status.running) {
     const canReplaceOwners = status.running.canReplaceOwners;
+    // After the organizations exist, only a shared organization left without an owner who can act takes a new admin owner.
+    const canReplaceAdmin = status.running.canReplaceAdmin;
+    const replaceable = canReplaceOwners ? (["billing", "admin"] as const) : canReplaceAdmin ? (["admin"] as const) : [];
     return (
       <Alert data-testid="tenancy-running">
         <AlertDescription>
-          {status.running.failed ? <>
-            Setup stopped: {status.running.error}. Correct the reported prerequisite, then retry.
-            {canReplaceOwners && status.running.mode === "organizations" && <div className="my-3 grid gap-3">
-              {(["billing", "admin"] as const).map(role => <div key={role}>
-                <Label htmlFor={`retry-${role}`}>Replacement {role} owner (optional, before organizations are created)</Label>
+          {status.running.failed || status.running.stale ? <>
+            {status.running.failed
+              ? <>Setup stopped: {status.running.error}. Correct the reported prerequisite, then retry.</>
+              : <>Setup stalled: its last step stopped without finishing or reporting an error. Retry it; completed work is kept.</>}
+            {replaceable.length > 0 && status.running.mode === "organizations" && <div className="my-3 grid gap-3">
+              {replaceable.map(role => <div key={role}>
+                <Label htmlFor={`retry-${role}`}>{canReplaceOwners ? `Replacement ${role} owner (optional, before organizations are created)` : "New owner of the shared organization (it has no owner who can act)"}</Label>
                 <Select value={role === "billing" ? replacementBillingUserId : replacementAdminUserId} onValueChange={role === "billing" ? setReplacementBillingUserId : setReplacementAdminUserId}>
                   <SelectTrigger id={`retry-${role}`}><SelectValue placeholder="Keep original owner" /></SelectTrigger>
                   <SelectContent>{status.eligibility?.candidates.map(user => <SelectItem key={user.id} value={user.id}>{user.name} ({user.email})</SelectItem>)}</SelectContent>
@@ -90,16 +111,34 @@ export function TenancySetup() {
             </div>}
             <Button className="ms-2" disabled={busy} onClick={async () => {
               setBusy(true);
-              try { await retry({ ...(canReplaceOwners && replacementBillingUserId ? { billingUserId: replacementBillingUserId } : {}), ...(canReplaceOwners && replacementAdminUserId ? { adminUserId: replacementAdminUserId } : {}) }); } catch (error) { toast.error(message(error)); } finally { setBusy(false); }
+              try { await retry({ ...(canReplaceOwners && replacementBillingUserId ? { billingUserId: replacementBillingUserId } : {}), ...((canReplaceOwners || canReplaceAdmin) && replacementAdminUserId ? { adminUserId: replacementAdminUserId } : {}) }); } catch (error) { toast.error(message(error)); } finally { setBusy(false); }
             }}>Retry setup</Button>
           </> : <>Turning on {MODE_COPY[status.running.mode].title}… This page updates when it&apos;s done.</>}
         </AlertDescription>
       </Alert>
     );
   }
-  const check = status.eligibility!;
+  const checkAgain = () => void runCheck({}).catch((error: unknown) => toast.error(message(error)));
+  const check = status.eligibility;
+  if (!check || !status.check) {
+    const progress = status.check;
+    return (
+      <Card data-testid="tenancy-check">
+        <CardHeader>
+          <CardTitle className="text-lg">Choose a tenancy mode</CardTitle>
+          <CardDescription>Nobody can sign up until you do. The choice is final.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 text-sm">
+          {progress?.state === "failed" || progress?.stale ? <>
+            <p>{progress.state === "failed" ? <>Checking this install stopped: {progress.error}</> : <>Checking this install stalled.</>}</p>
+            <div><Button variant="outline" onClick={checkAgain}>Check again</Button></div>
+          </> : <p className="text-muted-foreground">Checking this install… {progress ? `${progress.users} users and ${progress.organizations} organizations read.` : ""}</p>}
+        </CardContent>
+      </Card>
+    );
+  }
   const shared = mode === "organizations" && check.sharedStep;
-  const blocked = !check.plans.ready || (mode === "individuals" && !check.individualsAllowed) || !check.complete;
+  const blocked = !check.plans.ready || (mode === "individuals" && !check.individualsAllowed) || !check.complete || expired || status.check.state !== "done";
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -145,6 +184,12 @@ export function TenancySetup() {
               </AlertDescription>
             </Alert>
           )}
+          <p className="text-sm text-muted-foreground">
+            {status.check.state === "running"
+              ? "Checking this install again…"
+              : <>Checked {status.check.finishedAt ? new Date(status.check.finishedAt).toLocaleTimeString() : ""}: {check.appUserCount} users. {expired && "That check has expired. "}</>}
+            {status.check.state !== "running" && <Button type="button" variant="link" className="h-auto p-0" onClick={checkAgain}>Check again</Button>}
+          </p>
           {!check.complete && <Alert><AlertDescription>This install has too many users or organizations to turn a mode on from here.</AlertDescription></Alert>}
           <RadioGroup value={mode} onValueChange={(value) => setMode(value as Mode)} className="grid gap-3">
             {(Object.keys(MODE_COPY) as Mode[]).map((key) => (
