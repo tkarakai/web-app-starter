@@ -15,6 +15,17 @@ vi.mock("./sendAuthEmail", async (original) => ({
   sendAuthEmail: vi.fn(),
 }));
 
+// Keep the platform job test independent of the reference app's tables and endpoints:
+// adoption replaces organizationData with the buyer's own cleanup hook.
+const appCleanup = vi.hoisted(() => ({ organizations: [] as string[] }));
+vi.mock("../organizationData", async () => {
+  const { organizationDataCleanup } = await import("./functions");
+  return { deleteOrganizationData: organizationDataCleanup(async (_ctx, organizationId) => {
+    appCleanup.organizations.push(organizationId);
+    return true;
+  }) };
+});
+
 /** Lets an organization past Better Auth's before-delete check, to reach the after-delete hook's own billing check. */
 const ownership = vi.hoisted(() => ({ skipMarkDeleting: false }));
 vi.mock("./organizationOwnership", async (original) => {
@@ -32,6 +43,7 @@ vi.mock("./organizationOwnership", async (original) => {
 
 beforeEach(() => {
   ownership.skipMarkDeleting = false;
+  appCleanup.organizations = [];
   vi.stubEnv("BETTER_AUTH_SECRET", "background-jobs-test-secret-at-least-32-characters");
   vi.stubEnv("SITE_URL", "http://localhost:3001");
   vi.stubEnv("CONVEX_SITE_URL", "http://localhost:3211");
@@ -75,7 +87,6 @@ describe("organization cleanup", () => {
     const f = await fixture("organizations");
     const alice = await f.user("alice");
     const acme = await alice.provision();
-    await alice.caller.mutation(api.projects.create, { name: "Doomed", description: "" });
     const row = () => f.t.run((ctx) => ctx.db.query("organizationCleanups").withIndex("by_organization", (q) => q.eq("organizationId", acme)).unique());
 
     await f.boss.caller.mutation(api.platform.adminOrganizations.remove, { organizationId: acme });
@@ -98,15 +109,16 @@ describe("organization cleanup", () => {
     // A late run of the dead chain does nothing.
     await f.t.action(internal.platform.organizations.deleteOrganizationAppData, { organizationId: acme, runId: owed.runId });
     expect(await row()).toMatchObject({ state: "running", batches: 0, runId: retried.runId });
-    expect(await f.t.run((ctx) => ctx.db.query("projects").collect())).toHaveLength(1);
+    expect(appCleanup.organizations).toEqual([]);
 
     await f.t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(await row()).toMatchObject({ state: "done" });
-    expect(await f.t.run((ctx) => ctx.db.query("projects").collect())).toEqual([]);
+    expect(appCleanup.organizations).toEqual([acme]);
     expect(await f.boss.caller.query(api.platform.adminOrganizations.cleanups, {})).toEqual([]);
     // A duplicate delivery of the retry's run does nothing.
     await f.t.action(internal.platform.organizations.deleteOrganizationAppData, { organizationId: acme, runId: retried.runId });
     expect(await row()).toMatchObject({ state: "done", batches: (await row())!.batches });
+    expect(appCleanup.organizations).toEqual([acme]);
   });
 
   test("Better Auth's delete hook records the cleanup and audits before ending the plan, so a failure there orphans nothing", async () => {
