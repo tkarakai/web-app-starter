@@ -14,14 +14,14 @@ import type { Doc } from "./betterAuth/_generated/dataModel";
 import { adminMutation, authedMutation, authedQuery } from "./functions";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { createAuth } from "./auth";
-import { findById, listMemberships, parseRole } from "./organizationAccess";
-import { needsSuccessor, organizationSeats } from "./organizationOwnership";
+import { findById, findMembership, listMemberships, parseRole, removeMemberships, type AccountDeletionActor } from "./organizationAccess";
+import { needsSuccessor, organizationSeats, setMemberRole, successorsNeededForBan } from "./organizationOwnership";
 import { makeFunctionReference } from "convex/server";
 import { scheduledDeletion } from "./billingAccess";
 import { sendLimitedAuthEmail } from "./authRateLimits";
 import { userDeletionBlockedEmail, userDeletionScheduledEmail } from "./sendAuthEmail";
 
-type Reader = Pick<QueryCtx, "runQuery">;
+type Reader = Pick<QueryCtx, "runQuery" | "db">;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_GRACE_DAYS = 14;
 
@@ -71,6 +71,76 @@ async function revokeSessions(ctx: Pick<MutationCtx, "runMutation">, userId: str
   }
 }
 
+/**
+ * A user with a pending deletion no longer counts as able to act (`organizationSeats`). Where the
+ * requester is the only owner who can act while other members can, make the successor the
+ * deletion would pick an owner now, so the organization keeps an owner who can act during the
+ * grace period. The requester stays an owner: cancelling loses nothing. Billing organizations
+ * never get here: `deletionBlocker` refuses those first (`BILLING_OWNER_REQUIRED`).
+ */
+async function handOverForDeletion(ctx: Pick<MutationCtx, "runQuery" | "runMutation" | "db">, userId: string) {
+  const successors: { organizationId: string; userId: string }[] = [];
+  for (const need of await successorsNeededForBan(ctx, userId)) {
+    const member = need.suggested ? await findMembership(ctx, need.suggested, need.organizationId) : null;
+    if (!member) throw new Error("OWNER_SUCCESSOR_REQUIRED");
+    await setMemberRole(ctx, member._id, "owner");
+    successors.push({ organizationId: need.organizationId, userId: member.userId });
+  }
+  return successors;
+}
+
+export type UserDeletionInput = { userId: string; ownerId: string; email: string; name: string };
+
+/**
+ * The first half of every user deletion (Better Auth's delete hooks, `agentUsers.remove`): the
+ * blocker, if any, with nothing written; otherwise the cleanup inputs are recorded before the
+ * user row goes, so cleanup can be retried without it. Then delete the user, then
+ * `finishUserDeletion`.
+ */
+export async function beginUserDeletion(ctx: Pick<MutationCtx, "runQuery" | "db" | "scheduler">, input: UserDeletionInput): Promise<DeletionBlocker | null> {
+  const blocker = await deletionBlocker(ctx, input.userId);
+  if (blocker) return blocker;
+  if (await cleanupFor(ctx, input.userId)) return null;
+  await ctx.db.insert("userDeletionCleanups", { ...input, state: "pending", attempts: 0, createdAt: Date.now() });
+  await ctx.scheduler.runAfter(1000, internal.platform.userDeletion.runCleanup, { userId: input.userId });
+  return null;
+}
+
+/**
+ * The second half, once the user row is gone: memberships (`removeMemberships`, the only
+ * production caller), app-owned user data, platform profiles and plan choices, the deletion
+ * request and the cleanup record. Idempotent; also the cleanup retry. `actor` is who deleted the
+ * user, for organizations the deletion empties (default: the user).
+ */
+export async function finishUserDeletion(
+  ctx: MutationCtx,
+  args: { userId: string; ownerId?: string; cleanupOnly?: boolean; actor?: AccountDeletionActor },
+) {
+  const cleanup = await cleanupFor(ctx, args.userId);
+  if (args.cleanupOnly && !cleanup) return;
+  const ownerId = cleanup?.ownerId ?? args.ownerId ?? args.userId;
+  if (cleanup && !(await findById(ctx, "user", args.userId))) {
+    await removeMemberships(ctx, args.userId, args.actor ?? { email: cleanup.email, userId: args.userId });
+  }
+  try {
+    await ctx.runMutation(makeFunctionReference<"mutation", { userId: string; ownerId: string }>("userData:deleteUserData"), { userId: args.userId, ownerId });
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.includes("userData:deleteUserData") || !/Couldn't resolve|Could not find/i.test(error.message)) throw error;
+  }
+  for (const profileOwnerId of new Set([args.userId, ownerId])) {
+    for (const profile of await ctx.db.query("userProfiles").withIndex("by_owner", q => q.eq("ownerId", profileOwnerId)).collect()) await ctx.db.delete(profile._id);
+  }
+  for (const choice of await ctx.db.query("pendingPlanChoices").withIndex("by_user", q => q.eq("userId", args.userId)).collect()) await ctx.db.delete(choice._id);
+  if (cleanup) await ctx.db.delete(cleanup._id);
+  const row = await scheduledDeletion(ctx, args.userId);
+  if (!row) return;
+  if (row.state === "scheduled") {
+    const job = await ctx.db.system.get(row.jobId);
+    if (job && job.state.kind === "pending") await ctx.scheduler.cancel(row.jobId);
+  }
+  await ctx.db.delete(row._id);
+}
+
 // ---------------------------------------------------------------------------
 // The user
 // ---------------------------------------------------------------------------
@@ -84,6 +154,7 @@ export const request = authedMutation({
     if (await scheduledDeletion(ctx, ctx.user._id)) throw new Error("USER_DELETION_ALREADY_SCHEDULED");
     const blocker = await deletionBlocker(ctx, ctx.user._id);
     if (blocker) throw new Error(blocker.code);
+    const successors = await handOverForDeletion(ctx, ctx.user._id);
     const now = Date.now();
     const deleteAt = now + (await graceDaysSetting(ctx)) * DAY_MS;
     const requestId = `${now}-${Math.random()}`;
@@ -93,7 +164,7 @@ export const request = authedMutation({
     await ctx.scheduler.runAfter(0, internal.platform.userDeletion.notify, { userId: ctx.user._id, kind: "scheduled" });
     await scheduleAuditEvent(ctx, {
       actor: ctx.user.email, authenticatedUserId: ctx.user._id, sourceDetail: "user-deletion", action: "user.deletion.requested",
-      resource: `user:${ctx.user._id}`, status: "succeeded", meta: JSON.stringify({ deleteAt }),
+      resource: `user:${ctx.user._id}`, status: "succeeded", meta: JSON.stringify({ deleteAt, ...(successors.length ? { successors } : {}) }),
     });
     return { deleteAt };
   },
@@ -189,32 +260,10 @@ export const markBlocked = internalMutation({
   },
 });
 
-/** Better Auth's `user.delete.after`: the request, if any, is done. */
+/** Better Auth's `user.delete.after`, and cleanup retries: `finishUserDeletion`. */
 export const forget = internalMutation({
   args: { userId: v.string(), ownerId: v.optional(v.string()), cleanupOnly: v.optional(v.boolean()) },
-  handler: async (ctx, args) => {
-    const cleanup = await cleanupFor(ctx, args.userId);
-    if (args.cleanupOnly && !cleanup) return;
-    const ownerId = cleanup?.ownerId ?? args.ownerId ?? args.userId;
-    if (cleanup && !(await findById(ctx, "user", args.userId))) await ctx.runMutation(internal.platform.organizations.removeUserMemberships, { userId: args.userId, email: cleanup.email });
-    try {
-      await ctx.runMutation(makeFunctionReference<"mutation", { userId: string; ownerId: string }>("userData:deleteUserData"), { userId: args.userId, ownerId });
-    } catch (error) {
-      if (!(error instanceof Error) || !error.message.includes("userData:deleteUserData") || !/Couldn't resolve|Could not find/i.test(error.message)) throw error;
-    }
-    for (const profileOwnerId of new Set([args.userId, ownerId])) {
-      for (const profile of await ctx.db.query("userProfiles").withIndex("by_owner", q => q.eq("ownerId", profileOwnerId)).collect()) await ctx.db.delete(profile._id);
-    }
-    for (const choice of await ctx.db.query("pendingPlanChoices").withIndex("by_user", q => q.eq("userId", args.userId)).collect()) await ctx.db.delete(choice._id);
-    if (cleanup) await ctx.db.delete(cleanup._id);
-    const row = await scheduledDeletion(ctx, args.userId);
-    if (!row) return;
-    if (row.state === "scheduled") {
-      const job = await ctx.db.system.get(row.jobId);
-      if (job && job.state.kind === "pending") await ctx.scheduler.cancel(row.jobId);
-    }
-    await ctx.db.delete(row._id);
-  },
+  handler: async (ctx, args) => await finishUserDeletion(ctx, args),
 });
 
 export const recordCompleted = internalMutation({
@@ -307,14 +356,10 @@ async function cleanupFor(ctx: Pick<QueryCtx, "db">, userId: string) {
   return await ctx.db.query("userDeletionCleanups").withIndex("by_user", q => q.eq("userId", userId)).first();
 }
 
-/** Persist recovery inputs before Better Auth removes its user row, including admin deletes. */
-export const prepareCleanup = internalMutation({
+/** Better Auth's `user.delete.before`: `beginUserDeletion`, returning the blocker that refuses it. */
+export const beginDeletion = internalMutation({
   args: { userId: v.string(), ownerId: v.string(), email: v.string(), name: v.string() },
-  handler: async (ctx, args) => {
-    if (await cleanupFor(ctx, args.userId)) return;
-    await ctx.db.insert("userDeletionCleanups", { ...args, state: "pending", attempts: 0, createdAt: Date.now() });
-    await ctx.scheduler.runAfter(1000, internal.platform.userDeletion.runCleanup, { userId: args.userId });
-  },
+  handler: async (ctx, args) => await beginUserDeletion(ctx, args),
 });
 
 export const cleanupStatus = internalQuery({

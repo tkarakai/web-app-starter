@@ -157,6 +157,29 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- **Tenancy and billing follow-ups:**
+  - The platform admin's organization delete (`adminOrganizations.remove`, `organizations_remove`)
+    now ends the organization's plan and marks its billing row deleted, as an owner's delete
+    does. Before, the plan stayed current, so its payer could never be deleted, nor that
+    payer's last member.
+  - The admin agent's `users_remove` (`agentUsers.remove`) takes the same deletion path as
+    Better Auth's delete (`beginUserDeletion` / `finishUserDeletion` in `userDeletion.ts`): it
+    is refused with `BILLING_OWNER_REQUIRED` or `BILLING_ORGANIZATION_IN_USE` instead of passing
+    a paying billing organization on, and it now removes the user's app-owned data
+    (`userData:deleteUserData`), profile, pending plan choice and pending deletion request.
+  - A user with a pending self-deletion no longer counts as an owner who can act. Requesting it
+    makes a successor an owner where the requester was the only such owner while other members
+    can act; the requester stays an owner, so cancelling loses nothing. Until then the other
+    owners can't leave or be demoted if that would leave no owner who can act.
+  - Tenancy setup never picks a pending platform admin (an admin invitation or protected admin
+    address) as an owner nor adds them to the shared organization, and they don't count
+    against Plans for Individuals. Completing admin enrollment now goes through the ownership
+    check.
+  - A setup stopped because its shared organization's owner was banned, made a platform admin
+    or deleted between batches can be retried with a new owner (`tenancy.retry({ adminUserId })`,
+    offered when `tenancy.status` reports `canReplaceAdmin`); a deleted shared organization is
+    recreated on its plan and payer.
+
 - **Org mutations no longer write to a fallback organization.** When the session's selected
   organization is no longer valid (the user was removed, or it was deleted), reads still move to
   the oldest membership, but `orgMutation`, and `getOrgAuth(ctx, { write: true })`, now refuse

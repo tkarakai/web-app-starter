@@ -121,17 +121,28 @@ Everything is deleted except billing history (`plan`, `billingOrganization`, `or
 and the audit trail. Billing rows copy `organizationName` when created. Deleting an organization
 ends its plan row and sets `deletedAt` on its billing row.
 
+Deleting an organization ends its plan and marks its billing row deleted on every path: its
+owner's delete, the platform admin's (`adminOrganizations.remove`) and account deletion emptying
+it. A billing organization stays in use only while a current plan of another organization
+names it.
+
 **User deletion** follows today's membership rules (ownership passes to the longest-standing admin,
 else member; organizations left empty are deleted with their app data), plus: refused while the
-user is the last member of a billing organization that pays for current plans. Checks run in a
-`before` hook, so they also cover the admin's delete.
+user is the last member (`BILLING_ORGANIZATION_IN_USE`), or the last owner
+(`BILLING_OWNER_REQUIRED`), of a billing organization that pays for current plans. Every path
+takes the same steps (`beginUserDeletion` and `finishUserDeletion` in `userDeletion.ts`): the
+checks, then the cleanup record, then the user, then memberships and user data. Better Auth's
+delete hooks run them for its admin delete and a scheduled self-deletion; the admin agent's
+`users_remove` (`api.platform.agentUsers.remove`) runs them in one transaction.
 
 - **Self-deletion** (every mode, web settings): needs recent authentication; schedules deletion
   after `userDeletionGraceDays` (admin-configurable, default 14); signs the user out everywhere;
   emails them. During the grace period, sign-in offers only **Cancel deletion** or **Continue with
   deletion and sign out**. At the due time the checks run again; a failure blocks it (state
   `blocked`, user emailed). Platform admins see scheduled and blocked deletions with the countdown,
-  and can cancel one.
+  and can cancel one. While it is pending the user doesn't count as an owner who can act: where
+  they were the only one, the request makes a successor an owner too
+  ([organizations](organizations.md#roles)).
 - **Platform admin's delete**: immediate, same checks.
 - Audit: `user.deletion.requested`, `.canceled`, `.completed`, `.blocked`.
 
@@ -155,8 +166,17 @@ atomically claims the request (`deleting`), cancellation refuses with `USER_DELE
 Tenancy setup checks owner membership capacity before accepting configuration and again before
 each batch that creates owners. Failed batches roll back and appear as stopped in the admin
 tenancy page. Correct the prerequisite and use Retry setup; replacement owners can be selected
-before the billing/shared organizations are created. Completed batches are retained. Individuals
-mode constrains membership writes during setup and revalidates eligibility before committing.
+before the billing/shared organizations are created. After that, if the shared organization's
+owner was banned, made a platform admin or deleted between batches, so it has no owner who can
+act, Retry setup takes a new owner for it (`retry({ adminUserId })`, shown when `status` reports
+`canReplaceAdmin`), and recreates it, on its plan and payer, if it was deleted. Completed
+batches are retained. Individuals mode constrains membership writes during setup and
+revalidates eligibility before committing.
+
+Users still to become platform admins (a pending admin invitation or a protected admin address)
+are not application users for setup: they are never owner candidates nor added to the shared
+organization, and they don't count against Plans for Individuals. Completing admin enrollment
+goes through the same ownership check as any role change.
 
 Before auth deletion, the platform stores cleanup inputs (including a migrated profile owner ID)
 in `userDeletionCleanups`. Cleanup retries are independent of the deleted account and of the

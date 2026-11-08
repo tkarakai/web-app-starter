@@ -65,6 +65,15 @@ only organization. When an account is deleted, an organization it owned alone pa
 longest-standing admin (or member), preferring people who aren't banned.
 Only owners can delete an organization; deleting one never deletes its members' accounts.
 
+**A user who has asked to delete their account can't act** during the grace period (organization
+routes refuse them with `USER_DELETION_SCHEDULED`), so they don't count as an owner who can act.
+Where they are the only such owner while other members can act, the request makes the member
+account deletion would pick (the longest-standing admin, else member) an owner too; the
+requester stays an owner, so cancelling the deletion changes nothing back. While the deletion
+is pending, the other owners can't leave or be demoted if that would leave no owner who can
+act. A billing organization paying for other organizations is never handed on automatically:
+the request is refused (`BILLING_OWNER_REQUIRED`) until another member is made an owner.
+
 The backend enforces the rule on every membership write, not just in Better Auth's checks: a
 guard runs in the same transaction as each write, whichever path makes it (Better Auth's
 routes, account deletion, the admin app, agents). A write that would leave members without an
@@ -79,7 +88,8 @@ admin app's ban dialog lists them with a successor picker (the longest-standing 
 member, preselected), then makes the choices owners and bans in one transaction
 (`api.platform.agentUsers.ban`), so a refused ban leaves no new owners behind. The admin agent's
 `users_ban` takes the same `successors: [{ organizationId, userId }]`: one per organization that
-needs one, and only for those (`INVALID_SUCCESSOR` otherwise).
+needs one, and only for those (`INVALID_SUCCESSOR` otherwise). A batch ban skips such users with
+that error.
 
 The rule is checked in the transaction of every user write, whichever path makes it (Better
 Auth's `/admin/*` routes, the admin app, agents), so a ban racing a demotion can't leave members
@@ -92,7 +102,7 @@ making an administrator a user again, is refused the same way where every owner 
 organizations is banned: unban an owner first, or name a successor (`users_unban` and
 `users_setRole` take `successors`; the user themself may be the successor). A temporary ban that
 simply runs out is not a write, so it isn't checked: an organization whose only active owner is
-banned for a while can find its other members reactivated before its owner. A batch ban skips such users with that error. An organization whose only
+banned for a while can find its other members reactivated before its owner. An organization whose only
 owner was banned before this rule keeps working; deleting that owner's account hands
 ownership to someone who can sign in. Platform code changes memberships only through `deleteMember` and
 `setMemberRole` in `convex/platform/organizationOwnership.ts`.
@@ -235,7 +245,7 @@ and through the `organizations_*` admin agent capabilities. Both use
 | `addOwner` | Make an existing member an owner, alongside the current owners. Refused for banned members (`MEMBER_BANNED`) and platform administrators (`MEMBER_IS_ADMINISTRATOR`) |
 | `removeOwner` | Make an owner an admin or member. Refused (`LAST_OWNER`) for the only owner, or the only one who isn't banned while members can sign in |
 | `cancelInvitation` | Cancel a pending invitation; its link reads as no longer valid |
-| `remove` | Delete the organization: memberships, invitations and the organization at once, then its app data through `organizationData.ts`. Accounts are kept |
+| `remove` | Delete the organization: memberships, invitations, its plan (ended; its billing row is marked deleted, both kept as billing history) and the organization at once, then its app data through `organizationData.ts`. Accounts are kept. Refused (`BILLING_ORGANIZATION_IN_USE`) while it pays for another organization's plan |
 | `cleanups` | App-data removals of deleted organizations that failed (after retries) or are still running |
 | `retryCleanup` | Restart a failed removal where it stopped |
 

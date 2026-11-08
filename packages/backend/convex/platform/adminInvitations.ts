@@ -8,7 +8,7 @@ import { hashPassword } from "better-auth/crypto";
 import { sha256Hex } from "./tokenHash";
 import { validatePasswordStrength } from "./passwordStrength";
 import { ConvexError, v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
+import { createFunctionHandle, paginationOptsValidator } from "convex/server";
 import { components, internal } from "../_generated/api";
 import { action, internalMutation, internalQuery, mutation, query } from "../_generated/server";
 import { identitySession, evaluateSession } from "./sessionPolicy";
@@ -140,7 +140,11 @@ export const completeOnboarding = mutation({
         if (!passkey) throw new Error("PASSKEY_REQUIRED");
       }
       await ctx.runMutation(components.platform.adminInvitations.finishBoundOnboarding, { email: user.email, userId: user._id });
-      await ctx.runMutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: user._id }], update: { role: "admin", updatedAt: Date.now() } } });
+      // Through the user trigger: becoming an administrator must not leave an organization without an owner who can act.
+      await ctx.runMutation(components.betterAuth.adapter.updateOne, {
+        input: { model: "user", where: [{ field: "_id", value: user._id }], update: { role: "admin", updatedAt: Date.now() } },
+        onUpdateHandle: await createFunctionHandle(internal.platform.authTriggers.onUpdate),
+      });
       await scheduleAuditEvent(ctx, { actor: user.email, authenticatedUserId: user._id, sourceDetail: "admin-enrollment", action: "admin.onboarding.completed", resource: `user:${user._id}`, status: "succeeded" });
     } else {
       // Already-established legacy administrators retain their existing identity.

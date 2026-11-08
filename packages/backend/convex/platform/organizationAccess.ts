@@ -17,7 +17,7 @@ import { scheduleAuditEvent } from "./auditTrailHelpers";
 
 type Reader = Pick<QueryCtx, "runQuery">;
 type Writer = Pick<MutationCtx, "runQuery" | "runMutation">;
-type Deleter = Writer & Pick<MutationCtx, "scheduler">;
+type Deleter = Writer & Pick<MutationCtx, "scheduler" | "db">;
 
 export type OrganizationRole = "owner" | "admin" | "member";
 

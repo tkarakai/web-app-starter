@@ -6,6 +6,7 @@ import { createTestEnv } from "../test.modules";
 import authSchema from "./betterAuth/schema";
 import { organizationFixture } from "./organizations.test-helpers";
 import { createOrganizationWithOwner } from "./organizationAccess";
+import { deleteMember, setMemberRole } from "./organizationOwnership";
 import { sendAuthEmail } from "./sendAuthEmail";
 
 vi.mock("./sendAuthEmail", async (original) => ({
@@ -589,5 +590,172 @@ describe("third review regressions", () => {
     expect(await f.t.run(ctx => ctx.db.query("userProfiles").collect())).toEqual([]);
     expect(await f.t.run(ctx => ctx.db.query("pendingPlanChoices").collect())).toEqual([]);
     expect(cleanupMock.owners.every(owner => owner === "legacy-cleanup-owner")).toBe(true);
+  });
+});
+
+describe("one deletion path (agentUsers.remove and Better Auth's delete)", () => {
+  type Fixture = Awaited<ReturnType<typeof fixture>>;
+  const remove = async (f: Fixture, path: "agent" | "better-auth", userId: string) => {
+    if (path === "agent") return await f.boss.caller.mutation(api.platform.agentUsers.remove, { userId });
+    const response = await f.post("/admin/remove-user", { userId }, "boss");
+    if (!response.ok) throw new Error(((await response.json()) as { code?: string }).code ?? `HTTP ${response.status}`);
+  };
+
+  test.each(["agent", "better-auth"] as const)("%s: the same structured blockers, with nothing deleted", async path => {
+    const f = await fixture("organizations");
+    const pro = await f.paidPlan();
+    const alice = await f.user("alice");
+    const personal = await alice.provision();
+    await alice.caller.mutation(api.platform.billing.choosePlan, { planId: pro, paymentMethod: "cash", billingOrganizationName: "Acme billing" });
+    const billing = (await f.current(personal))!.billing!;
+    await expect(remove(f, path, alice.userId)).rejects.toThrow("BILLING_ORGANIZATION_IN_USE");
+    const bob = await f.user("bob");
+    await f.addMember(billing.organizationId, bob.userId, "member");
+    await expect(remove(f, path, alice.userId)).rejects.toThrow("BILLING_OWNER_REQUIRED");
+    expect(await f.t.query(internal.platform.userDeletion.userRow, { userId: alice.userId })).not.toBeNull();
+    expect((await f.members(billing.organizationId)).map((m) => [m.userId, m.role])).toEqual([[alice.userId, "owner"], [bob.userId, "member"]]);
+    expect(await f.t.run(ctx => ctx.db.query("userDeletionCleanups").collect())).toEqual([]);
+  });
+
+  test.each(["agent", "better-auth"] as const)("%s: the same cleanup", async path => {
+    vi.useFakeTimers();
+    const f = await fixture("organizations");
+    await f.paidPlan();
+    const alice = await f.user("alice", { userId: "legacy-alice" });
+    const own = await alice.provision();
+    const bob = await f.user("bob");
+    await f.addMember(own, bob.userId, "member");
+    await alice.caller.mutation(api.platform.userProfiles.upsert, { timezone: "Europe/Budapest" });
+    await alice.caller.mutation(api.platform.userDeletion.request, {});
+    await remove(f, path, alice.userId);
+    await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await f.t.query(internal.platform.userDeletion.userRow, { userId: alice.userId })).toBeNull();
+    expect((await f.members(own)).map((m) => [m.userId, m.role])).toEqual([[bob.userId, "owner"]]);
+    for (const table of ["userProfiles", "pendingPlanChoices", "userDeletions", "userDeletionCleanups"] as const) {
+      expect(await f.t.run(ctx => ctx.db.query(table).collect()), table).toEqual([]);
+    }
+    expect(cleanupMock.owners).toContain("legacy-alice");
+  });
+});
+
+describe("a pending self-deletion", () => {
+  test("hands sole ownership on at request time; the requester stays an owner and a cancel loses nothing", async () => {
+    const f = await fixture("organizations");
+    const alice = await f.user("alice");
+    const own = await alice.provision();
+    const bob = await f.user("bob");
+    await f.addMember(own, bob.userId, "member");
+    await alice.caller.mutation(api.platform.userDeletion.request, {});
+    expect((await f.members(own)).map((m) => [m.userId, m.role])).toEqual([[alice.userId, "owner"], [bob.userId, "owner"]]);
+    await f.boss.caller.mutation(api.platform.userDeletion.adminCancel, { userId: alice.userId });
+    expect((await f.members(own)).map((m) => [m.userId, m.role])).toEqual([[alice.userId, "owner"], [bob.userId, "owner"]]);
+  });
+
+  test("doesn't count as an owner who can act: the other owner can't leave or be demoted until it is cancelled", async () => {
+    const f = await fixture("organizations");
+    const alice = await f.user("alice");
+    const own = await alice.provision();
+    const bob = await f.user("bob");
+    const carol = await f.user("carol");
+    const bobSeat = await f.addMember(own, bob.userId, "owner");
+    await f.addMember(own, carol.userId, "member");
+    await alice.caller.mutation(api.platform.userDeletion.request, {});
+    // Bob was already an owner who can act: nobody was promoted.
+    expect((await f.members(own)).find((m) => m.userId === carol.userId)!.role).toBe("member");
+
+    await expect(f.t.run(ctx => deleteMember(ctx, bobSeat._id))).rejects.toThrow("ORGANIZATION_OWNER_REQUIRED");
+    await expect(f.t.run(ctx => setMemberRole(ctx, bobSeat._id, "member"))).rejects.toThrow("ORGANIZATION_OWNER_REQUIRED");
+    await expect(f.boss.caller.mutation(api.platform.adminOrganizations.removeOwner, { organizationId: own, userId: bob.userId, role: "member" })).rejects.toThrow("LAST_OWNER");
+
+    await f.boss.caller.mutation(api.platform.userDeletion.adminCancel, { userId: alice.userId });
+    await f.t.run(ctx => setMemberRole(ctx, bobSeat._id, "member"));
+    expect((await f.members(own)).map((m) => [m.userId, m.role])).toEqual([[alice.userId, "owner"], [bob.userId, "member"], [carol.userId, "member"]]);
+  });
+});
+
+describe("tenancy setup owners", () => {
+  test("a pending administrator is never a setup candidate, owner or member", async () => {
+    vi.useFakeTimers();
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    await alice.provision();
+    await bob.provision();
+    // Enrollees get no personal organization.
+    const eve = await f.user("eve");
+    await f.t.mutation(components.platform.adminInvitations.invite, { email: "eve@example.test", identity: { userId: f.boss.userId, actor: "boss@example.test" } });
+    await f.paidPlan();
+    const status = (await f.boss.caller.query(api.platform.tenancy.status, {}))!;
+    expect(status.eligibility).toMatchObject({ appUserCount: 2, individualsAllowed: true });
+    expect(status.eligibility!.candidates.map((c) => c.id).sort()).toEqual([alice.userId, bob.userId].sort());
+    const args = { mode: "organizations" as const, billingUserId: alice.userId, billingOrganizationName: "Payer", sharedOrganizationName: "Everyone" };
+    await expect(f.boss.caller.mutation(api.platform.tenancy.configure, { ...args, adminUserId: eve.userId })).rejects.toThrow("TENANCY_USER_REQUIRED");
+    await f.boss.caller.mutation(api.platform.tenancy.configure, { ...args, adminUserId: bob.userId });
+    await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await f.t.query(api.platform.tenancy.mode, {})).toEqual({ mode: "organizations" });
+    expect((await eve.caller.query(api.platform.organizations.mine, {}))!.organizations).toEqual([]);
+  });
+
+  test.each(["banned", "made an administrator", "deleted"] as const)("retry replaces a shared organization owner who was %s between batches", async change => {
+    vi.useFakeTimers();
+    const f = await fixture();
+    const bob = await f.user("bob");
+    // A first batch of users with nobody to add, so the shared organization has only its owner.
+    for (let i = 0; i < 48; i++) await f.user(`admin${i}`, { role: "admin" });
+    const alice = await f.user("alice");
+    const carol = await f.user("carol");
+    await f.paidPlan();
+    await f.boss.caller.mutation(api.platform.tenancy.configure, {
+      mode: "organizations", billingUserId: alice.userId, adminUserId: bob.userId, billingOrganizationName: "Payer", sharedOrganizationName: "Everyone",
+    });
+    // Run the plans step and the first shared batch, and drop the scheduled continuations.
+    await f.t.mutation(internal.platform.tenancy.runSetup, {});
+    await f.t.mutation(internal.platform.tenancy.runSetup, {});
+    await f.t.run(async ctx => {
+      for (const job of await ctx.db.system.query("_scheduled_functions").collect()) if (job.state.kind === "pending") await ctx.scheduler.cancel(job._id);
+    });
+    const setup = (await f.t.run(ctx => ctx.db.query("tenancySetups").first()))!;
+    expect(setup).toMatchObject({ step: "shared", state: "running" });
+    const shared = setup.sharedOrganizationId!;
+    await expect(f.boss.caller.mutation(api.platform.tenancy.retry, { adminUserId: carol.userId })).rejects.toThrow("TENANCY_SETUP_NOT_FAILED");
+
+    if (change === "banned") await f.boss.caller.mutation(api.platform.agentUsers.ban, { userId: bob.userId });
+    if (change === "made an administrator") await f.boss.caller.mutation(api.platform.agentUsers.setRole, { userId: bob.userId, role: "admin" });
+    if (change === "deleted") await f.boss.caller.mutation(api.platform.agentUsers.remove, { userId: bob.userId });
+    await f.t.action(internal.platform.tenancy.advanceSetup, {});
+    const stopped = (await f.boss.caller.query(api.platform.tenancy.status, {}))!;
+    expect(stopped.running).toMatchObject({ failed: true, canReplaceOwners: false, canReplaceAdmin: true });
+
+    await expect(f.boss.caller.mutation(api.platform.tenancy.retry, { billingUserId: carol.userId })).rejects.toThrow("TENANCY_SETUP_OWNERS_FIXED");
+    await f.boss.caller.mutation(api.platform.tenancy.retry, { adminUserId: carol.userId });
+    await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await f.t.query(api.platform.tenancy.mode, {})).toEqual({ mode: "organizations" });
+    const done = (await f.t.run(ctx => ctx.db.query("tenancySetups").first()))!;
+    expect(done.adminUserId).toBe(carol.userId);
+    if (change === "deleted") expect(done.sharedOrganizationId).not.toBe(shared);
+    else expect(done.sharedOrganizationId).toBe(shared);
+    const roles = Object.fromEntries((await f.members(done.sharedOrganizationId!)).map((m) => [m.userId, m.role]));
+    expect(roles[carol.userId]).toBe("owner");
+    expect(roles[alice.userId]).toBe("member");
+    expect((await f.current(done.sharedOrganizationId!))?.billing?.organizationId).toBe(done.billingOrganizationId);
+  });
+
+  test("retry keeps the owners once the shared organization has an owner who can act", async () => {
+    vi.useFakeTimers();
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    await f.paidPlan();
+    await f.boss.caller.mutation(api.platform.tenancy.configure, {
+      mode: "organizations", billingUserId: alice.userId, adminUserId: bob.userId, billingOrganizationName: "Payer", sharedOrganizationName: "Everyone",
+    });
+    await f.t.mutation(internal.platform.tenancy.runSetup, {});
+    await f.t.mutation(internal.platform.tenancy.runSetup, {});
+    await f.t.run(async ctx => {
+      const setup = (await ctx.db.query("tenancySetups").first())!;
+      await ctx.db.patch(setup._id, { state: "failed", error: "test" });
+    });
+    expect((await f.boss.caller.query(api.platform.tenancy.status, {}))!.running).toMatchObject({ failed: true, canReplaceAdmin: false });
+    await expect(f.boss.caller.mutation(api.platform.tenancy.retry, { adminUserId: alice.userId })).rejects.toThrow("TENANCY_SETUP_OWNERS_FIXED");
   });
 });

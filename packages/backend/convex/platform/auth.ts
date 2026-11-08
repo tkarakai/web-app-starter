@@ -849,18 +849,18 @@ export const createAuthOptions = (
           before: async (user) => {
             const userId = (user as Record<string, unknown>).id;
             if (typeof userId !== "string") return;
-            const blocker = await requireActionCtx(ctx).runQuery(internal.platform.userDeletion.blockerFor, { userId });
-            if (blocker) throw new APIError("CONFLICT", { code: blocker.code, message: blocker.code });
             const ownerId = (user as Record<string, unknown>).userId;
-            await requireActionCtx(ctx).runMutation(internal.platform.userDeletion.prepareCleanup, {
+            // The same deletion path as `agentUsers.remove` (userDeletion.ts): blockers, then cleanup inputs.
+            const blocker = await requireActionCtx(ctx).runMutation(internal.platform.userDeletion.beginDeletion, {
               userId, ownerId: typeof ownerId === "string" ? ownerId : userId, email: user.email, name: user.name ?? "",
             });
+            if (blocker) throw new APIError("CONFLICT", { code: blocker.code, message: blocker.code });
           },
           after: async (user) => {
             const userId = (user as Record<string, unknown>).id;
             if (typeof userId !== "string") return;
             try {
-              await requireActionCtx(ctx).runMutation(internal.platform.organizations.removeUserMemberships, { userId, email: user.email });
+              // Memberships, then app-owned and platform-owned data (`finishUserDeletion`).
               const migratedOwnerId = (user as Record<string, unknown>).userId;
               await requireActionCtx(ctx).runMutation(internal.platform.userDeletion.forget, {
                 userId, ownerId: typeof migratedOwnerId === "string" ? migratedOwnerId : userId,

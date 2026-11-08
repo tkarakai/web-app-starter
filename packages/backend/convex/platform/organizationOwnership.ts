@@ -1,6 +1,7 @@
 /**
  * The ownership invariant: an organization that has members always has an owner, and while any
- * member can still sign in, an owner who can (is not banned).
+ * member can act, an owner who can (`canActNow`: not banned, not a platform administrator, no
+ * self-deletion pending).
  *
  * Better Auth's organization endpoints refuse to remove or demote the last owner, but each check
  * is a read followed by a separate write, so two owners demoting or removing each other at the
@@ -38,8 +39,8 @@ import {
   type OrganizationRole,
 } from "./organizationAccess";
 
-type Reader = Pick<QueryCtx, "runQuery">;
-type Writer = Pick<MutationCtx, "runQuery" | "runMutation">;
+type Reader = Pick<QueryCtx, "runQuery" | "db">;
+type Writer = Pick<MutationCtx, "runQuery" | "runMutation" | "db">;
 
 export const OWNER_REQUIRED = "ORGANIZATION_OWNER_REQUIRED";
 export const SUCCESSOR_REQUIRED = "OWNER_SUCCESSOR_REQUIRED";
@@ -59,14 +60,23 @@ export function canAct(user: Pick<Doc<"user">, "banned" | "banExpires" | "role">
   return !!user && !isBanned(user) && getPolicyScopeFromRole(user.role) !== "admin";
 }
 
-/** A membership with its role and whether its user can act (`canAct`). */
+/**
+ * `canAct`, and no self-deletion pending: during its grace period the user is refused on
+ * organization routes (`USER_DELETION_SCHEDULED`), so they can't act for an organization either.
+ */
+export async function canActNow(ctx: Pick<QueryCtx, "db">, user: Doc<"user"> | null | undefined): Promise<boolean> {
+  if (!user || !canAct(user)) return false;
+  return !(await ctx.db.query("userDeletions").withIndex("by_user", (q) => q.eq("userId", user._id)).first());
+}
+
+/** A membership with its role and whether its user can act (`canActNow`). */
 export type Seat = { member: Doc<"member">; role: OrganizationRole; active: boolean; user: Doc<"user"> | null };
 
 export async function organizationSeats(ctx: Reader, organizationId: string): Promise<Seat[]> {
   const members = await listOrganizationMembers(ctx, organizationId);
   return await Promise.all(members.map(async (member) => {
     const user = await findById(ctx, "user", member.userId);
-    return { member, role: parseRole(member.role), active: canAct(user), user };
+    return { member, role: parseRole(member.role), active: await canActNow(ctx, user), user };
   }));
 }
 
@@ -107,7 +117,7 @@ export async function assertOrganizationHasOwner(
 type MemberRow = Pick<Doc<"member">, "organizationId" | "role" | "userId"> & { _id: string };
 
 async function activeOwner(ctx: Reader, row: MemberRow): Promise<boolean> {
-  return parseRole(row.role) === "owner" && canAct(await findById(ctx, "user", row.userId));
+  return parseRole(row.role) === "owner" && await canActNow(ctx, await findById(ctx, "user", row.userId));
 }
 
 /**

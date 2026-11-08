@@ -175,9 +175,9 @@ creates a replacement. Creates pass `expectedOrganizationId` (the organization t
 opened for) so a stale workspace is refused with `ORGANIZATION_CHANGED` instead of writing
 elsewhere. The UI is `OrganizationSwitcher`, `OrganizationSection`, `OrganizationInvitations`
 and `AcceptInvitationView` from `@web-app-starter/auth-ui`. An organization with members always
-has an owner, and one who can act (not banned, not a platform administrator) while members can:
-the backend refuses any membership write, ban, unban or role change that would break this (it
-needs a successor first). Platform administrators get no organization context from the org
+has an owner, and one who can act (not banned, not a platform administrator, no account
+deletion pending) while members can: the backend refuses any membership write, ban, unban or
+role change that would break this (it needs a successor first). Platform administrators get no organization context from the org
 builders; they manage organizations in the admin app and through `organizations_*` agent
 capabilities. See [docs/organizations.md](docs/organizations.md).
 

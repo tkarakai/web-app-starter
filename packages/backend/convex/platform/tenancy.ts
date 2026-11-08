@@ -12,6 +12,7 @@ import { components, internal } from "../_generated/api";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalAction, internalMutation, internalQuery, query } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
+import type { Doc as AppDoc } from "../_generated/dataModel";
 import { adminMutation, authedQuery } from "./functions";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import {
@@ -22,12 +23,12 @@ import {
   type Actor,
   type TenancyMode,
 } from "./billingAccess";
-import { createOrganizationWithOwner, findById, listMemberships, listOrganizationMembers, MAX_MEMBERSHIPS_PER_USER } from "./organizationAccess";
-import { canAct } from "./organizationOwnership";
+import { createOrganizationWithOwner, findById, findMembership, listMemberships, listOrganizationMembers, MAX_MEMBERSHIPS_PER_USER } from "./organizationAccess";
+import { canAct, organizationSeats, setMemberRole } from "./organizationOwnership";
 import { assertLocalFixtures } from "./localFixtures";
 import { assertMaxLength, MAX_NAME_LENGTH } from "@web-app-starter/convex-platform/validation";
 
-type Reader = Pick<QueryCtx, "runQuery">;
+type Reader = Pick<QueryCtx, "runQuery" | "db">;
 type Page<T> = { page: T[]; isDone: boolean; continueCursor: string };
 
 /** Organizations or users handled per setup step; each step is one transaction. */
@@ -63,12 +64,36 @@ async function currentSetup(ctx: Pick<QueryCtx, "db">) {
   return await ctx.db.query("tenancySetups").order("desc").first();
 }
 
+/**
+ * Who is still to become a platform administrator: the addresses `requiresEnrollment` recognizes
+ * (protected admin addresses and admin invitations), read once rather than per user. Such a user
+ * is not an application user: setup never picks them as an owner nor adds them as a member.
+ */
+async function pendingEnrollees(ctx: Reader): Promise<(email: string) => boolean> {
+  const normalize = (email: string) => email.trim().toLowerCase();
+  const emails = new Set((await ctx.runQuery(components.platform.adminEmails.list, {})).map((row) => normalize(row.email)));
+  let cursor: string | null = null;
+  do {
+    const result: Page<{ email: string }> = await ctx.runQuery(components.platform.adminInvitations.list, { paginationOpts: { numItems: 200, cursor } });
+    for (const row of result.page) emails.add(normalize(row.email));
+    cursor = result.isDone ? null : result.continueCursor;
+  } while (cursor);
+  return (email) => emails.has(normalize(email));
+}
+
+/** A setup owner: an application user who can act and isn't a pending administrator. */
+async function requireSetupUser(ctx: Reader, userId: string | undefined, enrollee?: (email: string) => boolean) {
+  const user = userId ? await findById(ctx, "user", userId) : null;
+  if (!user || !canAct(user) || (enrollee ?? await pendingEnrollees(ctx))(user.email)) throw new Error("TENANCY_USER_REQUIRED");
+  return user;
+}
+
 /** Check enough room for both new owners before starting or resuming a batch. */
 async function requireSetupOwners(ctx: Reader, billingUserId?: string, adminUserId?: string) {
   const needed = new Map<string, number>();
+  const enrollee = await pendingEnrollees(ctx);
   for (const userId of [billingUserId, adminUserId]) {
-    const user = userId ? await findById(ctx, "user", userId) : null;
-    if (!user || !canAct(user)) throw new Error("TENANCY_USER_REQUIRED");
+    const user = await requireSetupUser(ctx, userId, enrollee);
     needed.set(user._id, (needed.get(user!._id) ?? 0) + 1);
   }
   for (const [userId, count] of needed) {
@@ -106,7 +131,54 @@ export const failSetup = internalMutation({
   },
 });
 
-/** Retry the same batch after correcting its reported prerequisite; completed work is retained. */
+/**
+ * Whether the shared organization of a setup that has created it lost every owner who can act
+ * (banned, made an administrator, or deleted with it) since: `retry` may then name a new owner.
+ */
+async function sharedOwnerLost(ctx: Reader, setup: AppDoc<"tenancySetups">): Promise<boolean> {
+  if (!setup.sharedOrganizationId) return false;
+  if (!(await findById(ctx, "organization", setup.sharedOrganizationId))) return true;
+  return !(await organizationSeats(ctx, setup.sharedOrganizationId)).some((s) => s.active && s.role === "owner");
+}
+
+/**
+ * Make `adminUserId` the shared organization's owner, alongside any owner who can't act, or
+ * recreate the organization (on its plan and payer, if the payer is still there) when it was
+ * deleted. A recreated organization's member batches start again.
+ */
+async function replaceSharedOwner(ctx: MutationCtx & { user: Doc<"user"> }, setup: AppDoc<"tenancySetups">, adminUserId: string) {
+  const user = await requireSetupUser(ctx, adminUserId);
+  const actor = { userId: ctx.user._id, email: ctx.user.email };
+  const sharedOrganizationId = setup.sharedOrganizationId!;
+  const existing = await findById(ctx, "organization", sharedOrganizationId);
+  const member = existing ? await findMembership(ctx, user._id, sharedOrganizationId) : null;
+  if (!member && (await listMemberships(ctx, user._id)).length + 1 > MAX_MEMBERSHIPS_PER_USER) throw new Error("MEMBERSHIP_LIMIT_REACHED");
+  if (!existing) {
+    const organizationId = await createOrganizationWithOwner(ctx, setup.sharedOrganizationName!, user._id);
+    const billing = setup.billingOrganizationId ? await ctx.runQuery(components.platform.billing.billingByOrganization, { organizationId: setup.billingOrganizationId }) : null;
+    await ctx.runMutation(components.platform.billing.startPlan, {
+      organizationId, organizationName: setup.sharedOrganizationName!, planId: await initialPlanId(ctx),
+      ...(billing && !billing.deletedAt ? { billingOrganizationId: billing._id } : {}), actor,
+    });
+    await scheduleAuditEvent(ctx, { actor: actor.email, authenticatedUserId: actor.userId, sourceDetail: "tenancy-setup", action: "organization.created", resource: `organization:${organizationId}`, status: "succeeded", meta: JSON.stringify({ replaces: sharedOrganizationId }) });
+    await ctx.db.patch(setup._id, { sharedOrganizationId: organizationId, ...(setup.step === "shared" ? { cursor: null } : {}) });
+    return;
+  }
+  if (member) await setMemberRole(ctx, member._id, "owner");
+  else {
+    await ctx.runMutation(components.betterAuth.adapter.create, {
+      input: { model: "member", data: { organizationId: sharedOrganizationId, userId: user._id, role: "owner", createdAt: Date.now() } },
+      onCreateHandle: await createFunctionHandle(internal.platform.authTriggers.onCreate),
+    });
+  }
+  await scheduleAuditEvent(ctx, { actor: actor.email, authenticatedUserId: actor.userId, sourceDetail: "tenancy-setup", action: "admin.organization.owner_added", resource: `organization:${sharedOrganizationId}`, status: "succeeded", meta: JSON.stringify({ userId: user._id, reason: "tenancy_setup_retry" }) });
+}
+
+/**
+ * Retry the same batch after correcting its reported prerequisite; completed work is retained.
+ * Owners can be replaced until the billing and shared organizations exist; after that, only a
+ * new `adminUserId`, and only while the shared organization has no owner who can act.
+ */
 export const retry = adminMutation({
   args: { billingUserId: v.optional(v.string()), adminUserId: v.optional(v.string()) },
   handler: async (ctx, args) => {
@@ -114,7 +186,8 @@ export const retry = adminMutation({
     const setup = await currentSetup(ctx);
     if (!setup || setup.state !== "failed") throw new Error("TENANCY_SETUP_NOT_FAILED");
     const ownersCreated = !!(setup.billingOrganizationId || setup.sharedOrganizationId);
-    if (ownersCreated && (args.billingUserId || args.adminUserId)) throw new Error("TENANCY_SETUP_OWNERS_FIXED");
+    if (ownersCreated && (args.billingUserId || (args.adminUserId && !(await sharedOwnerLost(ctx, setup))))) throw new Error("TENANCY_SETUP_OWNERS_FIXED");
+    if (ownersCreated && args.adminUserId) await replaceSharedOwner(ctx, setup, args.adminUserId);
     const billingUserId = args.billingUserId ?? setup.billingUserId;
     const adminUserId = args.adminUserId ?? setup.adminUserId;
     if (billingUserId && !ownersCreated) await requireSetupOwners(ctx, billingUserId, adminUserId);
@@ -126,7 +199,8 @@ export const retry = adminMutation({
 /** What the platform admin needs to decide, and whether each mode can be turned on now. */
 async function eligibility(ctx: Reader) {
   const users = await readAll<Doc<"user">>(ctx, "user");
-  const appUsers = users.rows.filter((user) => user.role !== "admin");
+  const enrollee = await pendingEnrollees(ctx);
+  const appUsers = users.rows.filter((user) => user.role !== "admin" && !enrollee(user.email));
   const organizations = await readAll<Doc<"organization">>(ctx, "organization");
   let sharedOrganizations = 0;
   for (const organization of organizations.rows) {
@@ -166,7 +240,14 @@ export const status = authedQuery({
     requireAdmin(ctx.user);
     const mode = await readTenancyMode(ctx);
     const setup = await currentSetup(ctx);
-    const running = setup && setup.state !== "done" ? { mode: setup.mode, step: setup.step, startedAt: setup.startedAt, failed: setup.state === "failed", canReplaceOwners: !setup.billingOrganizationId && !setup.sharedOrganizationId, error: setup.error ?? null } : null;
+    const failed = setup?.state === "failed";
+    const running = setup && setup.state !== "done" ? {
+      mode: setup.mode, step: setup.step, startedAt: setup.startedAt, failed,
+      canReplaceOwners: !setup.billingOrganizationId && !setup.sharedOrganizationId,
+      /** The shared organization exists but has no owner who can act: retry with a new `adminUserId`. */
+      canReplaceAdmin: failed && await sharedOwnerLost(ctx, setup),
+      error: setup.error ?? null,
+    } : null;
     if (mode) return { mode, running: null, eligibility: null };
     return { mode: null, running, eligibility: running && !running.failed ? null : await eligibility(ctx) };
   },
@@ -271,8 +352,9 @@ export const runSetup = internalMutation({
       }
       const result = await page<Doc<"user">>(ctx, "user", setup.cursor);
       const now = Date.now();
+      const enrollee = await pendingEnrollees(ctx);
       for (const user of result.page) {
-        if (user.role === "admin" || !canAct(user) || user._id === setup.adminUserId) continue;
+        if (user.role === "admin" || !canAct(user) || enrollee(user.email) || user._id === setup.adminUserId) continue;
         const memberships = await listMemberships(ctx, user._id);
         if (memberships.length >= MAX_MEMBERSHIPS_PER_USER || memberships.some((m) => m.organizationId === sharedOrganizationId)) continue;
         await ctx.runMutation(components.betterAuth.adapter.create, {

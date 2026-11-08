@@ -6,7 +6,8 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { adminMutation, authedQuery } from "./functions";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
-import { findMembership, removeMemberships } from "./organizationAccess";
+import { findMembership } from "./organizationAccess";
+import { beginUserDeletion, finishUserDeletion } from "./userDeletion";
 import { promoteToOwner } from "./adminOrganizations";
 import { canAct, ownersNeededForReactivation, setMemberRole, successorRequiredMessage, successorsNeededForBan } from "./organizationOwnership";
 
@@ -161,9 +162,17 @@ export const update = adminMutation({ args: { ...userArgs, name: v.string(), ima
   await ctx.runMutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: userId }], update: { name: name.trim(), ...(image !== undefined ? { image } : {}), updatedAt: Date.now() } } });
   await scheduleAuditEvent(ctx, { actor: ctx.user.email, authenticatedUserId: ctx.ownerId, sourceDetail: "agent-users", action: "user.profile_updated", resource: `user:${userId}`, status: "succeeded" });
 } });
+/**
+ * Delete a user now, on the same deletion path as Better Auth's delete hooks
+ * (`beginUserDeletion` / `finishUserDeletion` in userDeletion.ts): refused with
+ * `BILLING_ORGANIZATION_IN_USE` or `BILLING_OWNER_REQUIRED` as they are; memberships, app-owned
+ * and platform-owned user data go with the user.
+ */
 export const remove = adminMutation({ args: userArgs, handler: async (ctx, { userId }) => {
   const user = await protectedTarget(ctx, userId);
   if (userId === ctx.user._id) throw new Error("CANNOT_DELETE_SELF");
+  const blocker = await beginUserDeletion(ctx, { userId, ownerId: user.userId ?? userId, email: user.email, name: user.name ?? "" });
+  if (blocker) throw new Error(blocker.code);
   await deleteSessions(ctx, userId);
   for (const model of ["account", "twoFactor", "passkey"] as const) {
     for (let i = 0; i < 100; i++) {
@@ -172,9 +181,8 @@ export const remove = adminMutation({ args: userArgs, handler: async (ctx, { use
       if (i === 99) throw new Error("TOO_MANY_USER_RECORDS");
     }
   }
-  // Deleting through the adapter skips Better Auth's user.delete hook; clean up memberships here.
-  await removeMemberships(ctx, userId, { email: ctx.user.email, userId: ctx.ownerId });
   await ctx.runMutation(components.betterAuth.adapter.deleteOne, { input: { model: "user", where: [{ field: "_id", value: userId }] } });
+  await finishUserDeletion(ctx, { userId, actor: { email: ctx.user.email, userId: ctx.ownerId } });
   await scheduleAuditEvent(ctx, { actor: ctx.user.email, authenticatedUserId: ctx.ownerId, sourceDetail: "agent-users", action: "admin.user.deleted", resource: `user:${user._id}`, status: "succeeded" });
 } });
 export const sessions = authedQuery({ args: { ...userArgs, paginationOpts: paginationOptsValidator }, handler: async (ctx, { userId, paginationOpts }) => {

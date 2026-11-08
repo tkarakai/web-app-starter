@@ -4,6 +4,7 @@ import { createTestEnv } from "../test.modules";
 import { api, components, internal } from "../_generated/api";
 import schema from "./betterAuth/schema";
 import { sha256Hex } from "./tokenHash";
+import { createOrganizationWithOwner } from "./organizationAccess";
 
 vi.mock("./sendAuthEmail", () => ({ sendAuthEmail: vi.fn() }));
 const authModules = import.meta.glob("./betterAuth/**/*.*s");
@@ -76,6 +77,23 @@ describe("administrator enrollment", () => {
     await owner.mutation(api.platform.adminInvitations.completeOnboarding, {});
     expect(await owner.query(api.platform.adminInvitations.getMyOnboardingStatus, {})).toMatchObject({ completed: true });
     expect(await user(t)).toMatchObject({ role: "admin" });
+  });
+  test("completing enrollment goes through the ownership check: an enrollee who owns an organization needs a successor first", async () => {
+    const t = fixture(); await invite(t, "admin");
+    const claim = await t.action(api.platform.adminInvitations.claimInvitation, { token });
+    await t.action(api.platform.adminInvitations.register, { capability: claim.capability, email, name: "Owner", password });
+    const account = (await user(t))!;
+    const owner = await session(t, account._id);
+    await t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: account._id }], update: { twoFactorEnabled: true } } });
+    await verifiedFactor(t, account._id);
+    await owner.mutation(api.platform.adminInvitations.advanceOnboardingStep, { step: 3 });
+    // An organization the enrollee owns alone, with a member who can act.
+    const now = Date.now();
+    const member = await t.mutation(components.betterAuth.adapter.create, { input: { model: "user", data: { name: "Member", email: "member@example.test", emailVerified: true, createdAt: now, updatedAt: now } } });
+    const organizationId = await t.run(ctx => createOrganizationWithOwner(ctx, "Shared", account._id));
+    await t.mutation(components.betterAuth.adapter.create, { input: { model: "member", data: { organizationId, userId: member._id, role: "member", createdAt: now } } });
+    await expect(owner.mutation(api.platform.adminInvitations.completeOnboarding, {})).rejects.toThrow("OWNER_SUCCESSOR_REQUIRED");
+    expect(await user(t)).toMatchObject({ role: "user" });
   });
   test("backup-step progress rejects stale authentication and persists on authenticated retry", async () => {
     const t = fixture(); await invite(t, "admin");

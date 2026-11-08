@@ -15,11 +15,11 @@ import type { Doc } from "./betterAuth/_generated/dataModel";
 import { adminMutation, authedQuery } from "./functions";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { findById, findMembership, listMemberships, listOrganizationMembers, parseRole } from "./organizationAccess";
-import { canAct, isBanned, markOrganizationDeleting, needsSuccessor, organizationSeats, pickSuccessor, setMemberRole, successorsNeededForBan } from "./organizationOwnership";
+import { canAct, canActNow, isBanned, markOrganizationDeleting, needsSuccessor, organizationSeats, pickSuccessor, setMemberRole, successorsNeededForBan } from "./organizationOwnership";
 import { livePendingInvitations, organizationInvitations } from "./organizations";
 
-type Reader = Pick<QueryCtx, "runQuery">;
-type AdminCtx = Pick<MutationCtx, "runQuery" | "runMutation" | "scheduler"> & { user: Doc<"user">; ownerId: string };
+type Reader = Pick<QueryCtx, "runQuery" | "db">;
+type AdminCtx = Pick<MutationCtx, "runQuery" | "runMutation" | "scheduler" | "db"> & { user: Doc<"user">; ownerId: string };
 
 function requireAdmin(user: Doc<"user">) {
   if (user.role !== "admin") throw new Error("NOT_ADMIN");
@@ -179,7 +179,7 @@ export const removeOwner = adminMutation({
     if (parseRole(member.role) !== "owner") throw new Error("NOT_AN_OWNER");
     const others = (await organizationSeats(ctx, organizationId)).filter((s) => s.member._id !== member._id);
     if (!others.some((s) => s.role === "owner")) throw new Error("LAST_OWNER");
-    const active = canAct(await findById(ctx, "user", userId));
+    const active = await canActNow(ctx, await findById(ctx, "user", userId));
     if (active && others.some((s) => s.active) && !others.some((s) => s.active && s.role === "owner")) throw new Error("LAST_OWNER");
     await setMemberRole(ctx, member._id, role);
     await audit(ctx, "admin.organization.owner_removed", organizationId, { userId }, { oldValue: "owner", newValue: role });
@@ -240,8 +240,9 @@ export const retryCleanup = adminMutation({
 });
 
 /**
- * Delete an organization, as its owner could: memberships, invitations and the organization in
- * one transaction, then the app's own data through `organizationData.ts`. Accounts are kept;
+ * Delete an organization, as its owner could: memberships, invitations, its plan (ended, kept as
+ * billing history) and the organization in one transaction, then the app's own data through
+ * `organizationData.ts`. Accounts are kept;
  * members whose session was in it continue in another of their organizations, or none.
  */
 export const remove = adminMutation({
@@ -251,6 +252,10 @@ export const remove = adminMutation({
     await markOrganizationDeleting(ctx, organizationId);
     await deleteAll(ctx, "member", organizationId);
     await deleteAll(ctx, "invitation", organizationId);
+    // Its plan ends and its billing row is marked deleted; both stay as billing history.
+    await ctx.runMutation(components.platform.billing.organizationDeleted, {
+      organizationId, actor: { userId: ctx.ownerId, email: ctx.user.email },
+    });
     await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
       input: { model: "organization", where: [{ field: "_id", value: organizationId }] },
     });

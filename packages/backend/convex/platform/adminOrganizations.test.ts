@@ -1,7 +1,7 @@
 // Administrator view and support actions over every organization (admin app and agents).
 import { describe, expect, test, vi } from "vitest";
 
-import { api, components } from "../_generated/api";
+import { api, components, internal } from "../_generated/api";
 import { createTestEnv } from "../test.modules";
 import authSchema from "./betterAuth/schema";
 import { organizationFixture } from "./organizations.test-helpers";
@@ -102,6 +102,36 @@ describe("admin organizations", () => {
       expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "organization", where: [{ field: "_id", value: f.acme }] })).toBeNull();
       expect(await f.alice.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: null, organizations: [] });
       await expect(f.boss.caller.query(orgs.get, { organizationId: f.acme })).rejects.toThrow("ORGANIZATION_NOT_FOUND");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("deleting an organization ends its plan, so its payer and the payer's last member can go", async () => {
+    vi.useFakeTimers();
+    try {
+      const f = await fixture();
+      const actor = { email: "test" };
+      const carol = await f.user("carol");
+      const payer = await carol.provision();
+      await f.t.mutation(components.platform.billing.ensureSeeded, {});
+      const free = (await f.t.query(components.platform.billing.listPlans, {})).find((plan) => plan.isSeeded)!;
+      const payerBilling = await f.t.mutation(components.platform.billing.createBilling, { organizationId: payer, organizationName: "Payer", paymentMethod: "cash", actor });
+      // Acme is paid for by carol's organization and has a billing row of its own.
+      const acmeBilling = await f.t.mutation(components.platform.billing.createBilling, { organizationId: f.acme, organizationName: "Acme", actor });
+      await f.t.mutation(components.platform.billing.startPlan, { organizationId: f.acme, organizationName: "Acme", planId: free._id, billingOrganizationId: payerBilling, actor });
+      await expect(f.boss.caller.mutation(orgs.remove, { organizationId: payer })).rejects.toThrow("BILLING_ORGANIZATION_IN_USE");
+
+      await f.boss.caller.mutation(orgs.remove, { organizationId: f.acme });
+      expect(await f.t.query(components.platform.billing.currentPlan, { organizationId: f.acme })).toBeNull();
+      expect(await f.t.query(components.platform.billing.paidBy, { billingOrganizationId: payerBilling })).toEqual([]);
+      const acmeRow = await f.t.query(components.platform.billing.billingByOrganization, { organizationId: f.acme });
+      expect(acmeRow).toMatchObject({ _id: acmeBilling, deletedAt: expect.any(Number) });
+
+      expect(await f.t.query(internal.platform.userDeletion.blockerFor, { userId: carol.userId })).toBeNull();
+      await f.boss.caller.mutation(orgs.remove, { organizationId: payer });
+      await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await f.organization(payer)).toBeNull();
     } finally {
       vi.useRealTimers();
     }
