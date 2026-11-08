@@ -12,6 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 convex_bin=$("$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/local-dev-deps.ts" bin "$PWD" convex)
 backend_args=()
 if [ -n "${PLATFORM_E2E_PORTS:-}" ]; then
+    "$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/e2e-ports.ts" prepare-backend
     cloud_port=$("$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/e2e-ports.ts" cloud)
     site_port=$("$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/e2e-ports.ts" site)
     backend_args+=(--local-cloud-port "$cloud_port" --local-site-port "$site_port")

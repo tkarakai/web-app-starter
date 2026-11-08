@@ -16,7 +16,7 @@ test("anonymous CI launcher bounds query execution without changing interactive 
   fs.writeFileSync(path.join(directory,"node_modules/convex/package.json"),'{"name":"convex","bin":"fixture.cjs"}');
   fs.writeFileSync(path.join(directory,"node_modules/convex/fixture.cjs"), 'console.log("convex "+process.argv.slice(2).join(" "));console.log(process.env.CONVEX_AGENT_MODE);console.log(process.env.DATABASE_UDF_USER_TIMEOUT_SECONDS??"unset");process.exit(19);');
   fs.writeFileSync(path.join(directory, "npx"), '#!/bin/bash\necho "Unexpected package download" >&2\nexit 127\n', { mode: 0o755 });
-  fs.writeFileSync(path.join(directory,"platform/tooling/e2e-ports.ts"), 'process.stdout.write(process.argv[2] === "cloud" ? "3220" : "3221");');
+  fs.writeFileSync(path.join(directory,"platform/tooling/e2e-ports.ts"), 'if(process.argv[2] !== "prepare-backend")process.stdout.write(process.argv[2] === "cloud" ? "3220" : "3221");');
   const clean: Record<string, string | undefined> = { ...process.env, PATH: directory + path.delimiter + process.env.PATH };
   delete clean.CI;
   delete clean.PLATFORM_E2E_PORTS;

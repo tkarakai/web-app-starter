@@ -40,3 +40,25 @@ test("the real listener probe avoids occupied defaults and shares a stable worke
     else process.env.PLATFORM_E2E_PORTS = previous;
   }
 });
+
+test("saved backend ports are staged without losing credentials or deployment identity", async t => {
+  const fs = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { prepareBackendPorts } = await import("../e2e-ports.ts");
+  const directory = fs.mkdtempSync(join(tmpdir(), "e2e-backend-"));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const previous = process.env.PLATFORM_E2E_PORTS;
+  process.env.PLATFORM_E2E_PORTS = JSON.stringify({ cloud: 3212, site: 3213 });
+  try {
+    prepareBackendPorts(directory);
+    fs.mkdirSync(join(directory, ".convex/local/default"), { recursive: true });
+    const file = join(directory, ".convex/local/default/config.json");
+    fs.writeFileSync(file, JSON.stringify({ adminKey: "fixture", deploymentName: "anonymous-agent", ports: { cloud: 3210, site: 3211 } }));
+    prepareBackendPorts(directory);
+    assert.deepEqual(JSON.parse(fs.readFileSync(file, "utf8")), { adminKey: "fixture", deploymentName: "anonymous-agent", ports: { cloud: 3212, site: 3213 } });
+  } finally {
+    if (previous === undefined) delete process.env.PLATFORM_E2E_PORTS;
+    else process.env.PLATFORM_E2E_PORTS = previous;
+  }
+});

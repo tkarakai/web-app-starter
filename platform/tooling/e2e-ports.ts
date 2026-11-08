@@ -1,4 +1,6 @@
 import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import rawConfig from "../../app.config.ts";
 import { APP_IDS, validateAppConfig, type AppId } from "../packages/app-config/src/schema.ts";
 
@@ -36,8 +38,20 @@ export function plannedPort(name: string): number {
   return port;
 }
 
+/** Convex probes saved ports before applying CLI overrides. Stage only our
+ * project-local config so another checkout's anonymous-agent is never probed. */
+export function prepareBackendPorts(directory: string): void {
+  const file = join(directory, ".convex/local/default/config.json");
+  if (!existsSync(file)) return;
+  const config = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+  config.ports = { cloud: plannedPort("cloud"), site: plannedPort("site") };
+  writeFileSync(file, JSON.stringify(config, null, 2) + "\n");
+}
+
 if (process.argv[1]?.endsWith("/e2e-ports.ts")) {
-  if (process.argv[2] === "shell") {
+  if (process.argv[2] === "prepare-backend") {
+    prepareBackendPorts(process.cwd());
+  } else if (process.argv[2] === "shell") {
     for (const app of APP_IDS) {
       const port = plannedPort(app);
       process.stdout.write(`APP_CONFIG_PORT_${app.toUpperCase()}=${port}\nAPP_CONFIG_ORIGIN_${app.toUpperCase()}='http://localhost:${port}'\n`);
