@@ -26,6 +26,38 @@ function fixture(legacy = false) {
 }
 
 describe("organization projects", () => {
+  test("project subscriptions never replay an old organization's cursors after a session switch", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const original = await alice.provision();
+    await alice.caller.mutation(api.projects.create, { name: "Personal project", description: "" });
+    const previousPage = await alice.caller.query(api.projects.list, {
+      expectedOrganizationId: original, paginationOpts: { numItems: 12, cursor: null },
+    });
+    const bob = await f.user("bob");
+    const destination = await bob.provision();
+    await f.addMember(destination, alice.userId, "member");
+    await bob.caller.mutation(api.projects.create, { name: "Shared roadmap", description: "" });
+    await alice.switchTo(destination);
+
+    for (const query of [api.projects.list, api.projects.listWithStats]) {
+      // A still-mounted old subscription can re-evaluate before mine updates in React.
+      // The stale cursor must never reach the new organization's index query.
+      expect(await alice.caller.query(query, {
+        expectedOrganizationId: original,
+        paginationOpts: { numItems: 12, cursor: previousPage.continueCursor },
+      })).toEqual({ page: [], isDone: true, continueCursor: "" });
+      expect((await alice.caller.query(query, {
+        expectedOrganizationId: destination,
+        paginationOpts: { numItems: 12, cursor: null },
+      })).page).toMatchObject([{ name: "Shared roadmap", organizationId: destination }]);
+      // A client-supplied organization is a consistency check, never authorization.
+      expect((await alice.caller.query(query, {
+        expectedOrganizationId: original, paginationOpts: { numItems: 12, cursor: null },
+      })).page).toEqual([]);
+    }
+  });
+
   test("the database rejects projects without an organization", async () => {
     const t = createTestEnv();
     // @ts-expect-error Deliberately invalid input checks runtime schema enforcement too.

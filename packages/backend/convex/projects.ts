@@ -50,8 +50,13 @@ export async function projectStats(ctx: Pick<QueryCtx, "db">, projectId: Id<"pro
 
 /** The organization's projects, newest first, a page at a time (`usePaginatedQuery`). */
 export const list = orgPaginatedQuery({
-  args: {},
+  args: { expectedOrganizationId: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    // Session changes invalidate the old subscription before the UI observes the new org.
+    // Never replay its pagination cursor or journal against a different index range.
+    if (args.expectedOrganizationId !== undefined && args.expectedOrganizationId !== ctx.organizationId) {
+      return { page: [], isDone: true, continueCursor: "" };
+    }
     assertPageSize(args.paginationOpts);
     return await ctx.db
       .query("projects")
@@ -63,8 +68,13 @@ export const list = orgPaginatedQuery({
 
 /** `list` with each project's counts (`projectStats`), a smaller page at a time. */
 export const listWithStats = orgPaginatedQuery({
-  args: {},
+  args: { expectedOrganizationId: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    // Session changes invalidate the old subscription before the UI observes the new org.
+    // Never replay its pagination cursor or journal against a different index range.
+    if (args.expectedOrganizationId !== undefined && args.expectedOrganizationId !== ctx.organizationId) {
+      return { page: [], isDone: true, continueCursor: "" };
+    }
     assertPageSize(args.paginationOpts, 24);
     const result = await ctx.db
       .query("projects")
