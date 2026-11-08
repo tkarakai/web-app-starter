@@ -38,6 +38,7 @@ const PUBLIC_KEYS = [
 
 /** All valid setting keys and their value validators. */
 const VALID_KEYS = [
+  "adminRecentLoginMinutes",
   "onboardingType",
   "invitationTokenExpiryDays",
   "invitationEmailTemplate",
@@ -56,6 +57,7 @@ const VALID_KEYS = [
 
 /** Default values returned when a key has never been set. */
 const DEFAULTS: Record<string, SettingValue> = {
+  adminRecentLoginMinutes: 60,
   onboardingType: "inviteOnly",
   invitationTokenExpiryDays: 7,
   userDeletionGraceDays: 14,
@@ -94,7 +96,12 @@ const MAX_TEMPLATE_SIZE = 50_000;
 
 /** Validate the JSON-encoded value for a given key. Throws on invalid input. */
 function validateValue(key: string, value: string): void {
-  if (key === "onboardingType") {
+  if (key === "adminRecentLoginMinutes") {
+    const minutes = Number(value);
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 240) {
+      throw new Error("INVALID_VALUE: adminRecentLoginMinutes must be an integer between 1 and 240");
+    }
+  } else if (key === "onboardingType") {
     if (!isOnboardingType(value)) {
       throw new Error(
         "INVALID_VALUE: onboardingType must be one of 'inviteOnly', 'publicWaitlist', or 'publicSignup'"

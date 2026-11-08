@@ -157,3 +157,9 @@ it("offers no sign-out inside a dialog, where the user can just close it", async
   expect(screen.getByLabelText(english.accountSecurity.changePassword.currentPassword)).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: english.common.signOut })).not.toBeInTheDocument();
 });
+
+it.each([[60, "1 hour"], [30, "30 minutes"], [90, "1 hour and 30 minutes"], [1, "1 minute"]])("explains the admin verification interval (%s minutes)", (minutes, period) => {
+  mocks.status = { ...ready(), recent: false, recentLoginMinutes: minutes };
+  render(view({ admin: true, requireRecent: true }));
+  expect(screen.getByText(`This app asks you to authenticate every ${period} for security reasons.`)).toBeVisible();
+});

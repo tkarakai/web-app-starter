@@ -50,8 +50,12 @@ export async function readPolicies(ctx: Reader, user: Doc<"user">) {
   const rawPasskey = await setting(ctx, getPasskeyPolicyKey(scope));
   const passkeyPolicy: PasskeyPolicy = rawPasskey === undefined ? "optional"
     : rawPasskey === "disabled" || rawPasskey === "optional" ? rawPasskey : "required";
+  const rawRecentMinutes = scope === "admin" ? await setting(ctx, "adminRecentLoginMinutes") : undefined;
+  const recentLoginMinutes = scope === "admin"
+    ? typeof rawRecentMinutes === "number" && Number.isInteger(rawRecentMinutes) && rawRecentMinutes >= 1 && rawRecentMinutes <= 240 ? rawRecentMinutes : 60
+    : RECENT_AUTH_MS / 60_000;
   return {
-    scope, enrollment, passkeyPolicy,
+    scope, enrollment, passkeyPolicy, recentLoginMinutes,
     emailRequired: await booleanPolicy(ctx, getEmailVerificationRequiredKey(scope), LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY, true),
     mfaRequired: enrollment || await booleanPolicy(ctx, getMfaRequiredKey(scope), LEGACY_MFA_REQUIRED_KEY, false),
   };
@@ -126,10 +130,11 @@ export async function evaluateSession(ctx: Reader, pair: AssuranceSubject) {
     if (!hasPasskey) reason = "passkey_enrollment";
     else if (!strong || session.strongFactorType !== "passkey") reason = "passkey_verification";
   }
-  const recentUntil = (strongForChanges ? strong ? session.strongVerifiedAt ?? 0 : 0 : primary ? session.primaryVerifiedAt ?? 0 : 0) + RECENT_AUTH_MS;
+  const recentAuthMs = policy.recentLoginMinutes * 60_000;
+  const recentUntil = (strongForChanges ? strong ? session.strongVerifiedAt ?? 0 : 0 : primary ? session.primaryVerifiedAt ?? 0 : 0) + recentAuthMs;
   return {
     ...policy, hasTotp, hasPasskey, strong, strongForChanges, reason,
-    primaryRecentUntil: (session.primaryVerifiedAt ?? 0) + RECENT_AUTH_MS,
+    primaryRecentUntil: (session.primaryVerifiedAt ?? 0) + recentAuthMs,
     allowed: reason === "ready", recent: recentUntil > now, recentUntil,
     expiresAt: Math.min(session.expiresAt, policy.scope === "admin" ? (session.authenticatedAt ?? session.createdAt) + ADMIN_SESSION_MS : session.expiresAt),
   };

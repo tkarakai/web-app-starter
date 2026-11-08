@@ -1,3 +1,4 @@
+import { RecentLoginPolicyCard } from "@/components/settings/recent-login-policy-card";
 import { EmailVerificationPolicyCard } from "@/components/settings/email-verification-policy-card";
 import { MagicLinkPolicyCard } from "@/components/settings/magic-link-policy-card";
 import { MfaPolicyCard } from "@/components/settings/mfa-policy-card";
@@ -23,6 +24,7 @@ export default function SecurityPage() {
         <section className="space-y-4">
           <h2 className="text-lg font-semibold tracking-tight">Admin Policies</h2>
           <EmailVerificationPolicyCard scope="admin" />
+          <RecentLoginPolicyCard />
           <MfaPolicyCard scope="admin" />
           <PasskeyPolicyCard scope="admin" />
         </section>
