@@ -283,7 +283,13 @@ function OrganizationProjects({ selectedProjectId, onSelectProject, onCreate }: 
   const projects: Project[] = projectPages.results;
   return (
     <SidebarMenu>
-      {projects.length === 0 ? (
+      {projectPages.status === "LoadingFirstPage" ? (
+        <SidebarMenuItem>
+          <SidebarMenuButton disabled>
+            <span role="status">{tc("loading")}</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      ) : projects.length === 0 ? (
         <SidebarMenuItem>
           <SidebarMenuButton
             className="text-muted-foreground italic"

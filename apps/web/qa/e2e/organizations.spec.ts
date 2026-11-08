@@ -80,9 +80,14 @@ test("an invited teammate signs in from the link, joins, shares the organization
     await teammatePage.getByRole("button", { name: "Switch organization" }).click();
     await teammatePage.getByRole("menuitem", { name: "E2E User", exact: true }).click();
     await expect(teammatePage.getByTestId("active-organization")).toHaveText("E2E User");
+    // Absence alone also passes while the new workspace is still loading.
+    // Finish the personal workspace query before beginning the return switch.
+    await expect(teammatePage.getByRole("button", { name: "No projects", exact: true })).toBeVisible();
+    await expect(teammatePage.getByText("No projects yet", { exact: true })).toBeVisible();
     await expect(teammatePage.getByRole("button", { name: "Shared roadmap" })).toHaveCount(0);
     await teammatePage.getByRole("button", { name: "Switch organization" }).click();
     await teammatePage.getByRole("menuitem", { name: organization, exact: true }).click();
+    await expect(teammatePage.getByTestId("active-organization")).toHaveText(organization);
     await expect(teammatePage.getByRole("button", { name: "Shared roadmap" })).toBeVisible();
 
     // The owner removes them; the teammate's view drops the organization live and says why.
