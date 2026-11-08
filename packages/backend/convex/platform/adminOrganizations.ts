@@ -9,13 +9,13 @@
  */
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { components } from "../_generated/api";
+import { components, internal } from "../_generated/api";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { adminMutation, authedQuery } from "./functions";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
-import { findById, findMembership, listMemberships, listOrganizationMembers, parseRole } from "./organizationAccess";
-import { canAct, canActNow, isBanned, markOrganizationDeleting, needsSuccessor, organizationSeats, pickSuccessor, setMemberRole, successorsNeededForBan } from "./organizationOwnership";
+import { findById, findMembership, listMemberships, listOrganizationMembers, membersWithRole, parseRole, type OrganizationRole } from "./organizationAccess";
+import { canAct, canActNow, findSuccessor, isBanned, markOrganizationDeleting, setMemberRole, successorNeeded, successorNeededForBan } from "./organizationOwnership";
 import { livePendingInvitations, organizationInvitations } from "./organizations";
 import { cleanupRow, cleanupStale, restartCleanup, startOrganizationCleanup } from "./organizationCleanup";
 
@@ -32,20 +32,19 @@ async function target(ctx: Reader, organizationId: string) {
   return organization;
 }
 
-async function membersWithUsers(ctx: Reader, organizationId: string) {
-  const rows = await listOrganizationMembers(ctx, organizationId);
-  return await Promise.all(rows.map(async (member) => {
-    const user = await findById(ctx, "user", member.userId);
-    return {
-      memberId: member._id,
-      userId: member.userId,
-      name: user?.name ?? "",
-      email: user?.email ?? "",
-      role: parseRole(member.role),
-      joinedAt: member.createdAt,
-      banned: isBanned(user),
-    };
-  }));
+type MemberView = { memberId: string; userId: string; name: string; email: string; role: OrganizationRole; joinedAt: number; banned: boolean };
+
+async function memberView(ctx: Reader, member: Doc<"member">): Promise<MemberView> {
+  const user = await findById(ctx, "user", member.userId);
+  return {
+    memberId: member._id,
+    userId: member.userId,
+    name: user?.name ?? "",
+    email: user?.email ?? "",
+    role: parseRole(member.role),
+    joinedAt: member.createdAt,
+    banned: isBanned(user),
+  };
 }
 
 /** Live pending invitations counted on a list row; beyond this the row shows the count as "100+". */
@@ -53,27 +52,28 @@ const PENDING_COUNT_CAP = 100;
 
 /**
  * Counts and owners only: member identities beyond the owners are not read for a summary. The
- * live pending count reads at most `PENDING_COUNT_CAP + 1` invitations unless `livePending` is
- * given (`get` has already read them all).
+ * live pending count reads at most `PENDING_COUNT_CAP + 1` invitations. `get` passes what it has
+ * already read (every member with their user, and every live invitation) instead.
  */
-async function summary(ctx: Reader, organization: Doc<"organization">, livePending?: number) {
-  const rows = await listOrganizationMembers(ctx, organization._id);
-  const owners = await Promise.all(rows.filter((member) => parseRole(member.role) === "owner").map(async (member) => {
-    const user = await findById(ctx, "user", member.userId);
-    return { userId: member.userId, name: user?.name ?? "", email: user?.email ?? "", banned: isBanned(user) };
-  }));
-  const capped = livePending === undefined;
-  const pending = livePending ?? (await livePendingInvitations(ctx, organization._id, PENDING_COUNT_CAP + 1)).length;
+async function summary(ctx: Reader, organization: Doc<"organization">, read?: { members: MemberView[]; livePending: number }) {
+  const rows = read ? null : await listOrganizationMembers(ctx, organization._id);
+  const owners = read
+    ? read.members.filter((member) => member.role === "owner").map(({ userId, name, email, banned }) => ({ userId, name, email, banned }))
+    : await Promise.all(rows!.filter((member) => parseRole(member.role) === "owner").map(async (member) => {
+      const { userId, name, email, banned } = await memberView(ctx, member);
+      return { userId, name, email, banned };
+    }));
+  const pending = read?.livePending ?? (await livePendingInvitations(ctx, organization._id, PENDING_COUNT_CAP + 1)).length;
   return {
     id: organization._id,
     name: organization.name,
     createdAt: organization.createdAt,
-    memberCount: rows.length,
+    memberCount: read ? read.members.length : rows!.length,
     owners,
     /** Live pending invitations, at most 100 on a list row. */
-    pendingInvitations: capped ? Math.min(pending, PENDING_COUNT_CAP) : pending,
+    pendingInvitations: read ? pending : Math.min(pending, PENDING_COUNT_CAP),
     /** There are more live pending invitations than `pendingInvitations` (list rows only): show "100+". */
-    morePendingInvitations: capped && pending > PENDING_COUNT_CAP,
+    morePendingInvitations: !read && pending > PENDING_COUNT_CAP,
   };
 }
 
@@ -100,40 +100,45 @@ export const get = authedQuery({
   handler: async (ctx, { organizationId }) => {
     requireAdmin(ctx.user);
     const organization = await target(ctx, organizationId);
-    const members = await membersWithUsers(ctx, organizationId);
+    // Every member is read once, with their user; the summary is built from them.
+    const members = await Promise.all((await listOrganizationMembers(ctx, organizationId)).map((member) => memberView(ctx, member)));
     const { invitations, livePending } = await organizationInvitations(ctx, organizationId, new Set(members.map((m) => m.email.toLowerCase())));
-    return { ...(await summary(ctx, organization, livePending)), members, invitations };
+    return { ...(await summary(ctx, organization, { members, livePending })), members, invitations };
   },
 });
 
 /**
  * A user's memberships; what deleting the account would do to each organization (hand ownership
  * to a successor, or delete an organization the user is the only member of); and which
- * organizations need a new owner before the user can be banned, with who could take over.
+ * organizations need a new owner before the user can be banned, with who could take over (at
+ * most `MAX_SUCCESSOR_CANDIDATES` listed; any member who can act is accepted). Per organization
+ * it reads the member rows once (for the count), and users only of owners and of the members it
+ * names.
  */
 export const forUser = authedQuery({
   args: { userId: v.string() },
   handler: async (ctx, { userId }) => {
     requireAdmin(ctx.user);
     const memberships = await listMemberships(ctx, userId);
-    const banBlockers = new Map((await successorsNeededForBan(ctx, userId)).map((n) => [n.organizationId, n]));
     return await Promise.all(memberships.map(async (membership) => {
       const organization = await findById(ctx, "organization", membership.organizationId);
-      const seats = await organizationSeats(ctx, membership.organizationId);
-      const others = seats.filter((s) => s.member._id !== membership._id);
+      const rows = await listOrganizationMembers(ctx, membership.organizationId);
+      const others = rows.filter((row) => row._id !== membership._id);
       const role = parseRole(membership.role);
-      const successor = role === "owner" && needsSuccessor(others) ? pickSuccessor(others) : undefined;
-      const onBan = banBlockers.get(membership.organizationId);
+      const successor = role === "owner" && others.length > 0 && await successorNeeded(ctx, membership.organizationId, membership._id)
+        ? await findSuccessor(ctx, membership.organizationId, membership._id)
+        : undefined;
+      const onBan = await successorNeededForBan(ctx, membership, { candidates: true });
       return {
         organizationId: membership.organizationId,
         name: organization?.name ?? "",
         role,
-        memberCount: seats.length,
-        soleOwner: role === "owner" && !others.some((s) => s.role === "owner"),
+        memberCount: rows.length,
+        soleOwner: role === "owner" && !others.some((row) => parseRole(row.role) === "owner"),
         onAccountDeletion: others.length === 0 ? "organizationDeleted" as const : successor ? "ownershipPasses" as const : "membershipRemoved" as const,
         successor: successor ? { userId: successor.member.userId, name: successor.user?.name ?? "", email: successor.user?.email ?? "" } : null,
-        /** Present when banning needs a new owner here first: choose one of `candidates`. */
-        banSuccessor: onBan ? { candidates: onBan.candidates, suggested: onBan.suggested } : null,
+        /** Present when banning needs a new owner here first: choose one of `candidates` (or any member who can act; `moreCandidates`). */
+        banSuccessor: onBan ? { candidates: onBan.candidates, moreCandidates: onBan.moreCandidates, suggested: onBan.suggested } : null,
       };
     }));
   },
@@ -189,10 +194,10 @@ export const removeOwner = adminMutation({
   handler: async (ctx, { organizationId, userId, role }) => {
     const member = await memberOf(ctx, organizationId, userId);
     if (parseRole(member.role) !== "owner") throw new Error("NOT_AN_OWNER");
-    const others = (await organizationSeats(ctx, organizationId)).filter((s) => s.member._id !== member._id);
-    if (!others.some((s) => s.role === "owner")) throw new Error("LAST_OWNER");
+    if (!(await hasOtherOwner(ctx, organizationId, member._id))) throw new Error("LAST_OWNER");
+    // The only owner who can act, while others can: demoting them needs a successor first.
     const active = await canActNow(ctx, await findById(ctx, "user", userId));
-    if (active && others.some((s) => s.active) && !others.some((s) => s.active && s.role === "owner")) throw new Error("LAST_OWNER");
+    if (active && await successorNeeded(ctx, organizationId, member._id)) throw new Error("LAST_OWNER");
     await setMemberRole(ctx, member._id, role);
     await audit(ctx, "admin.organization.owner_removed", organizationId, { userId }, { oldValue: "owner", newValue: role });
   },
@@ -212,16 +217,30 @@ export const cancelInvitation = adminMutation({
   },
 });
 
+/** Pages of 100 rows deleted in the deleting transaction; the rest go in scheduled batches. */
+const INLINE_DELETE_PAGES = 10;
+
+/**
+ * Delete the organization's memberships or invitations: up to 1,000 in this transaction, the
+ * rest in batches after the organization row is gone (`organizations.deleteOrganizationRows`).
+ * Neither is capped: a tenancy setup's shared organization can hold every user, and invitation
+ * history only grows. Rows left for a moment point at a deleted organization, which no read
+ * counts (`resolveOrganizationSelection`).
+ */
 async function deleteAll(ctx: AdminCtx, model: "member" | "invitation", organizationId: string) {
-  // Memberships and invitations are capped well below this (organizationPlugin.ts limits).
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < INLINE_DELETE_PAGES; i++) {
     const result = await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
       input: { model, where: [{ field: "organizationId", value: organizationId }] },
       paginationOpts: { cursor: null, numItems: 100 },
     });
     if (result.isDone) return;
   }
-  throw new Error("TOO_MANY_ORGANIZATION_RECORDS");
+  await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationRows, { organizationId, model });
+}
+
+async function hasOtherOwner(ctx: Reader, organizationId: string, except: string): Promise<boolean> {
+  for await (const owner of membersWithRole(ctx, organizationId, "owner")) if (owner._id !== except) return true;
+  return false;
 }
 
 /**

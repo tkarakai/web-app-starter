@@ -792,33 +792,49 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       paidBy: FunctionReference<
         "query",
         "internal",
-        { billingOrganizationId: string },
-        Array<{
-          plan: {
-            _creationTime: number;
-            _id: string;
-            createdAt: number;
-            createdBy: string;
-            isDefault: boolean;
-            isFreeForever: boolean;
-            isSeeded: boolean;
-            name: string;
-            priceMonthlyUsdCents: number;
-            status: "active" | "inactive" | "archived";
-            updatedAt: number;
-            updatedBy?: string;
+        {
+          billingOrganizationId: string;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
           };
-          row: {
-            _creationTime: number;
-            _id: string;
-            billingOrganizationId?: string;
-            createdAt: number;
-            endedAt?: number;
-            organizationId: string;
-            organizationName: string;
-            planId: string;
-          };
-        }>,
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            plan: {
+              _creationTime: number;
+              _id: string;
+              createdAt: number;
+              createdBy: string;
+              isDefault: boolean;
+              isFreeForever: boolean;
+              isSeeded: boolean;
+              name: string;
+              priceMonthlyUsdCents: number;
+              status: "active" | "inactive" | "archived";
+              updatedAt: number;
+              updatedBy?: string;
+            };
+            row: {
+              _creationTime: number;
+              _id: string;
+              billingOrganizationId?: string;
+              createdAt: number;
+              endedAt?: number;
+              organizationId: string;
+              organizationName: string;
+              planId: string;
+            };
+          }>;
+          pageStatus?: "SplitRecommended" | "SplitRequired" | null;
+          splitCursor?: string | null;
+        },
         Name
       >;
       setDefaultPlan: FunctionReference<

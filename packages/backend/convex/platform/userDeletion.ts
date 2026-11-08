@@ -12,12 +12,12 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalAction, internalMutation, internalQuery } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import type { Doc as AppDoc } from "../_generated/dataModel";
-import { isCurrentRun, jobStale, newRunId } from "./backgroundJobs";
+import { batchLimits, isCurrentRun, jobStale, newRunId } from "./backgroundJobs";
 import { adminMutation, authedMutation, authedQuery } from "./functions";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { createAuth } from "./auth";
-import { findById, findMembership, listMemberships, parseRole, removeMemberships, type AccountDeletionActor } from "./organizationAccess";
-import { needsSuccessor, organizationSeats, setMemberRole, successorsNeededForBan } from "./organizationOwnership";
+import { findById, findMembership, listMemberships, otherMemberExists, parseRole, removeMembership, type AccountDeletionActor } from "./organizationAccess";
+import { canAct, invalidateTenancyCheck, ownersNeededForReactivation, setMemberRole, successorNeeded, successorRequiredMessage, successorsNeededForBan } from "./organizationOwnership";
 import { makeFunctionReference } from "convex/server";
 import { scheduledDeletion } from "./billingAccess";
 import { sendLimitedAuthEmail } from "./authRateLimits";
@@ -38,9 +38,8 @@ export async function deletionBlocker(ctx: Reader, userId: string): Promise<Dele
   for (const member of await listMemberships(ctx, userId)) {
     if (!(await ctx.runQuery(components.platform.billing.billingInUse, { organizationId: member.organizationId }))) continue;
     const organizationName = (await findById(ctx, "organization", member.organizationId))?.name ?? "";
-    const others = (await organizationSeats(ctx, member.organizationId)).filter((seat) => seat.member._id !== member._id);
-    if (others.length === 0) return { code: "BILLING_ORGANIZATION_IN_USE", organizationId: member.organizationId, organizationName };
-    if (parseRole(member.role) === "owner" && needsSuccessor(others)) return { code: "BILLING_OWNER_REQUIRED", organizationId: member.organizationId, organizationName };
+    if (!(await otherMemberExists(ctx, member.organizationId, member._id))) return { code: "BILLING_ORGANIZATION_IN_USE", organizationId: member.organizationId, organizationName };
+    if (parseRole(member.role) === "owner" && await successorNeeded(ctx, member.organizationId, member._id)) return { code: "BILLING_OWNER_REQUIRED", organizationId: member.organizationId, organizationName };
   }
   return null;
 }
@@ -95,24 +94,28 @@ export type UserDeletionInput = { userId: string; ownerId: string; email: string
 
 /**
  * The first half of every user deletion (Better Auth's delete hooks, `agentUsers.remove`): the
- * blocker, if any, with nothing written; otherwise the cleanup inputs are recorded before the
- * user row goes, so cleanup can be retried without it. Then delete the user, then
- * `finishUserDeletion`.
+ * blocker, if any, with nothing written; otherwise the cleanup is recorded, with a run of its job
+ * (`advanceCleanup`), before the user row goes, so it can be retried without the user. Then
+ * delete the user, then `finishUserDeletion`.
  */
 export async function beginUserDeletion(ctx: Pick<MutationCtx, "runQuery" | "db" | "scheduler">, input: UserDeletionInput): Promise<DeletionBlocker | null> {
   const blocker = await deletionBlocker(ctx, input.userId);
   if (blocker) return blocker;
   if (await cleanupFor(ctx, input.userId)) return null;
-  await ctx.db.insert("userDeletionCleanups", { ...input, state: "pending", attempts: 0, createdAt: Date.now() });
-  await ctx.scheduler.runAfter(1000, internal.platform.userDeletion.runCleanup, { userId: input.userId });
+  const id = await ctx.db.insert("userDeletionCleanups", { ...input, state: "pending", attempts: 0, createdAt: Date.now(), removedMemberships: 0, runId: newRunId() });
+  // A safety run: it does nothing while the user row exists, and starts the cleanup if the
+  // deletion's second half never runs.
+  await scheduleCleanupRun(ctx, (await ctx.db.get(id))!, 1000);
   return null;
 }
 
 /**
- * The second half, once the user row is gone: memberships (`removeMemberships`, the only
- * production caller), app-owned user data, platform profiles and plan choices, the deletion
- * request and the cleanup record. Idempotent; also the cleanup retry. `actor` is who deleted the
- * user, for organizations the deletion empties (default: the user).
+ * The second half, once the user row is gone. Memberships go first, one organization per
+ * transaction, as a job (`advanceCleanup`, the only production caller of `removeMembership`):
+ * this starts it and returns, and the job calls this again once none are left. Then app-owned
+ * user data, platform profiles and plan choices, the deletion request and the cleanup record.
+ * Idempotent; also the cleanup retry. `actor` is who deleted the user, for organizations the
+ * deletion empties (default: the user).
  */
 export async function finishUserDeletion(
   ctx: MutationCtx,
@@ -121,8 +124,9 @@ export async function finishUserDeletion(
   const cleanup = await cleanupFor(ctx, args.userId);
   if (args.cleanupOnly && !cleanup) return;
   const ownerId = cleanup?.ownerId ?? args.ownerId ?? args.userId;
-  if (cleanup && !(await findById(ctx, "user", args.userId))) {
-    await removeMemberships(ctx, args.userId, args.actor ?? { email: cleanup.email, userId: args.userId });
+  if (cleanup && !(await findById(ctx, "user", args.userId)) && await anyMembership(ctx, args.userId)) {
+    await startMembershipRemoval(ctx, cleanup, args.actor);
+    return;
   }
   try {
     await ctx.runMutation(makeFunctionReference<"mutation", { userId: string; ownerId: string }>("userData:deleteUserData"), { userId: args.userId, ownerId });
@@ -161,6 +165,7 @@ export const request = authedMutation({
     const deleteAt = now + (await graceDaysSetting(ctx)) * DAY_MS;
     const requestId = `${now}-${Math.random()}`;
     const jobId = await ctx.scheduler.runAt(deleteAt, internal.platform.userDeletion.execute, { userId: ctx.user._id, requestId });
+    await invalidateTenancyCheck(ctx);
     await ctx.db.insert("userDeletions", { userId: ctx.user._id, requestId, requestedAt: now, deleteAt, jobId, state: "scheduled" });
     await revokeSessions(ctx, ctx.user._id);
     await ctx.scheduler.runAfter(0, internal.platform.userDeletion.notify, { userId: ctx.user._id, kind: "scheduled" });
@@ -205,6 +210,12 @@ async function cancelDeletion(ctx: Pick<MutationCtx, "db" | "scheduler" | "runQu
   const refusal = await cancelRefusal(ctx, row);
   if (refusal) throw new Error(refusal);
   if (row.state === "cleanup_pending" || (!(await findById(ctx, "user", userId)) && await cleanupFor(ctx, userId))) throw new Error("USER_CLEANUP_PENDING");
+  const user = await findById(ctx, "user", userId);
+  if (user && canAct(user)) {
+    const needed = await ownersNeededForReactivation(ctx, userId, true);
+    if (needed.length) throw new Error(successorRequiredMessage(needed, "canceling deletion for"));
+  }
+  await invalidateTenancyCheck(ctx);
   if (row.state === "scheduled") await ctx.scheduler.cancel(row.jobId);
   await ctx.db.delete(row._id);
   const cleanup = await cleanupFor(ctx, userId);
@@ -234,31 +245,51 @@ export const cancel = authedMutation({
 // Platform admins
 // ---------------------------------------------------------------------------
 
+/** Deletion requests and cleanups listed at most; beyond that `list` says there are more. */
+const LIST_LIMIT = 200;
+
 /**
- * Scheduled and blocked deletions, soonest first, for the admin app's Users page. `stale` marks a
- * deletion under way whose run died (`adminRetry`); `cancelable` whether `adminCancel` accepts it.
+ * Scheduled and blocked deletions, soonest first, then cleanups of deleted users that are still
+ * owed, for the admin app's Users page: at most `LIST_LIMIT` of each (`more` says there are
+ * more). `stale` marks a deletion under way, or a cleanup, whose run died (`adminRetry`,
+ * `adminRetryCleanup`); `cancelable` whether `adminCancel` accepts it; `retryable` whether
+ * `adminRetryCleanup` does. Each user is looked up once.
  */
 export const list = authedQuery({
   args: {},
   handler: async (ctx) => {
     if (ctx.user.role !== "admin") throw new Error("NOT_ADMIN");
-    const rows = await ctx.db.query("userDeletions").withIndex("by_deleteAt").take(500);
-    const cleanups = await ctx.db.query("userDeletionCleanups").take(500);
-    const orphaned = [];
-    for (const cleanup of cleanups) if (!(await findById(ctx, "user", cleanup.userId))) orphaned.push(cleanup);
-    const all = [...rows, ...orphaned.filter(cleanup => !rows.some(row => row.userId === cleanup.userId)).map(cleanup => ({ userId: cleanup.userId, requestedAt: cleanup.createdAt, deleteAt: cleanup.createdAt, state: "cleanup_pending" as const, blockedReason: cleanup.error }))];
+    const requests = await ctx.db.query("userDeletions").withIndex("by_deleteAt").take(LIST_LIMIT + 1);
+    const cleanups = await ctx.db.query("userDeletionCleanups").take(LIST_LIMIT + 1);
+    const more = requests.length > LIST_LIMIT || cleanups.length > LIST_LIMIT;
+    const requestRows = requests.slice(0, LIST_LIMIT);
+    const cleanupByUser = new Map(cleanups.slice(0, LIST_LIMIT).map((cleanup) => [cleanup.userId, cleanup]));
+    const userIds = new Set([...requestRows.map((row) => row.userId), ...cleanupByUser.keys()]);
+    const users = new Map(await Promise.all([...userIds].map(async (userId) => [userId, await findById(ctx, "user", userId)] as const)));
     const now = Date.now();
-    return await Promise.all(all.map(async row => {
-      const user = await findById(ctx, "user", row.userId);
-      const cleanup = cleanups.find(entry => entry.userId === row.userId);
-      const request = "_id" in row ? row : null;
-      const state = !user && cleanup ? "cleanup_pending" as const : row.state;
-      return { userId: row.userId, email: user?.email ?? cleanup?.email ?? "", name: user?.name ?? cleanup?.name ?? "", requestedAt: row.requestedAt, deleteAt: row.deleteAt,
-        state,
-        blockedReason: !user && cleanup ? cleanup.error ?? null : row.blockedReason ?? null,
-        stale: !!request && await deletionStale(ctx, request, now),
-        cancelable: !!request && state !== "cleanup_pending" && !(await cancelRefusal(ctx, request)) };
+    const cleanupView = async (cleanup: CleanupRow) => {
+      const stale = await cleanupStale(ctx, cleanup, now);
+      return { state: "cleanup_pending" as const, blockedReason: cleanup.error ?? null, stale, cancelable: false, retryable: cleanup.state !== "running" || stale, removedMemberships: cleanup.removedMemberships ?? 0 };
+    };
+    const rows = await Promise.all(requestRows.map(async (row) => {
+      const user = users.get(row.userId) ?? null;
+      const cleanup = cleanupByUser.get(row.userId);
+      const identity = { userId: row.userId, email: user?.email ?? cleanup?.email ?? "", name: user?.name ?? cleanup?.name ?? "", requestedAt: row.requestedAt, deleteAt: row.deleteAt };
+      if (!user && cleanup) {
+        const view = await cleanupView(cleanup);
+        // The deletion's own run may be the one that died (`adminRetry` resumes it into the cleanup).
+        const stale = view.stale || await deletionStale(ctx, row, now);
+        return { ...identity, ...view, stale, retryable: view.retryable || stale };
+      }
+      return { ...identity, state: row.state, blockedReason: row.blockedReason ?? null, stale: await deletionStale(ctx, row, now),
+        cancelable: !(await cancelRefusal(ctx, row)), retryable: false, removedMemberships: 0 };
     }));
+    const requested = new Set(requestRows.map((row) => row.userId));
+    for (const cleanup of cleanupByUser.values()) {
+      if (requested.has(cleanup.userId) || users.get(cleanup.userId)) continue;
+      rows.push({ userId: cleanup.userId, email: cleanup.email, name: cleanup.name, requestedAt: cleanup.createdAt, deleteAt: cleanup.createdAt, ...(await cleanupView(cleanup)) });
+    }
+    return { rows, more };
   },
 });
 
@@ -273,7 +304,7 @@ export const adminCancel = adminMutation({
 /**
  * Run a stale deletion again: `execute` resumes the same request under a new run token, so a late
  * run of the dead one does nothing. Every step is idempotent; where the user row is already gone
- * it continues into the cleanup (`runCleanup`).
+ * it continues into the cleanup (`advanceCleanup`).
  */
 export const adminRetry = adminMutation({
   args: { userId: v.string() },
@@ -374,7 +405,11 @@ export const execute = internalAction({
     if (request && request.requestId === args.requestId && request.state === "deleting" && !isCurrentRun(request, args.runId)) return;
     const pendingCleanup = await ctx.runQuery(internal.platform.userDeletion.cleanupStatus, { userId: args.userId });
     if (pendingCleanup && !(await ctx.runQuery(internal.platform.userDeletion.userRow, { userId: args.userId }))) {
-      await ctx.runAction(internal.platform.userDeletion.runCleanup, { userId: args.userId });
+      try {
+        await ctx.runMutation(internal.platform.userDeletion.forget, { userId: args.userId, cleanupOnly: true });
+      } catch (error) {
+        await ctx.runMutation(internal.platform.userDeletion.cleanupFailed, { userId: args.userId, error: error instanceof Error ? error.message : "Cleanup failed" });
+      }
       return;
     }
     const claim = await ctx.runMutation(internal.platform.userDeletion.claim, args);
@@ -428,9 +463,106 @@ export const notify = internalAction({
   },
 });
 
+// ---------------------------------------------------------------------------
+// The cleanup job: memberships one organization per run, then user data
+// ---------------------------------------------------------------------------
+
+type CleanupRow = AppDoc<"userDeletionCleanups">;
+
+/** Automatic retries of a failing cleanup run, with backoff; then it waits for an administrator. */
+const CLEANUP_ATTEMPTS = 5;
+
 async function cleanupFor(ctx: Pick<QueryCtx, "db">, userId: string) {
   return await ctx.db.query("userDeletionCleanups").withIndex("by_user", q => q.eq("userId", userId)).first();
 }
+
+/** Whether the user still has a membership (any one). */
+async function anyMembership(ctx: Pick<QueryCtx, "runQuery">, userId: string): Promise<Doc<"member"> | null> {
+  const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+    model: "member", where: [{ field: "userId", value: userId }], paginationOpts: { numItems: 1, cursor: null },
+  });
+  return (result.page[0] as Doc<"member"> | undefined) ?? null;
+}
+
+/** Schedule the next run of the cleanup's chain and record its job, in the caller's transaction (backgroundJobs.ts). */
+async function scheduleCleanupRun(ctx: Pick<MutationCtx, "db" | "scheduler">, row: CleanupRow, delayMs: number, patch: Partial<CleanupRow> = {}) {
+  const runId = patch.runId ?? row.runId;
+  const jobId = await ctx.scheduler.runAfter(delayMs, internal.platform.userDeletion.advanceCleanup, { userId: row.userId, runId });
+  await ctx.db.patch(row._id, { ...patch, jobId, updatedAt: Date.now() });
+}
+
+/**
+ * Whether a pending or running cleanup is stuck: its run can no longer move it on, nor record
+ * why (backgroundJobs.ts). An administrator retries it (`adminRetryCleanup`).
+ */
+async function cleanupStale(ctx: Pick<QueryCtx, "db">, row: CleanupRow, now = Date.now()): Promise<boolean> {
+  return row.state !== "failed" && await jobStale(ctx, row, row.updatedAt ?? row.createdAt, now);
+}
+
+/** Start removing the deleted user's memberships, unless a live chain already is. */
+async function startMembershipRemoval(ctx: Pick<MutationCtx, "db" | "scheduler">, row: CleanupRow, actor?: AccountDeletionActor) {
+  if (row.state === "running" && !(await cleanupStale(ctx, row))) {
+    if (actor && !row.actor) await ctx.db.patch(row._id, { actor });
+    return;
+  }
+  await scheduleCleanupRun(ctx, row, 0, { state: "running", runId: newRunId(), ...(actor ? { actor } : {}) });
+}
+
+/**
+ * The cleanup's driver: a scheduled mutation, which Convex runs exactly once. Each run does one
+ * step (`cleanupStep`: one membership, or the rest of the cleanup once none are left) as a
+ * sub-transaction with most of the transaction's limits, and records the outcome in its own:
+ * progress schedules the next run; a failure rolls the step back, is recorded (the deletion
+ * request shows `cleanup_pending`) and retried with backoff, then waits for an administrator.
+ * Only a run of the row's current chain (`runId`) does anything, and nothing while the user row
+ * still exists.
+ */
+export const advanceCleanup = internalMutation({
+  args: { userId: v.string(), runId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const row = await cleanupFor(ctx, args.userId);
+    if (!row || !isCurrentRun(row, args.runId)) return;
+    if (await findById(ctx, "user", args.userId)) return;
+    const transactionLimits = await batchLimits(ctx);
+    try {
+      const done = await ctx.runMutation(internal.platform.userDeletion.cleanupStep, { userId: args.userId }, transactionLimits ? { transactionLimits } : {});
+      if (!done) await scheduleCleanupRun(ctx, row, 0, { state: "running", attempts: 0, error: undefined, removedMemberships: (row.removedMemberships ?? 0) + 1 });
+    } catch (error) {
+      await recordCleanupFailure(ctx, row, error instanceof Error ? error.message : "Cleanup failed");
+    }
+  },
+});
+
+/** Record a failed step on the cleanup and its deletion request; retry with backoff (`newChain`: under a new run token). */
+async function recordCleanupFailure(ctx: Pick<MutationCtx, "db" | "scheduler">, row: CleanupRow, message: string, newChain = false) {
+  const error = message.slice(0, 1000);
+  const attempts = row.attempts + 1;
+  const request = await scheduledDeletion(ctx, row.userId);
+  if (request) await ctx.db.patch(request._id, { state: "cleanup_pending", blockedReason: error });
+  const patch = { state: "failed" as const, attempts, error, ...(newChain ? { runId: newRunId() } : {}) };
+  if (attempts < CLEANUP_ATTEMPTS) await scheduleCleanupRun(ctx, row, 1000 * 2 ** attempts, patch);
+  else await ctx.db.patch(row._id, { ...patch, updatedAt: Date.now() });
+}
+
+/**
+ * One step of the cleanup, in its own sub-transaction (`advanceCleanup`): remove one membership
+ * (`removeMembership`), or, once none are left, the rest (`finishUserDeletion`, which deletes
+ * the cleanup row). `true` when the cleanup is complete.
+ */
+export const cleanupStep = internalMutation({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const row = await cleanupFor(ctx, args.userId);
+    if (!row) return true;
+    const member = await anyMembership(ctx, args.userId);
+    if (member) {
+      await removeMembership(ctx, member, args.userId, row.actor ?? { email: row.email, userId: args.userId });
+      return false;
+    }
+    await finishUserDeletion(ctx, { userId: args.userId, cleanupOnly: true });
+    return true;
+  },
+});
 
 /** Better Auth's `user.delete.before`: `beginUserDeletion`, returning the blocker that refuses it. */
 export const beginDeletion = internalMutation({
@@ -443,32 +575,20 @@ export const cleanupStatus = internalQuery({
   handler: async (ctx, args) => await cleanupFor(ctx, args.userId),
 });
 
+/** The deletion's second half failed outside the job (Better Auth's after-hook, `execute`): record it and retry. */
 export const cleanupFailed = internalMutation({
   args: { userId: v.string(), error: v.string() },
   handler: async (ctx, args) => {
-    const cleanup = await cleanupFor(ctx, args.userId);
-    if (!cleanup) return;
-    const attempts = cleanup.state === "pending" ? cleanup.attempts + 1 : cleanup.attempts;
-    await ctx.db.patch(cleanup._id, { state: "failed", attempts, error: args.error.slice(0, 1000) });
-    const request = await scheduledDeletion(ctx, args.userId);
-    if (request) await ctx.db.patch(request._id, { state: "cleanup_pending", blockedReason: args.error.slice(0, 1000) });
-    if (attempts < 5) await ctx.scheduler.runAfter(1000 * 2 ** attempts, internal.platform.userDeletion.runCleanup, { userId: args.userId });
+    const row = await cleanupFor(ctx, args.userId);
+    if (!row) return;
+    await recordCleanupFailure(ctx, row, args.error, true);
   },
 });
 
-/** Cleanup has its own durable lifecycle and never claims or deletes an authenticated user. */
-export const runCleanup = internalAction({
-  args: { userId: v.string() },
-  handler: async (ctx, args) => {
-    if (!(await ctx.runMutation(internal.platform.userDeletion.claimCleanup, args))) return;
-    try {
-      await ctx.runMutation(internal.platform.userDeletion.forget, { ...args, cleanupOnly: true });
-    } catch (error) {
-      await ctx.runMutation(internal.platform.userDeletion.cleanupFailed, { userId: args.userId, error: error instanceof Error ? error.message : "Cleanup failed" });
-    }
-  },
-});
-
+/**
+ * Run a failed or stalled cleanup again, under a new run token: a late run of the old chain does
+ * nothing. Removal resumes with the memberships that are left.
+ */
 export const adminRetryCleanup = adminMutation({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
@@ -476,18 +596,7 @@ export const adminRetryCleanup = adminMutation({
     const cleanup = await cleanupFor(ctx, args.userId);
     if (!cleanup) throw new Error("USER_CLEANUP_NOT_FOUND");
     if (await findById(ctx, "user", args.userId)) throw new Error("USER_STILL_EXISTS");
-    await ctx.db.patch(cleanup._id, { state: "pending", attempts: 0, error: undefined });
-    await ctx.scheduler.runAfter(0, internal.platform.userDeletion.runCleanup, args);
-  },
-});
-
-/** Serialize cleanup attempts; a crashed lease can be reset by the administrator. */
-export const claimCleanup = internalMutation({
-  args: { userId: v.string() },
-  handler: async (ctx, args) => {
-    const cleanup = await cleanupFor(ctx, args.userId);
-    if (!cleanup || cleanup.state === "running" || cleanup.attempts >= 5 || await findById(ctx, "user", args.userId)) return false;
-    await ctx.db.patch(cleanup._id, { state: "running", attempts: cleanup.attempts + 1 });
-    return true;
+    if (cleanup.state === "running" && !(await cleanupStale(ctx, cleanup))) throw new Error("USER_CLEANUP_RUNNING");
+    await scheduleCleanupRun(ctx, cleanup, 0, { state: "running", attempts: 0, error: undefined, runId: newRunId() });
   },
 });

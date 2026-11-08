@@ -37,6 +37,8 @@ export const sampleTables = {
     createdAt: v.number(),
   })
     .index("by_project", ["projectId"])
+    // A project's tasks with one status: the task list's tabs and done counts read only those.
+    .index("by_project_status", ["projectId", "status"])
     .index("by_owner", ["ownerId"])
     .index("by_status", ["status"]),
 

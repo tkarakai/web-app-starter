@@ -59,7 +59,16 @@ async function fixture(mode?: "individuals" | "organizations") {
     headers: { origin: "http://localhost:3001", "content-type": "application/json", authorization: `Bearer ${who}-session` },
     body: JSON.stringify(body),
   });
-  return { ...f, boss, setMode, plans, paidPlan, current, post };
+  /** Run a tenancy eligibility check to its end, its batches directly (a scheduled repeat of one does nothing). */
+  const checked = async () => {
+    await boss.caller.mutation(api.platform.tenancy.check, {});
+    for (;;) {
+      const row = await t.run((ctx) => ctx.db.query("tenancyChecks").order("desc").first());
+      if (!row || row.state !== "running") return row;
+      await t.mutation(internal.platform.tenancy.advanceCheck, { runId: row.runId, batch: row.batches });
+    }
+  };
+  return { ...f, boss, setMode, plans, paidPlan, current, post, checked };
 }
 
 describe("plans", () => {
@@ -217,7 +226,12 @@ describe("billing organizations", () => {
     await bob.switchTo(f.billing.organizationId);
     const view = (await bob.caller.query(api.platform.billing.overview, {}))!;
     expect(view.billing).toMatchObject({ canManage: false, paymentMethod: "cash" });
-    expect(view.billing!.organizations.map((o) => o.name).sort()).toEqual(["Team", "alice"]);
+    const paid = await bob.caller.query(api.platform.billing.paidOrganizations, { paginationOpts: { numItems: 1, cursor: null } });
+    expect(paid.page).toHaveLength(1);
+    const rest = await bob.caller.query(api.platform.billing.paidOrganizations, { paginationOpts: { numItems: 50, cursor: paid.continueCursor } });
+    expect([...paid.page, ...rest.page].map((o) => o.name).sort()).toEqual(["Team", "alice"]);
+    expect(rest.isDone).toBe(true);
+    await expect(bob.caller.query(api.platform.billing.paidOrganizations, { paginationOpts: { numItems: 51, cursor: null } })).rejects.toThrow("INVALID_PAGE_SIZE");
   });
 
   test("the payer's owners and admins change plans; a downgrade clears the payer; an upgrade picks or creates one", async () => {
@@ -231,7 +245,7 @@ describe("billing organizations", () => {
     await f.alice.caller.mutation(api.platform.billing.changePlan, { organizationId: f.personal, planId: free.id });
     expect((await f.current(f.personal))!).toMatchObject({ plan: { _id: free.id }, billing: null });
     // History: every change starts a new row and ends the previous one.
-    const rows = await f.t.query(components.platform.billing.paidBy, { billingOrganizationId: f.billing._id });
+    const rows = (await f.t.query(components.platform.billing.paidBy, { billingOrganizationId: f.billing._id, paginationOpts: { numItems: 100, cursor: null } })).page;
     expect(rows).toEqual([]);
 
     // Without a payer, the organization's owners and admins upgrade with a billing organization they manage.
@@ -264,12 +278,16 @@ describe("turning on a tenancy mode", () => {
     const bob = await f.user("bob");
     await alice.provision();
     await bob.provision();
+    await f.checked();
     await expect(f.boss.caller.mutation(api.platform.tenancy.configure, { mode: "organizations" })).rejects.toThrow("TENANCY_PLANS_REQUIRED");
     await f.paidPlan();
+    await f.checked();
     const status = (await f.boss.caller.query(api.platform.tenancy.status, {}))!;
     expect(status.eligibility).toMatchObject({ individualsAllowed: true, sharedStep: true, appUserCount: 2, plans: { ready: true } });
+    await f.checked();
     await expect(f.boss.caller.mutation(api.platform.tenancy.configure, { mode: "organizations" })).rejects.toThrow("TENANCY_USER_REQUIRED");
 
+    await f.checked();
     await f.boss.caller.mutation(api.platform.tenancy.configure, {
       mode: "organizations", billingUserId: alice.userId, adminUserId: bob.userId, billingOrganizationName: "Payer", sharedOrganizationName: "Everyone",
     });
@@ -291,10 +309,12 @@ describe("turning on a tenancy mode", () => {
     await bob.provision();
     await f.paidPlan();
     await f.addMember(own, bob.userId, "member");
+    await f.checked();
     await expect(f.boss.caller.mutation(api.platform.tenancy.configure, { mode: "individuals" })).rejects.toThrow("TENANCY_INDIVIDUALS_NOT_ALLOWED");
     const [bobMembership] = (await f.members(own)).filter((m) => m.userId === bob.userId);
     await f.t.mutation(components.betterAuth.adapter.deleteOne, { input: { model: "member", where: [{ field: "_id", value: bobMembership!._id }] } });
 
+    await f.checked();
     await f.boss.caller.mutation(api.platform.tenancy.configure, { mode: "individuals" });
     await f.t.finishAllScheduledFunctions(vi.runAllTimers);
     expect((await f.current(own))!.billing?.organizationId).toBe(own);
@@ -316,11 +336,11 @@ describe("deleting your user", () => {
     expect(deleteAt - Date.now()).toBeGreaterThanOrEqual(3 * 24 * 60 * 60 * 1000);
     expect(deleteAt - Date.now()).toBeLessThan(3 * 24 * 60 * 60 * 1000 + 1000);
     expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "session", where: [{ field: "userId", value: alice.userId }] })).toBeNull();
-    expect((await f.boss.caller.query(api.platform.userDeletion.list, {}))).toMatchObject([{ userId: alice.userId, state: "scheduled" }]);
+    expect((await f.boss.caller.query(api.platform.userDeletion.list, {}))).toMatchObject({ rows: [{ userId: alice.userId, state: "scheduled" }], more: false });
 
     // Signing in again: the app is closed until the user cancels or lets it run.
     await f.boss.caller.mutation(api.platform.userDeletion.adminCancel, { userId: alice.userId });
-    expect(await f.boss.caller.query(api.platform.userDeletion.list, {})).toEqual([]);
+    expect(await f.boss.caller.query(api.platform.userDeletion.list, {})).toEqual({ rows: [], more: false });
 
     // Schedule again (a new session is recent) and let the grace period pass.
     const session = await f.t.mutation(components.betterAuth.adapter.create, {
@@ -437,6 +457,7 @@ test("organization creation enforces the 50-membership boundary and rolls back f
 });
 
 test("admin deletion removes a migrated user's profile and pending picker", async () => {
+  vi.useFakeTimers();
   const f = await fixture("organizations");
   await f.paidPlan();
   const alice = await f.user("alice", { userId: "legacy-alice" });
@@ -444,6 +465,8 @@ test("admin deletion removes a migrated user's profile and pending picker", asyn
   await alice.caller.mutation(api.platform.userProfiles.upsert, { timezone: "Europe/Budapest" });
   const response = await f.post("/admin/remove-user", { userId: alice.userId }, "boss");
   expect(response.status).toBe(200);
+  // Memberships go first, one organization per run of the cleanup job; then the user data.
+  await f.t.finishAllScheduledFunctions(vi.runAllTimers);
   expect(await f.t.run(ctx => ctx.db.query("userProfiles").collect())).toEqual([]);
   expect(await f.t.run(ctx => ctx.db.query("pendingPlanChoices").collect())).toEqual([]);
 });
@@ -485,6 +508,7 @@ describe("second review regressions", () => {
     await bob.provision();
     const invitation = await f.invite(own, "bob@example.test", alice.userId);
     await f.paidPlan();
+    await f.checked();
     await f.boss.caller.mutation(api.platform.tenancy.configure, { mode: "individuals" });
     const response = await f.post("/organization/accept-invitation", { invitationId: invitation._id }, "bob");
     expect(response.ok).toBe(false);
@@ -501,6 +525,7 @@ describe("second review regressions", () => {
     const own = await alice.provision();
     await bob.provision();
     await f.paidPlan();
+    await f.checked();
     await f.boss.caller.mutation(api.platform.tenancy.configure, { mode: "individuals" });
     // Simulate a legacy/admin adapter path that bypasses membership triggers.
     const bad = await f.addMember(own, bob.userId, "member");
@@ -521,10 +546,12 @@ test("setup preflights both memberships for a shared owner and recovers from cap
   await f.paidPlan();
   for (let i = 1; i < 49; i++) await f.t.run(ctx => createOrganizationWithOwner(ctx, `Solo ${i}`, alice.userId));
   const args = { mode: "organizations" as const, billingUserId: alice.userId, adminUserId: alice.userId, billingOrganizationName: "Payer", sharedOrganizationName: "Shared" };
+  await f.checked();
   await expect(f.boss.caller.mutation(api.platform.tenancy.configure, args)).rejects.toThrow("MEMBERSHIP_LIMIT_REACHED");
   expect(await f.t.run(ctx => ctx.db.query("tenancySetups").collect())).toEqual([]);
   const member = (await f.members((await alice.caller.query(api.platform.organizations.mine, {}))!.organizations[1]!.id))[0]!;
   await f.t.mutation(components.betterAuth.adapter.deleteOne, { input: { model: "member", where: [{ field: "_id", value: member._id }] } });
+  await f.checked();
   await f.boss.caller.mutation(api.platform.tenancy.configure, args);
   const extra = await f.t.run(ctx => createOrganizationWithOwner(ctx, "Capacity consumed after configure", alice.userId));
   await f.t.finishAllScheduledFunctions(vi.runAllTimers);
@@ -554,7 +581,7 @@ describe("third review regressions", () => {
       await mark();
       await expect(sponsor()).rejects.toThrow("BILLING_ORGANIZATION_NOT_FOUND");
       await expect(alice.caller.mutation(api.platform.billing.setPaymentMethod, { billingOrganizationId: payer, paymentMethod: "check" })).rejects.toThrow("BILLING_ORGANIZATION_NOT_FOUND");
-      expect(await f.t.query(components.platform.billing.paidBy, { billingOrganizationId: payer })).toEqual([]);
+      expect((await f.t.query(components.platform.billing.paidBy, { billingOrganizationId: payer, paginationOpts: { numItems: 100, cursor: null } })).page).toEqual([]);
     }
     expect(await f.organization(own)).not.toBeNull();
   });
@@ -570,19 +597,17 @@ describe("third review regressions", () => {
     const row = (await f.t.query(internal.platform.userDeletion.pending, { userId: alice.userId }))!;
     await f.t.run(async ctx => { await ctx.db.patch(row._id, { deleteAt: Date.now() }); await ctx.scheduler.cancel(row.jobId); });
     cleanupMock.failures = manual ? 10 : 1;
-    const failure = await f.t.action(internal.platform.userDeletion.execute, { userId: alice.userId, requestId: row.requestId }).then(() => null, error => error);
-    if (manual) expect(failure).toBeInstanceOf(Error);
+    await f.t.action(internal.platform.userDeletion.execute, { userId: alice.userId, requestId: row.requestId });
     expect(await f.t.query(internal.platform.userDeletion.userRow, { userId: alice.userId })).toBeNull();
-    if (manual) {
-      expect(await f.t.query(internal.platform.userDeletion.cleanupStatus, { userId: alice.userId })).toMatchObject({ ownerId: "legacy-cleanup-owner", state: "failed" });
-      expect(await f.boss.caller.query(api.platform.userDeletion.list, {})).toMatchObject([{ email: "alice@example.test", state: "cleanup_pending" }]);
-      await expect(f.boss.caller.mutation(api.platform.userDeletion.adminCancel, { userId: alice.userId })).rejects.toThrow("USER_CLEANUP_PENDING");
-    }
+    // The cleanup job removes the membership, then fails on the app's user data, retrying with backoff.
     await f.t.finishAllScheduledFunctions(vi.runAllTimers);
     if (manual) {
-      expect(await f.t.query(internal.platform.userDeletion.cleanupStatus, { userId: alice.userId })).toMatchObject({ attempts: 5, state: "failed" });
-      cleanupMock.failures = 0;
+      expect(await f.t.query(internal.platform.userDeletion.cleanupStatus, { userId: alice.userId })).toMatchObject({ ownerId: "legacy-cleanup-owner", state: "failed", attempts: 5, removedMemberships: 1 });
+      // The backoff outlasted the first admin's session.
       const recoveryAdmin = await f.user("recovery-admin", { role: "admin" });
+      expect((await recoveryAdmin.caller.query(api.platform.userDeletion.list, {})).rows).toMatchObject([{ email: "alice@example.test", state: "cleanup_pending", retryable: true }]);
+      await expect(recoveryAdmin.caller.mutation(api.platform.userDeletion.adminCancel, { userId: alice.userId })).rejects.toThrow("USER_CLEANUP_PENDING");
+      cleanupMock.failures = 0;
       await recoveryAdmin.caller.mutation(api.platform.userDeletion.adminRetryCleanup, { userId: alice.userId });
       await f.t.finishAllScheduledFunctions(vi.runAllTimers);
     }
@@ -639,6 +664,25 @@ describe("one deletion path (agentUsers.remove and Better Auth's delete)", () =>
 });
 
 describe("a pending self-deletion", () => {
+  test("cancelling deletion refuses to reactivate a member without an active owner", async () => {
+    const f = await fixture("organizations");
+    const alice = await f.user("alice");
+    const org = await alice.provision();
+    const bob = await f.user("bob");
+    await f.addMember(org, bob.userId, "member");
+    await alice.caller.mutation(api.platform.userDeletion.request, {});
+    const aliceSeat = (await f.members(org)).find(m => m.userId === alice.userId)!;
+    await f.t.run(ctx => setMemberRole(ctx, aliceSeat._id, "member"));
+    await f.t.mutation(components.betterAuth.adapter.updateOne, {
+      input: { model: "user", where: [{ field: "_id", value: bob.userId }], update: { banned: true } },
+    });
+    await expect(f.boss.caller.mutation(api.platform.userDeletion.adminCancel, { userId: alice.userId })).rejects.toThrow("OWNER_SUCCESSOR_REQUIRED");
+    expect(await f.t.run(ctx => ctx.db.query("userDeletions").first())).not.toBeNull();
+    await f.t.run(ctx => setMemberRole(ctx, aliceSeat._id, "owner"));
+    await f.boss.caller.mutation(api.platform.userDeletion.adminCancel, { userId: alice.userId });
+    expect(await f.t.run(ctx => ctx.db.query("userDeletions").first())).toBeNull();
+  });
+
   test("hands sole ownership on at request time; the requester stays an owner and a cancel loses nothing", async () => {
     const f = await fixture("organizations");
     const alice = await f.user("alice");
@@ -685,11 +729,14 @@ describe("tenancy setup owners", () => {
     const eve = await f.user("eve");
     await f.t.mutation(components.platform.adminInvitations.invite, { email: "eve@example.test", identity: { userId: f.boss.userId, actor: "boss@example.test" } });
     await f.paidPlan();
+    await f.checked();
     const status = (await f.boss.caller.query(api.platform.tenancy.status, {}))!;
     expect(status.eligibility).toMatchObject({ appUserCount: 2, individualsAllowed: true });
     expect(status.eligibility!.candidates.map((c) => c.id).sort()).toEqual([alice.userId, bob.userId].sort());
     const args = { mode: "organizations" as const, billingUserId: alice.userId, billingOrganizationName: "Payer", sharedOrganizationName: "Everyone" };
+    await f.checked();
     await expect(f.boss.caller.mutation(api.platform.tenancy.configure, { ...args, adminUserId: eve.userId })).rejects.toThrow("TENANCY_USER_REQUIRED");
+    await f.checked();
     await f.boss.caller.mutation(api.platform.tenancy.configure, { ...args, adminUserId: bob.userId });
     await f.t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(await f.t.query(api.platform.tenancy.mode, {})).toEqual({ mode: "organizations" });
@@ -705,6 +752,7 @@ describe("tenancy setup owners", () => {
     const alice = await f.user("alice");
     const carol = await f.user("carol");
     await f.paidPlan();
+    await f.checked();
     await f.boss.caller.mutation(api.platform.tenancy.configure, {
       mode: "organizations", billingUserId: alice.userId, adminUserId: bob.userId, billingOrganizationName: "Payer", sharedOrganizationName: "Everyone",
     });
@@ -723,7 +771,11 @@ describe("tenancy setup owners", () => {
 
     if (change === "banned") await f.boss.caller.mutation(api.platform.agentUsers.ban, { userId: bob.userId });
     if (change === "made an administrator") await f.boss.caller.mutation(api.platform.agentUsers.setRole, { userId: bob.userId, role: "admin" });
-    if (change === "deleted") await f.boss.caller.mutation(api.platform.agentUsers.remove, { userId: bob.userId });
+    if (change === "deleted") {
+      await f.boss.caller.mutation(api.platform.agentUsers.remove, { userId: bob.userId });
+      // The cleanup job removes bob's membership, which deletes the organization he was alone in.
+      await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+    }
     await f.t.mutation(internal.platform.tenancy.advanceSetup, { runId: setup.runId });
     const stopped = (await f.boss.caller.query(api.platform.tenancy.status, {}))!;
     expect(stopped.running).toMatchObject({ failed: true, canReplaceOwners: false, canReplaceAdmin: true });
@@ -748,6 +800,7 @@ describe("tenancy setup owners", () => {
     const alice = await f.user("alice");
     const bob = await f.user("bob");
     await f.paidPlan();
+    await f.checked();
     await f.boss.caller.mutation(api.platform.tenancy.configure, {
       mode: "organizations", billingUserId: alice.userId, adminUserId: bob.userId, billingOrganizationName: "Payer", sharedOrganizationName: "Everyone",
     });

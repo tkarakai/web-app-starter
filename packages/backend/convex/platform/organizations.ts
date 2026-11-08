@@ -18,7 +18,7 @@ import { evaluateSession, identitySession } from "./sessionPolicy";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { authedQuery, orgMutation, orgQuery } from "./functions";
 import { actorOf, provisionOrganizationPlan, readTenancyMode } from "./billingAccess";
-import { needsSuccessor, organizationSeats } from "./organizationOwnership";
+import { successorNeeded } from "./organizationOwnership";
 import {
   deleteInvitationBatch,
   ensurePersonalOrganization,
@@ -94,8 +94,9 @@ export const active = orgQuery({
       : [];
 
     // An owner may leave only if an owner who can sign in stays (organizationOwnership.ts).
-    const others = (await organizationSeats(ctx, ctx.organizationId)).filter((s) => s.member.userId !== ctx.user._id);
-    const lastOwner = ctx.organizationRole === "owner" && needsSuccessor(others);
+    // Reads the owners, and other members only when no other owner can act.
+    const own = rows.find((member) => member.userId === ctx.user._id);
+    const lastOwner = ctx.organizationRole === "owner" && !!own && await successorNeeded(ctx, ctx.organizationId, own._id);
 
     return {
       id: organization._id,
@@ -292,18 +293,34 @@ export const hasPendingInvitation = internalQuery({
   handler: async (ctx, args) => (await pendingInvitationsFor(ctx, args.email)).length > 0,
 });
 
-/** Account deletion through Better Auth (`databaseHooks.user.delete`). */
+/** Every membership of a user in one transaction: tests and fixtures. Account deletion runs it per organization (userDeletion.ts). */
 export const removeUserMemberships = internalMutation({
   args: { userId: v.string(), email: v.string() },
   handler: async (ctx, args) => await removeMemberships(ctx, args.userId, { email: args.email, userId: args.userId }),
 });
 
-/** The rest of a deleted organization's invitations, a batch per run (`removeMemberships`). */
+/** The rest of a deleted organization's invitations, a batch per run (`removeMembership`). */
 export const deleteOrganizationInvitations = internalMutation({
   args: { organizationId: v.string() },
   handler: async (ctx, args) => {
     if (await deleteInvitationBatch(ctx, args.organizationId)) return;
     await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationInvitations, args);
+  },
+});
+
+/**
+ * The rest of a deleted organization's memberships or invitations, a batch per run
+ * (`adminOrganizations.remove`). Only once the organization row is gone.
+ */
+export const deleteOrganizationRows = internalMutation({
+  args: { organizationId: v.string(), model: v.union(v.literal("member"), v.literal("invitation")) },
+  handler: async (ctx, args) => {
+    if (await findById(ctx, "organization", args.organizationId)) return;
+    const result = await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
+      input: { model: args.model, where: [{ field: "organizationId", value: args.organizationId }] },
+      paginationOpts: { cursor: null, numItems: 200 },
+    });
+    if (!result.isDone) await ctx.scheduler.runAfter(0, internal.platform.organizations.deleteOrganizationRows, args);
   },
 });
 

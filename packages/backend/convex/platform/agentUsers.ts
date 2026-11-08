@@ -9,7 +9,7 @@ import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { findMembership } from "./organizationAccess";
 import { beginUserDeletion, finishUserDeletion } from "./userDeletion";
 import { promoteToOwner } from "./adminOrganizations";
-import { canAct, ownersNeededForReactivation, setMemberRole, successorRequiredMessage, successorsNeededForBan } from "./organizationOwnership";
+import { canAct, isSuccessorCandidate, ownersNeededForReactivation, setMemberRole, successorRequiredMessage, successorsNeededForBan } from "./organizationOwnership";
 
 const userArgs = { userId: v.string() };
 function userResult(user: Doc<"user">) {
@@ -45,15 +45,18 @@ async function updateUser(ctx: MutationCtx, userId: string, update: Record<strin
 const successorsArg = v.optional(v.array(v.object({ organizationId: v.string(), userId: v.string() })));
 type Successor = { organizationId: string; userId: string };
 
-/** At most one successor per organization, never the user losing the ability to act, and only where one is needed. */
-function checkSuccessors(successors: Successor[], userId: string, needed: { organizationId: string; candidates?: { userId: string }[] }[], allowSelf = false) {
+/**
+ * At most one successor per organization, never the user losing the ability to act, and only
+ * where one is needed. A ban's successor must be a candidate: another member, not an owner, who
+ * can act (`isSuccessorCandidate`, checked per successor rather than against a listing).
+ */
+async function checkSuccessors(ctx: Pick<QueryCtx, "runQuery" | "db">, successors: Successor[], userId: string, needed: { organizationId: string }[], allowSelf = false) {
   const organizations = new Set(successors.map((s) => s.organizationId));
   if (successors.length > 50 || organizations.size !== successors.length) throw new Error("INVALID_SUCCESSOR");
   for (const successor of successors) {
     if (!allowSelf && successor.userId === userId) throw new Error("INVALID_SUCCESSOR");
-    const need = needed.find((n) => n.organizationId === successor.organizationId);
-    if (!need) throw new Error("INVALID_SUCCESSOR");
-    if (need.candidates && !need.candidates.some((c) => c.userId === successor.userId)) throw new Error("INVALID_SUCCESSOR");
+    if (!needed.some((n) => n.organizationId === successor.organizationId)) throw new Error("INVALID_SUCCESSOR");
+    if (!allowSelf && !(await isSuccessorCandidate(ctx, successor.organizationId, successor.userId, userId))) throw new Error("INVALID_SUCCESSOR");
   }
 }
 
@@ -63,7 +66,7 @@ function checkSuccessors(successors: Successor[], userId: string, needed: { orga
  * uncovered, refuse; the user trigger would anyway, in the same transaction.
  */
 async function handOver(ctx: Parameters<typeof promoteToOwner>[0], userId: string, successors: Successor[], meta: Record<string, string>, change: string) {
-  checkSuccessors(successors, userId, await successorsNeededForBan(ctx, userId));
+  await checkSuccessors(ctx, successors, userId, await successorsNeededForBan(ctx, userId));
   for (const successor of successors) {
     await promoteToOwner(ctx, successor.organizationId, successor.userId, meta);
   }
@@ -77,7 +80,7 @@ async function handOver(ctx: Parameters<typeof promoteToOwner>[0], userId: strin
  * this user. With any organization left uncovered, refuse.
  */
 async function takeOver(ctx: Parameters<typeof promoteToOwner>[0], userId: string, successors: Successor[], change: string) {
-  checkSuccessors(successors, userId, await ownersNeededForReactivation(ctx, userId, true), true);
+  await checkSuccessors(ctx, successors, userId, await ownersNeededForReactivation(ctx, userId, true), true);
   for (const successor of successors) {
     if (successor.userId === userId) {
       const member = await findMembership(ctx, userId, successor.organizationId);

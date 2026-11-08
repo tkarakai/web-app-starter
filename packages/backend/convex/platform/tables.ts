@@ -51,7 +51,8 @@ export const platformTables = {
   tenancySetups: defineTable({
     mode: v.union(v.literal("individuals"), v.literal("organizations")),
     state: v.union(v.literal("running"), v.literal("failed"), v.literal("done")),
-    step: v.union(v.literal("plans"), v.literal("shared"), v.literal("done")),
+    // `verify`: individuals only, every application user still has exactly one organization.
+    step: v.union(v.literal("plans"), v.literal("shared"), v.literal("verify"), v.literal("done")),
     cursor: v.union(v.string(), v.null()),
     billingUserId: v.optional(v.string()),
     adminUserId: v.optional(v.string()),
@@ -68,6 +69,30 @@ export const platformTables = {
     updatedAt: v.optional(v.number()),
   }),
 
+  // Whether a tenancy mode can be turned on: a batched scan of users and organizations whose
+  // progress and result are stored; `tenancy.status` reads it, `configure` needs it fresh (tenancy.ts).
+  tenancyChecks: defineTable({
+    state: v.union(v.literal("running"), v.literal("done"), v.literal("failed")),
+    phase: v.union(v.literal("users"), v.literal("organizations"), v.literal("done")),
+    cursor: v.union(v.string(), v.null()),
+    // Batches run; each scheduled run names the batch it is, so a repeated delivery does nothing.
+    batches: v.number(),
+    users: v.number(),
+    organizations: v.number(),
+    appUserCount: v.number(),
+    usersWithoutOneOrganization: v.number(),
+    sharedOrganizations: v.number(),
+    candidates: v.array(v.object({ id: v.string(), name: v.string(), email: v.string() })),
+    // False once the install has more users or organizations than a check reads.
+    complete: v.boolean(),
+    startedAt: v.number(),
+    startedBy: v.string(),
+    updatedAt: v.number(),
+    finishedAt: v.optional(v.number()),
+    error: v.optional(v.string()),
+    ...jobFields,
+  }),
+
   // A user's own deletion request during its grace period (userDeletion.ts).
   userDeletions: defineTable({
     userId: v.string(),
@@ -82,10 +107,18 @@ export const platformTables = {
     runId: v.optional(v.string()),
   }).index("by_user", ["userId"]).index("by_deleteAt", ["deleteAt"]),
 
+  // What a deleted user still owes, recorded before the user row goes, and the job that clears it:
+  // memberships one organization per run, then user data (userDeletion.ts, backgroundJobs.ts).
   userDeletionCleanups: defineTable({
     userId: v.string(), ownerId: v.string(), email: v.string(), name: v.string(),
     state: v.union(v.literal("pending"), v.literal("running"), v.literal("failed")),
     attempts: v.number(), createdAt: v.number(), error: v.optional(v.string()),
+    // Who deleted the user, for organizations the deletion empties (default: the user).
+    actor: v.optional(v.object({ email: v.string(), userId: v.optional(v.string()) })),
+    // Memberships removed so far, and when the job last recorded progress.
+    removedMemberships: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
+    ...jobFields,
   }).index("by_user", ["userId"]),
 
   userProfiles: defineTable({

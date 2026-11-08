@@ -30,7 +30,7 @@ import { createAssuranceHooks } from "./authAssurance";
 import { sessionFields, userFields } from "./sessionFields";
 import { identitySession } from "./sessionPolicy";
 import { organizationPlugin } from "./organizationPlugin";
-import { memberTriggers, SUCCESSOR_REQUIRED, successorRequiredMessage, userTriggers } from "./organizationOwnership";
+import { memberTriggers, organizationTriggers, SUCCESSOR_REQUIRED, successorRequiredMessage, userTriggers } from "./organizationOwnership";
 
 /** Truncate a string to at most `max` characters. */
 function truncate(value: string | undefined, max: number): string | undefined {
@@ -280,7 +280,7 @@ export const authComponent = createClient<DataModel, typeof authSchema>(
       onUpdate: makeFunctionReference<"mutation">("platform/authTriggers:onUpdate"),
       onDelete: makeFunctionReference<"mutation">("platform/authTriggers:onDelete"),
     } as unknown as AuthFunctions,
-    triggers: { member: memberTriggers, user: userTriggers },
+    triggers: { member: memberTriggers, user: userTriggers, organization: organizationTriggers },
   },
 );
 

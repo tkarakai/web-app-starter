@@ -1,3 +1,4 @@
+import { invalidateTenancyCheck } from "./organizationOwnership";
 /**
  * Admin bootstrap — first-time deployment setup.
  *
@@ -46,6 +47,7 @@ export const initialize = internalMutation({
 
     assertValidEmail(args.email);
 
+    await invalidateTenancyCheck(ctx);
     await ctx.runMutation(components.platform.adminEmails.ensure, { email: args.email });
     const entryId = await ctx.runMutation(components.platform.waitlistBootstrap.initialize, args);
 
@@ -98,6 +100,7 @@ export const rescue = internalMutation({
     assertValidEmail(args.newEmail);
     const entryId = await ctx.runMutation(components.platform.waitlistBootstrap.rescue, { currentEmail: adminRow.email, newEmail: args.newEmail });
     const emailChanged = args.newEmail !== args.currentEmail;
+    await invalidateTenancyCheck(ctx);
     if (adminRow.email !== args.newEmail) await ctx.runMutation(components.platform.adminEmails.replace, { id: adminRow._id, email: args.newEmail });
 
     const state = await ctx.runQuery(components.platform.waitlistBootstrap.state, { email: args.newEmail });

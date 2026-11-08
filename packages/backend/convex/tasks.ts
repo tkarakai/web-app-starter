@@ -2,23 +2,37 @@ import { v } from "convex/values";
 
 import {
   orgMutation,
+  orgPaginatedQuery,
   orgQuery,
   assertMaxLength,
   MAX_NAME_LENGTH,
   MAX_DESCRIPTION_LENGTH,
 } from "./platform/functions";
 import { requireProjectAccess } from "./projectAccess";
+import { assertPageSize, projectStats } from "./projects";
 
-export const listByProject = orgQuery({
+const statusValidator = v.union(v.literal("todo"), v.literal("in_progress"), v.literal("done"));
+
+/** A project's tasks, newest first, optionally only one status, a page at a time (`usePaginatedQuery`). */
+export const listByProject = orgPaginatedQuery({
+  args: { projectId: v.id("projects"), status: v.optional(statusValidator) },
+  handler: async (ctx, args) => {
+    assertPageSize(args.paginationOpts);
+    await requireProjectAccess(ctx, args.projectId);
+    const { status } = args;
+    const tasks = status
+      ? ctx.db.query("tasks").withIndex("by_project_status", (q) => q.eq("projectId", args.projectId).eq("status", status))
+      : ctx.db.query("tasks").withIndex("by_project", (q) => q.eq("projectId", args.projectId));
+    return await tasks.order("desc").paginate(args.paginationOpts);
+  },
+});
+
+/** A project's task and upload counts, each stopping at `MAX_COUNTED` (`projectStats`). */
+export const stats = orgQuery({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
     await requireProjectAccess(ctx, args.projectId);
-
-    return ctx.db
-      .query("tasks")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .order("desc")
-      .collect();
+    return await projectStats(ctx, args.projectId);
   },
 });
 

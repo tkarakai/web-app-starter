@@ -28,13 +28,19 @@ import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import { internalMutation, internalQuery, type MutationCtx, type QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
+import { startOrganizationCleanup } from "./organizationCleanup";
 import { getPolicyScopeFromRole } from "./securityPolicies";
 import {
   findById,
+  findMembership,
+  firstMembers,
   isDeleting,
   listMemberships,
   listOrganizationMembers,
   MAX_MEMBERSHIPS_PER_USER,
+  membersWithRole,
+  organizationMembers,
+  otherMemberExists,
   parseRole,
   type OrganizationRole,
 } from "./organizationAccess";
@@ -72,31 +78,98 @@ export async function canActNow(ctx: Pick<QueryCtx, "db">, user: Doc<"user"> | n
 /** A membership with its role and whether its user can act (`canActNow`). */
 export type Seat = { member: Doc<"member">; role: OrganizationRole; active: boolean; user: Doc<"user"> | null };
 
+async function seatOf(ctx: Reader, member: Doc<"member">): Promise<Seat> {
+  const user = await findById(ctx, "user", member.userId);
+  return { member, role: parseRole(member.role), active: await canActNow(ctx, user), user };
+}
+
+/**
+ * Every member with their user. Reads the whole organization: use it only for a listing a person
+ * asked for, never in a check that runs per write or per row. The checks below read owners, and
+ * other members only in order and only until they have their answer.
+ */
 export async function organizationSeats(ctx: Reader, organizationId: string): Promise<Seat[]> {
-  const members = await listOrganizationMembers(ctx, organizationId);
-  return await Promise.all(members.map(async (member) => {
-    const user = await findById(ctx, "user", member.userId);
-    return { member, role: parseRole(member.role), active: await canActNow(ctx, user), user };
-  }));
+  return await Promise.all((await listOrganizationMembers(ctx, organizationId)).map((member) => seatOf(ctx, member)));
 }
 
-/** Whether these members, without the departing one, need someone promoted to keep the invariant. */
-export function needsSuccessor(others: Seat[]): boolean {
-  if (others.length === 0) return false;
-  if (!others.some((s) => s.role === "owner")) return true;
-  return others.some((s) => s.active) && !others.some((s) => s.active && s.role === "owner");
+/** The organization's owners, except the membership `except` (one leaving, or the one in question). */
+async function ownersExcept(ctx: Reader, organizationId: string, except?: string): Promise<Doc<"member">[]> {
+  const owners: Doc<"member">[] = [];
+  for await (const member of membersWithRole(ctx, organizationId, "owner")) if (member._id !== except) owners.push(member);
+  return owners;
 }
 
-/** The longest-standing admin, else member, preferring people who can sign in. */
-export function pickSuccessor(others: Seat[]): Seat | undefined {
-  const pick = (seats: Seat[]) => seats.find((s) => s.role === "admin") ?? seats.find((s) => s.role === "member");
-  return pick(others.filter((s) => s.active)) ?? pick(others.filter((s) => !s.active));
+async function someActive(ctx: Reader, members: Doc<"member">[]): Promise<boolean> {
+  for (const member of members) if ((await seatOf(ctx, member)).active) return true;
+  return false;
+}
+
+/** Whether an owner of the organization can act. Reads the owners only. */
+export async function hasActiveOwner(ctx: Reader, organizationId: string): Promise<boolean> {
+  return await someActive(ctx, await ownersExcept(ctx, organizationId));
+}
+
+/** Whether a member other than `except`, and not an owner, can act. Stops at the first. */
+async function activeNonOwnerExists(ctx: Reader, organizationId: string, except?: string): Promise<boolean> {
+  for await (const member of organizationMembers(ctx, organizationId)) {
+    if (member._id === except || parseRole(member.role) === "owner") continue;
+    if ((await seatOf(ctx, member)).active) return true;
+  }
+  return false;
+}
+
+/**
+ * Whether the organization, without the membership `except`, needs someone promoted to keep the
+ * invariant: it has other members but no owner, or members who can act but no owner who can.
+ * Reads the owners; other members only while no owner can act, and only until one can.
+ */
+export async function successorNeeded(ctx: Reader, organizationId: string, except: string): Promise<boolean> {
+  const owners = await ownersExcept(ctx, organizationId, except);
+  if (owners.length === 0) return await otherMemberExists(ctx, organizationId, except);
+  if (await someActive(ctx, owners)) return false;
+  return await activeNonOwnerExists(ctx, organizationId, except);
+}
+
+/**
+ * The successor to the membership `except`: the longest-standing admin, else member, preferring
+ * people who can act (`activeOnly`: only them). Reads admins, then members, oldest first, and
+ * stops at the first who can act.
+ */
+export async function findSuccessor(ctx: Reader, organizationId: string, except: string, activeOnly = false): Promise<Seat | undefined> {
+  let fallback: Seat | undefined;
+  for (const role of ["admin", "member"] as const) {
+    for await (const member of membersWithRole(ctx, organizationId, role)) {
+      if (member._id === except) continue;
+      const seat = await seatOf(ctx, member);
+      if (seat.active) return seat;
+      fallback ??= seat;
+    }
+  }
+  return activeOnly ? undefined : fallback;
+}
+
+/**
+ * Members other than `except` and its owners who can act, oldest admins first, at most `limit`:
+ * whom an administrator may choose as a successor (`banSuccessor`).
+ */
+async function activeCandidates(ctx: Reader, organizationId: string, except: string, limit: number): Promise<Seat[]> {
+  const found: Seat[] = [];
+  for (const role of ["admin", "member"] as const) {
+    for await (const member of membersWithRole(ctx, organizationId, role)) {
+      if (found.length >= limit) return found;
+      if (member._id === except) continue;
+      const seat = await seatOf(ctx, member);
+      if (seat.active) found.push(seat);
+    }
+  }
+  return found;
 }
 
 /**
  * Throw unless the organization keeps an owner. `leaving` is a member row about to be deleted in
  * this transaction (bulk deletes run the trigger first); `removedActiveOwner` says the write took
- * away an owner who can sign in.
+ * away an owner who can sign in. Reads the owners; other members only when that owner was the
+ * last one who could act.
  */
 export async function assertOrganizationHasOwner(
   ctx: Reader,
@@ -106,10 +179,12 @@ export async function assertOrganizationHasOwner(
   const organization = await findById(ctx, "organization", organizationId);
   if (!organization) return;
   if (isDeleting(organization)) return;
-  const seats = (await organizationSeats(ctx, organizationId)).filter((s) => s.member._id !== change.leaving);
-  if (seats.length === 0) return;
-  if (!seats.some((s) => s.role === "owner")) throw new Error(OWNER_REQUIRED);
-  if (change.removedActiveOwner && seats.some((s) => s.active) && !seats.some((s) => s.active && s.role === "owner")) {
+  const owners = await ownersExcept(ctx, organizationId, change.leaving);
+  if (owners.length === 0) {
+    if (await otherMemberExists(ctx, organizationId, change.leaving)) throw new Error(OWNER_REQUIRED);
+    return;
+  }
+  if (change.removedActiveOwner && !(await someActive(ctx, owners)) && await activeNonOwnerExists(ctx, organizationId, change.leaving)) {
     throw new Error(OWNER_REQUIRED);
   }
 }
@@ -122,9 +197,10 @@ async function activeOwner(ctx: Reader, row: MemberRow): Promise<boolean> {
 
 /**
  * Why this user can't join, or `null`. Only into an organization that exists and isn't being
- * deleted, for a user who exists and is under the membership limit. An active member can't
- * join where no owner can act: nobody could manage the organization for them. `joined` says the
- * membership row is already written (in the trigger) rather than about to be.
+ * deleted, for a user who exists and is under the membership limit. Nobody joins an
+ * organization without an owner, and an active member can't join where no owner can act: nobody
+ * could manage the organization for them. `joined` says the membership row is already written
+ * (in the trigger) rather than about to be. Reads the owners, never the other members.
  */
 async function joinBlocker(
   ctx: Reader,
@@ -138,12 +214,13 @@ async function joinBlocker(
   const memberships = (await listMemberships(ctx, row.userId)).length + (joined ? 0 : 1);
   if (memberships > MAX_MEMBERSHIPS_PER_USER) return MEMBERSHIP_LIMIT_REACHED;
   if (await ctx.runQuery(internal.platform.tenancy.membershipMode, {}) === "individuals") {
-    const seats = await listOrganizationMembers(ctx, row.organizationId);
-    if (memberships > 1 || seats.length + (joined ? 0 : 1) > 1) return "TENANCY_INDIVIDUALS_NOT_ALLOWED";
+    const seats = (await firstMembers(ctx, row.organizationId, 2)).length;
+    if (memberships > 1 || seats + (joined ? 0 : 1) > 1) return "TENANCY_INDIVIDUALS_NOT_ALLOWED";
   }
-  if (parseRole(row.role) === "owner" || !canAct(user)) return null;
-  const seats = await organizationSeats(ctx, row.organizationId);
-  return seats.some((s) => s.active && s.role === "owner") ? null : OWNER_REQUIRED;
+  if (parseRole(row.role) === "owner") return null;
+  const owners = await ownersExcept(ctx, row.organizationId);
+  if (owners.length === 0) return OWNER_REQUIRED;
+  return !canAct(user) || await someActive(ctx, owners) ? null : OWNER_REQUIRED;
 }
 
 /**
@@ -156,14 +233,39 @@ export const admissionBlocker = internalQuery({
   handler: async (ctx, args) => await joinBlocker(ctx, args, false),
 });
 
-/** Better Auth's member writes, checked in their own transaction (see `authTriggers.ts`). */
+/** Invalidate a preflight if its inputs change before configuration commits. Writing the same
+ * progress row as runCheck also makes concurrent scan batches retry against this invalidation. */
+export async function invalidateTenancyCheck(ctx: Pick<MutationCtx, "db">): Promise<void> {
+  if (await ctx.db.query("tenancySetups").first()) return;
+  const check = await ctx.db.query("tenancyChecks").order("desc").first();
+  if (check && check.state !== "failed") {
+    await ctx.db.patch(check._id, { state: "failed", error: "TENANCY_CHECK_CHANGED", updatedAt: Date.now() });
+  }
+}
+
+/** Empty organizations also affect the preflight's organization count. */
+export const organizationTriggers = {
+  onCreate: invalidateTenancyCheck,
+  onDelete: async (ctx: MutationCtx, doc: { _id: string }) => {
+    await invalidateTenancyCheck(ctx);
+    await startOrganizationCleanup(ctx, doc._id);
+  },
+};
+
+/**
+ * Better Auth's member writes, checked in their own transaction (see `authTriggers.ts`). Each
+ * reads the organization's owners (and their users), not its members: a write's cost doesn't
+ * grow with the organization. A new member who isn't an owner can't remove one, so creating
+ * needs only `joinBlocker`.
+ */
 export const memberTriggers = {
-  onCreate: async (ctx: Reader, doc: MemberRow) => {
+  onCreate: async (ctx: Writer, doc: MemberRow) => {
+    await invalidateTenancyCheck(ctx);
     const blocker = await joinBlocker(ctx, doc, true);
     if (blocker) throw new Error(blocker);
-    await assertOrganizationHasOwner(ctx, doc.organizationId);
   },
-  onUpdate: async (ctx: Reader, doc: MemberRow, old: MemberRow) => {
+  onUpdate: async (ctx: Writer, doc: MemberRow, old: MemberRow) => {
+    await invalidateTenancyCheck(ctx);
     if (doc.organizationId !== old.organizationId || doc.userId !== old.userId) {
       const blocker = await joinBlocker(ctx, doc, true);
       if (blocker) throw new Error(blocker);
@@ -173,38 +275,76 @@ export const memberTriggers = {
     await assertOrganizationHasOwner(ctx, old.organizationId, { removedActiveOwner });
     if (old.organizationId !== doc.organizationId) await assertOrganizationHasOwner(ctx, doc.organizationId);
   },
-  onDelete: async (ctx: Reader, doc: MemberRow) =>
-    assertOrganizationHasOwner(ctx, doc.organizationId, { leaving: doc._id, removedActiveOwner: await activeOwner(ctx, doc) }),
+  onDelete: async (ctx: Writer, doc: MemberRow) => {
+    await invalidateTenancyCheck(ctx);
+    await assertOrganizationHasOwner(ctx, doc.organizationId, { leaving: doc._id, removedActiveOwner: await activeOwner(ctx, doc) });
+  },
 };
+
+type Candidate = { userId: string; name: string; email: string; role: OrganizationRole };
 
 /** An organization that needs a new owner before this user can be banned, with who could take over. */
 export type SuccessorNeeded = {
   organizationId: string;
   name: string;
-  candidates: { userId: string; name: string; email: string; role: OrganizationRole }[];
+  /** Members who can act, oldest admins first, at most `MAX_SUCCESSOR_CANDIDATES` (empty unless asked for). */
+  candidates: Candidate[];
+  /** More members could take over than `candidates` lists. */
+  moreCandidates: boolean;
   suggested: string | null;
 };
 
+/** Candidates listed per organization; any member who can act is accepted as a successor. */
+export const MAX_SUCCESSOR_CANDIDATES = 10;
+
+/**
+ * Whether banning the owner `membership` needs a successor in its organization (it is the only
+ * owner who can act while other members can), and if so who. Reads the owners, then admins and
+ * members only until the first who can act, plus the listed candidates when asked for.
+ */
+export async function successorNeededForBan(
+  ctx: Reader,
+  membership: Doc<"member">,
+  options: { candidates?: boolean } = {},
+): Promise<SuccessorNeeded | null> {
+  if (parseRole(membership.role) !== "owner") return null;
+  if (await someActive(ctx, await ownersExcept(ctx, membership.organizationId, membership._id))) return null;
+  const suggested = await findSuccessor(ctx, membership.organizationId, membership._id, true);
+  if (!suggested) return null;
+  const organization = await findById(ctx, "organization", membership.organizationId);
+  const listed = options.candidates ? await activeCandidates(ctx, membership.organizationId, membership._id, MAX_SUCCESSOR_CANDIDATES + 1) : [];
+  return {
+    organizationId: membership.organizationId,
+    name: organization?.name ?? "",
+    candidates: listed.slice(0, MAX_SUCCESSOR_CANDIDATES).map((s) => ({ userId: s.member.userId, name: s.user?.name ?? "", email: s.user?.email ?? "", role: s.role })),
+    moreCandidates: listed.length > MAX_SUCCESSOR_CANDIDATES,
+    suggested: suggested.member.userId,
+  };
+}
+
 /**
  * Organizations where this user is the only owner who can sign in while other members still can:
- * banning them would leave those members without an owner who can act.
+ * banning them would leave those members without an owner who can act. `candidates` lists who
+ * could take over (for a person choosing); checks leave it out.
  */
-export async function successorsNeededForBan(ctx: Reader, userId: string): Promise<SuccessorNeeded[]> {
+export async function successorsNeededForBan(ctx: Reader, userId: string, options: { candidates?: boolean } = {}): Promise<SuccessorNeeded[]> {
   const needed: SuccessorNeeded[] = [];
   for (const membership of await listMemberships(ctx, userId)) {
-    if (parseRole(membership.role) !== "owner") continue;
-    const others = (await organizationSeats(ctx, membership.organizationId)).filter((s) => s.member._id !== membership._id);
-    if (!others.some((s) => s.active) || others.some((s) => s.active && s.role === "owner")) continue;
-    const organization = await findById(ctx, "organization", membership.organizationId);
-    const candidates = others.filter((s) => s.active);
-    needed.push({
-      organizationId: membership.organizationId,
-      name: organization?.name ?? "",
-      candidates: candidates.map((s) => ({ userId: s.member.userId, name: s.user?.name ?? "", email: s.user?.email ?? "", role: s.role })),
-      suggested: pickSuccessor(candidates)?.member.userId ?? null,
-    });
+    const need = await successorNeededForBan(ctx, membership, options);
+    if (need) needed.push(need);
   }
   return needed;
+}
+
+/**
+ * Whether `userId` could take over from the departing owner in this organization: another
+ * member who isn't an owner and can act. What `candidates` lists, checked for one user.
+ */
+export async function isSuccessorCandidate(ctx: Reader, organizationId: string, userId: string, departingUserId: string): Promise<boolean> {
+  if (userId === departingUserId) return false;
+  const member = await findMembership(ctx, userId, organizationId);
+  if (!member || parseRole(member.role) === "owner") return false;
+  return (await seatOf(ctx, member)).active;
 }
 
 /** Thrown while a ban or role change would leave an organization without an owner who can act. */
@@ -215,7 +355,8 @@ export function successorRequiredMessage(needed: Pick<SuccessorNeeded, "name" | 
 /**
  * Organizations that would have members who can act but no owner who can, once this user can act
  * again (unbanned, or no longer a platform administrator): they are not an owner there, and its
- * owners are all banned. With `assumeActive`, as if the user could act already.
+ * owners are all banned. With `assumeActive`, as if the user could act already. Reads each
+ * organization's owners; other members only where no owner can act and this user can't either.
  */
 export async function ownersNeededForReactivation(
   ctx: Reader,
@@ -223,10 +364,13 @@ export async function ownersNeededForReactivation(
   assumeActive = false,
 ): Promise<{ organizationId: string; name: string }[]> {
   const needed: { organizationId: string; name: string }[] = [];
+  const user = assumeActive ? null : await findById(ctx, "user", userId);
+  const selfActive = assumeActive || await canActNow(ctx, user);
   for (const membership of await listMemberships(ctx, userId)) {
-    const seats = (await organizationSeats(ctx, membership.organizationId))
-      .map((s) => assumeActive && s.member._id === membership._id ? { ...s, active: true } : s);
-    if (!seats.some((s) => s.active) || seats.some((s) => s.active && s.role === "owner")) continue;
+    const selfOwner = parseRole(membership.role) === "owner";
+    if (selfOwner && selfActive) continue;
+    if (await someActive(ctx, await ownersExcept(ctx, membership.organizationId, membership._id))) continue;
+    if (!selfActive && !(await activeNonOwnerExists(ctx, membership.organizationId, membership._id))) continue;
     const organization = await findById(ctx, "organization", membership.organizationId);
     needed.push({ organizationId: membership.organizationId, name: organization?.name ?? "" });
   }
@@ -244,7 +388,10 @@ type UserRow = Pick<Doc<"user">, "banned" | "banExpires" | "role"> & { _id: stri
  * simply expires is not a write, and the sign-in that clears it changes nothing here.
  */
 export const userTriggers = {
-  onUpdate: async (ctx: Reader, doc: UserRow, old: UserRow) => {
+  onCreate: invalidateTenancyCheck,
+  onDelete: invalidateTenancyCheck,
+  onUpdate: async (ctx: Writer, doc: UserRow, old: UserRow) => {
+    await invalidateTenancyCheck(ctx);
     const before = canAct(old);
     const after = canAct(doc);
     if (before && !after) {

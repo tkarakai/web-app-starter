@@ -3,6 +3,7 @@ import {
   customCtx,
   customMutation,
 } from "convex-helpers/server/customFunctions";
+import { paginationOptsValidator, type PaginationOptions, type PaginationResult } from "convex/server";
 import { v, type ObjectType, type PropertyValidators } from "convex/values";
 
 import { authorizedSession, emailVerificationRequired } from "./sessionPolicy";
@@ -145,6 +146,58 @@ export function orgQuery<
       const auth = await getOrgAuth(ctx);
       if (!auth) return null;
       return func.handler({ ...ctx, ...auth }, args);
+    },
+  });
+}
+
+/** What a paginated builder returns when there is no caller to read for. */
+const EMPTY_PAGE = { page: [], isDone: true, continueCursor: "" };
+
+/**
+ * `orgQuery` for a paginated list, for `usePaginatedQuery`: adds the `paginationOpts`
+ * argument, and returns an empty, finished page (never `null`) when `orgQuery` would return
+ * `null`. Return `query.paginate(args.paginationOpts)` (or a page mapped from it), and cap
+ * `numItems`. Use it instead of `.collect()` for any list that grows with use.
+ */
+export function orgPaginatedQuery<
+  ArgsValidator extends PropertyValidators,
+  Item,
+>(func: {
+  args: ArgsValidator;
+  handler: (
+    ctx: QueryCtx & AuthInfo & ActiveOrganization,
+    args: ObjectType<ArgsValidator> & { paginationOpts: PaginationOptions },
+  ) => Promise<PaginationResult<Item>>;
+}) {
+  return query({
+    args: { ...func.args, paginationOpts: paginationOptsValidator },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    handler: async (ctx: QueryCtx, args: any): Promise<PaginationResult<Item>> => {
+      const auth = await getOrgAuth(ctx);
+      if (!auth) return EMPTY_PAGE;
+      return await func.handler({ ...ctx, ...auth }, args);
+    },
+  });
+}
+
+/** `authedQuery` for a paginated list, like `orgPaginatedQuery`: an empty page without a caller. */
+export function authedPaginatedQuery<
+  ArgsValidator extends PropertyValidators,
+  Item,
+>(func: {
+  args: ArgsValidator;
+  handler: (
+    ctx: QueryCtx & AuthInfo,
+    args: ObjectType<ArgsValidator> & { paginationOpts: PaginationOptions },
+  ) => Promise<PaginationResult<Item>>;
+}) {
+  return query({
+    args: { ...func.args, paginationOpts: paginationOptsValidator },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    handler: async (ctx: QueryCtx, args: any): Promise<PaginationResult<Item>> => {
+      const auth = await getAuth(ctx);
+      if (!auth) return EMPTY_PAGE;
+      return await func.handler({ ...ctx, ...auth }, args);
     },
   });
 }

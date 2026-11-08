@@ -61,7 +61,9 @@ that the organization exists. `planId` and `billingOrganizationId` are real `v.i
   written in one transaction. Better Auth's `/organization/create` is turned off.
 - Every organization, billing or not, manages its own members and invitations (owner and admins).
 - In a billing organization, owners and admins act; members view the billing organization, the
-  organizations it pays for and their plans (not their members or data).
+  organizations it pays for and their plans (not their members or data). The billing card lists
+  those a page at a time (`billing.paidOrganizations`); checking whether a billing organization
+  still pays for another reads at most two plan rows.
 - Platform-created organizations make their user the owner (the owner invariant forbids admin-only).
 - Platform admins get no personal organization, plan or billing, and don't change plans this release.
 
@@ -72,6 +74,18 @@ mode. Until chosen, sign-ups and organization creation are refused (`TENANCY_NOT
 existing users keep working. One-way; individuals → organizations may come later.
 
 Turning on either mode needs at least one plan besides the seeded one, and a default.
+
+**What the install allows** comes from a stored check (`tenancy.check`): a background scan of
+every user and organization, 100 per transaction, whose progress and result are kept in the
+platform's `tenancyChecks` table. The admin tenancy page starts one when there is none or the
+last has expired, shows its progress, and offers **Check again**; `tenancy.status` reads the
+stored result and the plans, never every user. `configure` accepts a result at most 10 minutes
+old (`TENANCY_CHECK_REQUIRED`, `TENANCY_CHECK_EXPIRED`): until a mode is chosen, sign-ups and
+organization creation are refused, so the counts rarely change, and a short age bounds every way
+they could. What can change within it is checked again where it matters: `configure` re-reads
+the plans and the owners it is given, and an individuals setup re-checks every organization and
+user in its own batches. An install with more than 2,000 users or organizations can't turn a
+mode on from the admin page (`TENANCY_INSTALL_TOO_LARGE`).
 
 **Fresh install:** after the first platform admin is set up, the admin app shows only the tenancy
 step. **Existing deployment:** the upgrade's migration gives every organization a free-forever
@@ -185,8 +199,11 @@ before the billing/shared organizations are created. After that, if the shared o
 owner was banned, made a platform admin or deleted between batches, so it has no owner who can
 act, Retry setup takes a new owner for it (`retry({ adminUserId })`, shown when `status` reports
 `canReplaceAdmin`), and recreates it, on its plan and payer, if it was deleted. Completed
-batches are retained. Individuals mode constrains membership writes during setup and
-revalidates eligibility before committing.
+batches are retained. Individuals mode refuses joins that would share an organization while
+its setup runs, and the setup checks, a batch at a time, that every organization still has one
+member and every application user one organization before committing
+(`TENANCY_INDIVIDUALS_NOT_ALLOWED` otherwise). Each member the shared step adds costs the same
+whatever the shared organization's size: the ownership checks read its owners, not its members.
 
 Users still to become platform admins (a pending admin invitation or a protected admin address)
 are not application users for setup: they are never owner candidates nor added to the shared
@@ -194,11 +211,24 @@ organization, and they don't count against Plans for Individuals. Completing adm
 goes through the same ownership check as any role change.
 
 Before auth deletion, the platform stores cleanup inputs (including a migrated profile owner ID)
-in `userDeletionCleanups`. Cleanup retries are independent of the deleted account and of the
-original destructive job. Failed cleanup is shown as Cleanup pending in the admin deletion list;
-it retries automatically up to five attempts, after which an administrator can use Retry cleanup.
+in `userDeletionCleanups`, with a scheduled run of the cleanup job. Once the user row is gone,
+the job removes the user's memberships one organization per transaction (handing over ownership
+or deleting an emptied organization as above), then the app-owned and platform-owned data; each
+step runs as a scheduled mutation that records its own failure. Cleanup retries are independent
+of the deleted account and of the original destructive job. The admin deletion list shows a
+pending cleanup with how many memberships it has removed; a failed step retries automatically up
+to five attempts, after which an administrator can use **Retry cleanup**, as they can for a
+cleanup whose run died (`stale`). Retry is refused (`USER_CLEANUP_RUNNING`) while it is running
+normally. The list shows at most 200 deletion requests and 200 cleanups, and says when there are
+more (`more`).
 Cancellation cannot discard cleanup after auth deletion. The recovery record is removed only
 when membership, app-owned and platform-owned cleanup has completed.
 
 A payer's dependency check and deletion marker commit together. Billing authorization reads that
 marker, so sponsorship and payer deletion serialize before Better Auth removes any members.
+
+Cancellation also rechecks the ownership invariant. If the user was demoted while their deletion
+was pending and the remaining owners can no longer act, canceling refuses with
+`OWNER_SUCCESSOR_REQUIRED`. Make another member an owner before retrying cancellation.
+Eligibility checks are invalidated by transactional membership and user changes before setup
+starts; rerun the check after `TENANCY_CHECK_CHANGED`.

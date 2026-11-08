@@ -23,14 +23,13 @@ Create `packages/backend/convex/personalNotes.ts`:
 
 <!-- data-access-file: personalNotes.ts -->
 ```ts
-import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import {
-  assertMaxLength, authedMutation, authedQuery, MAX_DESCRIPTION_LENGTH,
+  assertMaxLength, authedMutation, authedPaginatedQuery, authedQuery, MAX_DESCRIPTION_LENGTH,
 } from "./platform/functions";
 
-export const list = authedQuery({
-  args: { paginationOpts: paginationOptsValidator },
+export const list = authedPaginatedQuery({
+  args: {},
   handler: (ctx, args) => ctx.db.query("personalNotes")
     .withIndex("by_owner", q => q.eq("ownerId", ctx.ownerId))
     .order("desc").paginate(args.paginationOpts),

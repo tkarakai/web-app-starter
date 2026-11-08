@@ -105,7 +105,7 @@ describe("banning an organization's only owner who can act", () => {
     mocks.detail = [{
       organizationId: "org1", name: "Acme", role: "owner", memberCount: 2, soleOwner: true,
       onAccountDeletion: "ownershipPasses", successor: null,
-      banSuccessor: { suggested: "u2", candidates: [{ userId: "u2", name: "", email: "bob@example.test", role: "admin" }] },
+      banSuccessor: { suggested: "u2", moreCandidates: false, candidates: [{ userId: "u2", name: "", email: "bob@example.test", role: "admin" }] },
     }];
     const onConfirm = vi.fn();
     render(<BanDialog open onOpenChange={() => {}} onConfirm={onConfirm}

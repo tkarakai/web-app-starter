@@ -12,7 +12,8 @@
  */
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
+import type { TransactionLimits } from "convex/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 
 /** An action may run for 10 minutes; one in progress for longer than this is gone. */
 export const JOB_STALE_AFTER_MS = 15 * 60 * 1000;
@@ -48,4 +49,23 @@ export async function jobStale(ctx: Pick<QueryCtx, "db">, row: TrackedJob, since
   if (job.state.kind === "pending") return false;
   if (job.state.kind === "inProgress") return now - Math.max(since, job.scheduledTime) > JOB_STALE_AFTER_MS;
   return true;
+}
+
+/** How much of the transaction a job's batch may use: the rest records its failure. */
+const BATCH_SHARE = 0.9;
+const BATCH_LIMITS = ["bytesRead", "bytesWritten", "databaseQueries", "documentsRead", "documentsWritten", "functionsScheduled", "scheduledFunctionArgsBytes"] as const;
+
+/**
+ * Limits for a batch run as a sub-transaction (`ctx.runMutation(..., { transactionLimits })`):
+ * most of what this transaction has left, so a batch that exceeds them fails and rolls back
+ * while the driver still has room to record the failure. `undefined` where metrics aren't
+ * available.
+ */
+export async function batchLimits(ctx: Pick<MutationCtx, "meta">): Promise<TransactionLimits | undefined> {
+  try {
+    const metrics = await ctx.meta.getTransactionMetrics();
+    return Object.fromEntries(BATCH_LIMITS.map((key) => [key, Math.floor(metrics[key].remaining * BATCH_SHARE)]));
+  } catch {
+    return undefined;
+  }
 }

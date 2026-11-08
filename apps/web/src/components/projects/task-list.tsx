@@ -4,7 +4,7 @@ import { DialogContent } from "@/components/ui/localized-controls";
 
 import * as React from "react";
 import { Plus } from "lucide-react";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery, useQuery } from "convex/react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { api } from "@repo/backend";
@@ -49,12 +49,20 @@ type Task = {
   createdAt: number;
 };
 
+/** Tasks listed per page. Counts stop at `MAX_COUNTED` (the backend's), shown as "99+". */
+const TASKS_PAGE = 50;
+const MAX_COUNTED = 99;
+
 type TaskListProps = {
   projectId: Id<"projects">;
 };
 
 export function TaskList({ projectId }: TaskListProps) {
-  const tasks: Task[] = useQuery(api.tasks.listByProject, { projectId }) ?? [];
+  const [tab, setTab] = React.useState<"all" | TaskStatus>("all");
+  // The tab filters on the server, so every page holds tasks of that status.
+  const taskPages = usePaginatedQuery(api.tasks.listByProject, { projectId, ...(tab === "all" ? {} : { status: tab }) }, { initialNumItems: TASKS_PAGE });
+  const tasks: Task[] = taskPages.results;
+  const stats = useQuery(api.tasks.stats, { projectId });
   const profile = useQuery(api.platform.userProfiles.get);
   const createTask = useMutationWithToast(api.tasks.create);
   const t = useTranslations("tasks");
@@ -63,7 +71,6 @@ export function TaskList({ projectId }: TaskListProps) {
 
   const timeZone = profile?.timezone ?? undefined;
 
-  const [tab, setTab] = React.useState<"all" | TaskStatus>("all");
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
@@ -71,9 +78,11 @@ export function TaskList({ projectId }: TaskListProps) {
   const [deadline, setDeadline] = React.useState<number | undefined>(undefined);
   const [submitting, setSubmitting] = React.useState(false);
 
-  const filteredTasks = tasks.filter((task) => tab === "all" || task.status === tab);
-  const doneCount = tasks.filter((task) => task.status === "done").length;
-  const progress = tasks.length === 0 ? 0 : Math.round((doneCount / tasks.length) * 100);
+  const taskCount = stats?.taskCount ?? 0;
+  const doneCount = stats?.doneCount ?? 0;
+  const capped = stats?.countsCapped ?? false;
+  const shown = (count: number) => (capped && count >= MAX_COUNTED ? `${MAX_COUNTED}+` : count);
+  const progress = taskCount === 0 ? 0 : Math.round((doneCount / taskCount) * 100);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,7 +113,7 @@ export function TaskList({ projectId }: TaskListProps) {
       <CardHeader className="space-y-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">
-            {t("title")}{tasks.length > 0 && ` (${tasks.length})`}
+            {t("title")}{taskCount > 0 && ` (${shown(taskCount)})`}
           </CardTitle>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -170,28 +179,33 @@ export function TaskList({ projectId }: TaskListProps) {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {tasks.length > 0 && (
+        {taskCount > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>
-                {t("progress", { doneCount, totalCount: tasks.length })}
+                {t("progress", { doneCount: shown(doneCount), totalCount: shown(taskCount) })}
               </span>
-              <span>{t("progressPercent", { percent: progress })}</span>
+              {!capped && <span>{t("progressPercent", { percent: progress })}</span>}
             </div>
-            <Progress value={progress} />
+            {!capped && <Progress value={progress} />}
           </div>
         )}
 
-        {filteredTasks.length === 0 ? (
+        {taskPages.status === "LoadingFirstPage" ? (
+          <div className="px-4 py-6 text-center text-sm text-muted-foreground">{tc("loading")}</div>
+        ) : tasks.length === 0 ? (
           <div className="rounded-md border border-dashed border-border/70 bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
             {t("noTasks")}
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredTasks.map((task) => (
+            {tasks.map((task) => (
               <TaskRow key={task._id} task={task} locale={locale} timeZone={timeZone} />
             ))}
           </div>
+        )}
+        {taskPages.status === "CanLoadMore" && (
+          <Button variant="outline" size="sm" onClick={() => taskPages.loadMore(TASKS_PAGE)}>{tc("loadMore")}</Button>
         )}
       </CardContent>
     </Card>

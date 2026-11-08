@@ -24,12 +24,11 @@ Create `packages/backend/convex/teamNotes.ts`:
 
 <!-- data-access-file: teamNotes.ts -->
 ```ts
-import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import {
-  assertMaxLength, MAX_DESCRIPTION_LENGTH, orgMutation, orgQuery,
+  assertMaxLength, MAX_DESCRIPTION_LENGTH, orgMutation, orgPaginatedQuery, orgQuery,
 } from "./platform/functions";
 
 type AccessCtx = Pick<QueryCtx, "db"> & { organizationId: string };
@@ -42,8 +41,8 @@ export async function requireTeamNote(
   return note;
 }
 
-export const list = orgQuery({
-  args: { paginationOpts: paginationOptsValidator },
+export const list = orgPaginatedQuery({
+  args: {},
   handler: (ctx, args) => ctx.db.query("teamNotes")
     .withIndex("by_organization", q => q.eq("organizationId", ctx.organizationId))
     .order("desc").paginate(args.paginationOpts),

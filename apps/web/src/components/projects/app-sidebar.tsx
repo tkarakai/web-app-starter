@@ -4,7 +4,7 @@ import { DialogContent, Sidebar, SidebarRail } from "@/components/ui/localized-c
 
 import * as React from "react";
 import { Building2, ChevronRight, LogOut, Plus, UserCog } from "lucide-react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
 import { ThemeToggle } from "@web-app-starter/design-patterns";
@@ -47,6 +47,9 @@ import { normalizeText } from "@/lib/projects";
 import { AppLogo } from "@/components/app-logo";
 import { appConfig } from "@web-app-starter/app-config";
 
+/** Projects listed per page in the sidebar. */
+const PROJECTS_PAGE = 50;
+
 type Project = {
   _id: Id<"projects">;
   _creationTime: number;
@@ -83,7 +86,8 @@ export function AppSidebar({
   // Individuals have one organization, shown as billing details in Settings.
   const individuals = useTenancyMode() === "individuals";
 
-  const projects: Project[] = useQuery(api.projects.list, hasOrganization ? {} : "skip") ?? [];
+  const projectPages = usePaginatedQuery(api.projects.list, hasOrganization ? {} : "skip", { initialNumItems: PROJECTS_PAGE });
+  const projects: Project[] = projectPages.results;
   const userProfile = useQuery(api.platform.userProfiles.get) ?? null;
   const createProject = useMutation(api.projects.create);
 
@@ -196,6 +200,13 @@ export function AppSidebar({
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       ))
+                    )}
+                    {projectPages.status === "CanLoadMore" && (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton className="text-muted-foreground" onClick={() => projectPages.loadMore(PROJECTS_PAGE)} tooltip={tc("loadMore")}>
+                          <span>{tc("loadMore")}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
                     )}
                   </SidebarMenu>
                 </SidebarGroupContent>

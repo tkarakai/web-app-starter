@@ -14,6 +14,9 @@ import { requireProjectAccess } from "./projectAccess";
 import schema from "./schema";
 import { createTestEnv, modules } from "./test.modules";
 
+/** One page of a paginated list, enough for every test here. */
+const PAGE = { numItems: 100, cursor: null };
+
 function fixture(legacy = false) {
   // Only migration tests seed historical documents that predate the required field.
   const t = legacy ? convexTest(defineSchema(schema.tables, { schemaValidation: false }), modules) : createTestEnv();
@@ -36,7 +39,7 @@ describe("organization projects", () => {
     const f = await fixture();
     const alice = await f.user("alice");
     expect(await alice.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: null, organizations: [] });
-    expect(await alice.caller.query(api.projects.list, {})).toBeNull();
+    expect((await alice.caller.query(api.projects.list, { paginationOpts: PAGE })).page).toEqual([]);
 
     await expect(alice.caller.mutation(api.projects.create, { name: "Launch", description: "" })).rejects.toThrow("NO_ORGANIZATION");
     expect(await alice.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: null, organizations: [] });
@@ -47,7 +50,7 @@ describe("organization projects", () => {
     await alice.caller.mutation(api.projects.create, { name: "Launch", description: "" });
     const mine = await alice.caller.query(api.platform.organizations.mine, {});
     expect(mine!.organizations).toEqual([{ id: mine!.activeOrganizationId, name: "alice", role: "owner" }]);
-    expect(await alice.caller.query(api.projects.list, {})).toMatchObject([{ name: "Launch", organizationId: mine!.activeOrganizationId }]);
+    expect((await alice.caller.query(api.projects.list, { paginationOpts: PAGE })).page).toMatchObject([{ name: "Launch", organizationId: mine!.activeOrganizationId }]);
     // Initial provisioning is idempotent.
     expect(await alice.provision()).toBe(mine!.activeOrganizationId);
   });
@@ -61,9 +64,9 @@ describe("organization projects", () => {
     const taskId = await alice.caller.mutation(api.tasks.create, { projectId, title: "T", description: "", status: "todo" });
     await bob.provision();
 
-    expect(await bob.caller.query(api.projects.list, {})).toEqual([]);
+    expect((await bob.caller.query(api.projects.list, { paginationOpts: PAGE })).page).toEqual([]);
     expect(await bob.caller.query(api.projects.get, { id: projectId })).toBeNull();
-    await expect(bob.caller.query(api.tasks.listByProject, { projectId })).rejects.toThrow("PROJECT_NOT_FOUND");
+    await expect(bob.caller.query(api.tasks.listByProject, { projectId, paginationOpts: PAGE })).rejects.toThrow("PROJECT_NOT_FOUND");
     await expect(bob.caller.mutation(api.projects.update, { id: projectId, name: "Mine" })).rejects.toThrow("PROJECT_NOT_FOUND");
     await expect(bob.caller.mutation(api.tasks.update, { id: taskId, title: "Mine" })).rejects.toThrow("PROJECT_NOT_FOUND");
     await expect(bob.caller.mutation(api.projects.remove, { id: projectId })).rejects.toThrow("PROJECT_NOT_FOUND");
@@ -71,7 +74,7 @@ describe("organization projects", () => {
 
     // A session pointing at an organization Bob doesn't belong to changes nothing.
     await bob.switchTo(await activeOrganization(alice.caller));
-    expect(await bob.caller.query(api.projects.list, {})).toEqual([]);
+    expect((await bob.caller.query(api.projects.list, { paginationOpts: PAGE })).page).toEqual([]);
     expect(await bob.caller.query(api.projects.get, { id: projectId })).toBeNull();
   });
 
@@ -86,17 +89,17 @@ describe("organization projects", () => {
     const membership = await f.addMember(acme, bob.userId, "member");
 
     // Bob still works in his own organization until he switches.
-    expect(await bob.caller.query(api.projects.list, {})).toEqual([]);
+    expect((await bob.caller.query(api.projects.list, { paginationOpts: PAGE })).page).toEqual([]);
     await bob.switchTo(acme);
     const mine = await bob.caller.query(api.platform.organizations.mine, {});
     expect(mine!.activeOrganizationId).toBe(acme);
     expect(mine!.organizations.map((o) => o.role).sort()).toEqual(["member", "owner"]);
 
     // Every member can read and edit the organization's data.
-    expect(await bob.caller.query(api.projects.list, {})).toMatchObject([{ _id: projectId }]);
+    expect((await bob.caller.query(api.projects.list, { paginationOpts: PAGE })).page).toMatchObject([{ _id: projectId }]);
     await bob.caller.mutation(api.tasks.create, { projectId, title: "By Bob", description: "", status: "todo" });
     await bob.caller.mutation(api.projects.update, { id: projectId, name: "Renamed by Bob" });
-    expect(await alice.caller.query(api.tasks.listByProject, { projectId })).toMatchObject([{ title: "By Bob", ownerId: bob.userId }]);
+    expect((await alice.caller.query(api.tasks.listByProject, { projectId, paginationOpts: PAGE })).page).toMatchObject([{ title: "By Bob", ownerId: bob.userId }]);
     // New rows land in the active organization.
     const bobsProject = await bob.caller.mutation(api.projects.create, { name: "Acme second", description: "" });
     expect(await alice.caller.query(api.projects.get, { id: bobsProject })).toMatchObject({ organizationId: acme });
@@ -106,7 +109,7 @@ describe("organization projects", () => {
       input: { model: "member", where: [{ field: "_id", value: membership._id }] },
     });
     expect(await activeOrganization(bob.caller)).toBe(bobsOwn);
-    expect(await bob.caller.query(api.projects.list, {})).toEqual([]);
+    expect((await bob.caller.query(api.projects.list, { paginationOpts: PAGE })).page).toEqual([]);
     expect(await bob.caller.query(api.projects.get, { id: projectId })).toBeNull();
   });
 
@@ -141,7 +144,7 @@ describe("organization projects", () => {
     const id = await alice.caller.mutation(api.projects.create, { ...draft, expectedOrganizationId: daves });
     expect(await f.t.run((ctx) => ctx.db.get(id))).toMatchObject({ organizationId: daves });
     await expect(alice.caller.mutation(api.projects.create, { ...draft, expectedOrganizationId: target })).rejects.toThrow("ORGANIZATION_CHANGED");
-    expect(await carol.caller.query(api.projects.list, {})).toEqual([]);
+    expect((await carol.caller.query(api.projects.list, { paginationOpts: PAGE })).page).toEqual([]);
   });
 });
 
@@ -175,11 +178,11 @@ describe("upgrade migration", () => {
     const orphan = await legacyProject(f, "deleted-account");
 
     // Before the migration the rows are unreachable, never exposed.
-    expect(await alice.caller.query(api.projects.list, {})).toBeNull();
+    expect((await alice.caller.query(api.projects.list, { paginationOpts: PAGE })).page).toEqual([]);
 
     await migrate(f);
-    expect(await alice.caller.query(api.projects.list, {})).toMatchObject([{ _id: aliceProject }]);
-    expect(await legacy.caller.query(api.projects.list, {})).toMatchObject([{ _id: legacyOwned }]);
+    expect((await alice.caller.query(api.projects.list, { paginationOpts: PAGE })).page).toMatchObject([{ _id: aliceProject }]);
+    expect((await legacy.caller.query(api.projects.list, { paginationOpts: PAGE })).page).toMatchObject([{ _id: legacyOwned }]);
     expect((await f.t.run((ctx) => ctx.db.get(orphan)))!.organizationId).toBeUndefined();
     // Idempotent.
     await migrate(f);
@@ -199,7 +202,7 @@ describe("upgrade migration", () => {
     const assigned = (await f.t.run((ctx) => ctx.db.get(bobsProject)))!.organizationId;
     expect(assigned).toBeDefined();
     expect(assigned).not.toBe(acme);
-    expect(await alice.caller.query(api.projects.list, {})).toEqual([]);
+    expect((await alice.caller.query(api.projects.list, { paginationOpts: PAGE })).page).toEqual([]);
     const bobsOrganizations = (await bob.caller.query(api.platform.organizations.mine, {}))!.organizations;
     expect(bobsOrganizations.find((o) => o.id === assigned)).toMatchObject({ role: "owner", name: "bob" });
   });
@@ -345,7 +348,7 @@ describe("deleting an organization", () => {
     });
     expect(interleaved).toBe(true);
     expect(result).not.toBe(200);
-    expect(await bob.caller.query(api.projects.list, {})).toBeNull();
+    expect((await bob.caller.query(api.projects.list, { paginationOpts: PAGE })).page).toEqual([]);
     await f.t.finishAllScheduledFunctions(vi.runAllTimers);
     await expect(bob.caller.mutation(api.projects.create, { name: "After deletion", description: "" })).rejects.toThrow("NO_ORGANIZATION");
     expect(await f.t.run((ctx) => ctx.db.query("projects").collect())).toEqual([]);
@@ -387,10 +390,10 @@ describe("deleting an organization", () => {
 
     // Reads move to the oldest membership and say the selection is stale.
     expect(await alice.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: shared, selectionStale: true });
-    expect(await alice.caller.query(api.projects.list, {})).toEqual([]);
+    expect((await alice.caller.query(api.projects.list, { paginationOpts: PAGE })).page).toEqual([]);
     // A write without any precondition is refused too, and nothing lands in the shared organization.
     await expect(alice.caller.mutation(api.projects.create, { name: "Draft for target", description: "" })).rejects.toThrow("ORGANIZATION_CHANGED");
-    expect(await carol.caller.query(api.projects.list, {})).toEqual([]);
+    expect((await carol.caller.query(api.projects.list, { paginationOpts: PAGE })).page).toEqual([]);
 
     // Re-admission restores the selection only because the session never switched; once the UI
     // switches (OrganizationAccessNotice), the old selection is gone for good.
@@ -466,5 +469,58 @@ describe("deleting an organization", () => {
     expect(left.tasks).toEqual([carols.projectId]);
     expect(left.uploads).toEqual([carols.projectId]);
     expect(left.files.map((url) => url !== null)).toEqual([false, false, true]);
+  });
+});
+
+describe("the sample's bounded lists and deletion", () => {
+  afterEach(() => { vi.useRealTimers(); });
+
+  async function project(taskCount: number, done: number) {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    await alice.provision();
+    const projectId = await alice.caller.mutation(api.projects.create, { name: "Big", description: "" });
+    await f.t.run(async (ctx) => {
+      for (let i = 0; i < taskCount; i++) {
+        await ctx.db.insert("tasks", { title: `T${i}`, description: "", status: i < done ? "done" : "todo", projectId, ownerId: alice.userId, createdAt: i });
+      }
+    });
+    return { ...f, alice, projectId };
+  }
+
+  test("lists page and counts stop at 99", async () => {
+    const f = await project(150, 120);
+    const [summary] = (await f.alice.caller.query(api.projects.listWithStats, { paginationOpts: { numItems: 12, cursor: null } })).page;
+    expect(summary).toMatchObject({ taskCount: 99, doneCount: 99, uploadCount: 0, countsCapped: true });
+    expect(await f.alice.caller.query(api.tasks.stats, { projectId: f.projectId })).toMatchObject({ taskCount: 99, countsCapped: true });
+    await expect(f.alice.caller.query(api.projects.listWithStats, { paginationOpts: { numItems: 25, cursor: null } })).rejects.toThrow("INVALID_PAGE_SIZE");
+
+    const first = await f.alice.caller.query(api.tasks.listByProject, { projectId: f.projectId, paginationOpts: { numItems: 100, cursor: null } });
+    expect(first.page).toHaveLength(100);
+    expect(first.isDone).toBe(false);
+    const todo = await f.alice.caller.query(api.tasks.listByProject, { projectId: f.projectId, status: "todo", paginationOpts: PAGE });
+    expect(todo.page).toHaveLength(30);
+    expect(todo.page.every((task) => task.status === "todo")).toBe(true);
+    await expect(f.alice.caller.query(api.tasks.listByProject, { projectId: f.projectId, paginationOpts: { numItems: 101, cursor: null } })).rejects.toThrow("INVALID_PAGE_SIZE");
+    // A URL with something that isn't a project ID finds nothing.
+    expect(await f.alice.caller.query(api.projects.get, { id: "not-a-project" })).toBeNull();
+  });
+
+  test("a large project goes at once; its remaining rows go in background batches", async () => {
+    vi.useFakeTimers();
+    const f = await project(650, 0);
+    await f.alice.caller.mutation(api.projects.remove, { id: f.projectId });
+    expect(await f.t.run((ctx) => ctx.db.get(f.projectId))).toBeNull();
+    // 500 went in the deleting call; the rest are unreachable without their project.
+    expect(await f.t.run(async (ctx) => (await ctx.db.query("tasks").collect()).length)).toBe(150);
+    await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await f.t.run((ctx) => ctx.db.query("tasks").collect())).toEqual([]);
+  });
+
+  test("a small project goes in the one call", async () => {
+    const f = await project(40, 10);
+    await f.alice.caller.mutation(api.projects.remove, { id: f.projectId });
+    expect(await f.t.run((ctx) => ctx.db.query("tasks").collect())).toEqual([]);
+    expect(await f.t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect())).toEqual([]);
   });
 });

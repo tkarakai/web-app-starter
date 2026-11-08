@@ -44,11 +44,25 @@ const MODE_COPY: Record<Mode, { title: string; description: string }> = {
  * Choose the tenancy mode, once (platform/docs/tenancy-and-billing.md). Until then nobody can
  * sign up. Turning a mode on gives every organization its plan; on an install with users and no
  * shared organizations, organizations mode also creates a billing organization and one shared
- * organization with every user.
+ * organization with every user. What the install allows comes from a stored check, run in the
+ * background when there is none or it has expired; turning a mode on needs a fresh one.
  */
 export function TenancySetup() {
   const status = useQuery(api.platform.tenancy.status);
   const configure = useMutation(api.platform.tenancy.configure);
+  const runCheck = useMutation(api.platform.tenancy.check);
+  const [now, setNow] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+  const checkState = status && !status.mode && !status.running ? status.check : undefined;
+  const expired = !!checkState?.freshUntil && checkState.freshUntil < now;
+  // Start a check when there is none, or the last one expired; a failed or stalled one waits for the button.
+  const needsCheck = checkState === null || (checkState?.state === "done" && expired);
+  React.useEffect(() => {
+    if (needsCheck) void runCheck({}).catch((error: unknown) => toast.error(message(error)));
+  }, [needsCheck, runCheck]);
   const retry = useMutation(api.platform.tenancy.retry);
   const [mode, setMode] = React.useState<Mode>("organizations");
   const [billingUserId, setBillingUserId] = React.useState("");
@@ -102,9 +116,27 @@ export function TenancySetup() {
       </Alert>
     );
   }
-  const check = status.eligibility!;
+  const checkAgain = () => void runCheck({}).catch((error: unknown) => toast.error(message(error)));
+  const check = status.eligibility;
+  if (!check || !status.check) {
+    const progress = status.check;
+    return (
+      <Card data-testid="tenancy-check">
+        <CardHeader>
+          <CardTitle className="text-lg">Choose a tenancy mode</CardTitle>
+          <CardDescription>Nobody can sign up until you do. The choice is final.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 text-sm">
+          {progress?.state === "failed" || progress?.stale ? <>
+            <p>{progress.state === "failed" ? <>Checking this install stopped: {progress.error}</> : <>Checking this install stalled.</>}</p>
+            <div><Button variant="outline" onClick={checkAgain}>Check again</Button></div>
+          </> : <p className="text-muted-foreground">Checking this install… {progress ? `${progress.users} users and ${progress.organizations} organizations read.` : ""}</p>}
+        </CardContent>
+      </Card>
+    );
+  }
   const shared = mode === "organizations" && check.sharedStep;
-  const blocked = !check.plans.ready || (mode === "individuals" && !check.individualsAllowed) || !check.complete;
+  const blocked = !check.plans.ready || (mode === "individuals" && !check.individualsAllowed) || !check.complete || expired || status.check.state !== "done";
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -150,6 +182,12 @@ export function TenancySetup() {
               </AlertDescription>
             </Alert>
           )}
+          <p className="text-sm text-muted-foreground">
+            {status.check.state === "running"
+              ? "Checking this install again…"
+              : <>Checked {status.check.finishedAt ? new Date(status.check.finishedAt).toLocaleTimeString() : ""}: {check.appUserCount} users. {expired && "That check has expired. "}</>}
+            {status.check.state !== "running" && <Button type="button" variant="link" className="h-auto p-0" onClick={checkAgain}>Check again</Button>}
+          </p>
           {!check.complete && <Alert><AlertDescription>This install has too many users or organizations to turn a mode on from here.</AlertDescription></Alert>}
           <RadioGroup value={mode} onValueChange={(value) => setMode(value as Mode)} className="grid gap-3">
             {(Object.keys(MODE_COPY) as Mode[]).map((key) => (

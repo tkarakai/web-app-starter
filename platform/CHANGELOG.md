@@ -157,6 +157,25 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- **Bounded organization and tenancy work.** Membership guards read owners through an indexed
+  role lookup. Deleted users lose memberships in durable batches; administrators can retry a
+  stalled cleanup. Tenancy eligibility runs as a stored, batched check, invalidated by changes
+  to its inputs, and configuration requires a fresh result. Admin organization views avoid
+  repeated member/user reads; deletion lists explicitly report overflow. Billing dependency
+  checks read at most two rows and paid-organization listings are paginated.
+- **Bounded reference app lists and deletion.** Projects and tasks use pagination; project
+  counts stop at 99 and display **99+**. Large project cascades continue in scheduled batches.
+  `projects.list`, `projects.listWithStats` and `tasks.list` now accept `paginationOpts` and
+  return pages. The unreleased billing API lists payer organizations through
+  `billing.paidOrganizations`; `billing.overview` no longer embeds them, and the component's
+  `billing.paidBy` takes `paginationOpts` and returns a page. Custom consumers of these
+  unreleased interfaces must follow the updated reference callers.
+- Canceling a pending deletion checks ownership again: if reactivating the user would leave an
+  organization without an owner who can act, it refuses with `OWNER_SUCCESSOR_REQUIRED` until
+  another member is made an owner. Tenancy pickers exclude users with pending deletions.
+- Better Auth organization deletion records owed data cleanup in its component transaction,
+  so interruption before its later request hook cannot lose the cleanup job.
+
 - **Tenancy and billing follow-ups:**
   - The platform admin's organization delete (`adminOrganizations.remove`, `organizations_remove`)
     now ends the organization's plan and marks its billing row deleted, as an owner's delete
@@ -169,7 +188,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
     (`userData:deleteUserData`), profile, pending plan choice and pending deletion request.
   - A user with a pending self-deletion no longer counts as an owner who can act. Requesting it
     makes a successor an owner where the requester was the only such owner while other members
-    can act; the requester stays an owner, so cancelling loses nothing. Until then the other
+    can act; the requester stays an owner unless subsequently demoted. Cancellation rechecks ownership. Until then the other
     owners can't leave or be demoted if that would leave no owner who can act.
   - Tenancy setup never picks a pending platform admin (an admin invitation or protected admin
     address) as an owner nor adds them to the shared organization, and they don't count

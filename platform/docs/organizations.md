@@ -148,6 +148,11 @@ built-in roles; custom roles are not currently supported.
   deletion commits while the acceptance is under way. Someone who can sign in can't join an
   organization whose owners are all banned (`ORGANIZATION_OWNER_REQUIRED`): nobody could manage
   it for them.
+- **A membership write costs the same in any size of organization.** The checks that keep an
+  organization owned run in every membership write's transaction, and read the organization's
+  owners (and their users) through the Better Auth member index `organizationId_role_createdAt`,
+  never its whole member list. Other members are read only when no owner can act, and then only
+  until one who can is found; choosing a successor reads admins, then members, oldest first.
 - **Audited:** creating, renaming, deleting (including by deleting its last member's account), invitation sent, canceled, deleted, accepted or rejected,
   member removed, member left and role changed (`organization.*` audit actions).
 - **Not included:** teams, custom roles, billing, and organization-scoped capabilities for the
@@ -243,6 +248,16 @@ it, the platform deletes the organization and its invitations and runs the same
 `source: server:account-deletion` and `reason: last_member_deleted`. An organization that still
 has members keeps them and, if needed, gets a new owner.
 
+The memberships go in a background job, one organization per transaction, so a user in many
+large organizations can be deleted within Convex's per-transaction limits. The job's record
+(the platform's `userDeletionCleanups` row, with its scheduled run and run token) is written
+before the user row is deleted, so a membership is never left pointing at a deleted user
+without a recorded job that will remove it. Until it has run, which is usually a matter of
+seconds, the deleted user's memberships still count, as an owner who can't act. A failing step
+is retried with growing delays, then waits for an administrator; a run that died is reported
+`stale`. Both show in the admin app's **Scheduled deletions** card with **Retry cleanup**
+(`userDeletion.list`, `adminRetryCleanup`).
+
 ## Administration
 
 Platform administrators see every organization in the admin app (**Manage → Organizations**)
@@ -253,11 +268,11 @@ and through the `organizations_*` admin agent capabilities. Both use
 |---|---|
 | `list` | Every organization, newest first, with owners, member count and live pending invitations (`pendingInvitations` stops at 100; `morePendingInvitations` means more, shown as "100+"); `search` matches names (case-sensitive) |
 | `get` | One organization's members with roles, its exact live pending count, and its pending, expired and recently declined invitations |
-| `forUser` | A user's memberships, what deleting the account would do to each organization, and `banSuccessor` (candidates and a suggestion) where banning needs a new owner first |
+| `forUser` | A user's memberships, what deleting the account would do to each organization, and `banSuccessor` where banning needs a new owner first: a suggestion and up to 10 candidates (`moreCandidates` when there are more; any member who can act and isn't an owner is accepted) |
 | `addOwner` | Make an existing member an owner, alongside the current owners. Refused for banned members (`MEMBER_BANNED`) and platform administrators (`MEMBER_IS_ADMINISTRATOR`) |
 | `removeOwner` | Make an owner an admin or member. Refused (`LAST_OWNER`) for the only owner, or the only one who isn't banned while members can sign in |
 | `cancelInvitation` | Cancel a pending invitation; its link reads as no longer valid |
-| `remove` | Delete the organization: memberships, invitations, its plan (ended; its billing row is marked deleted, both kept as billing history) and the organization at once, then its app data through `organizationData.ts`. Accounts are kept. Refused (`BILLING_ORGANIZATION_IN_USE`) while it pays for another organization's plan |
+| `remove` | Delete the organization: memberships, invitations, its plan (ended; its billing row is marked deleted, both kept as billing history) and the organization at once, then its app data through `organizationData.ts`. Up to 1,000 memberships and 1,000 invitations go in that transaction; the rest follow in background batches, unreachable meanwhile. Accounts are kept. Refused (`BILLING_ORGANIZATION_IN_USE`) while it pays for another organization's plan |
 | `cleanups` | App-data removals of deleted organizations that failed (after retries) or are still running; `stale` marks a running one whose run stopped without recording an outcome |
 | `retryCleanup` | Restart a failed or stale removal where it stopped. Refused (`CLEANUP_NOT_FAILED`) while it is running normally |
 
@@ -285,6 +300,9 @@ Choose shared or member-private audience explicitly using the [data access recip
   organization the UI showed when the user composed the write. If the active organization has
   changed since (for example, another tab switched), the write is refused the same way. It is a
   precondition, never the organization written to.
+- `orgPaginatedQuery` is `orgQuery` for a list that grows: it adds the `paginationOpts`
+  argument for `usePaginatedQuery` and returns an empty page, never `null`, without a caller
+  (`authedPaginatedQuery` is the same for user-owned data).
 - `getOrgAuth(ctx)` resolves the same thing inside an internal function called from an action.
   Pass `{ write: true }` when that function writes, to get `orgMutation`'s rule.
 
@@ -308,6 +326,11 @@ The rules:
    people read it. On `ORGANIZATION_CHANGED`, keep the draft and ask the user to check
    the organization, as the sample's new-project dialog does. Writes to an existing record need
    nothing extra: rule 4 already pins them.
+8. **Keep every function bounded.** Convex limits what one query or mutation may read and write
+   (documents, bytes, calls and time), and component calls count against the caller. Don't
+   `.collect()` anything that grows with use: page lists (`orgPaginatedQuery` with a page-size
+   cap, `usePaginatedQuery` in the UI), count with `.take(N + 1)` and show "N+", and delete
+   child rows in batches, as `organizationData.ts` and the sample's `projects.remove` do.
 
 Use `authedQuery`/`authedMutation` for data that belongs to the individual and follows them
 across organizations, including an entire [individual service](data-access/individual-accounts.md).

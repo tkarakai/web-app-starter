@@ -6,11 +6,12 @@
  * methods and creating organizations from a billing organization. Platform admins: the plan
  * catalog. Every write is checked here and stored by `components.platform.billing`.
  */
+import type { PaginationResult } from "convex/server";
 import { v } from "convex/values";
 import { components } from "../_generated/api";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
-import { adminMutation, authedMutation, authedQuery } from "./functions";
+import { adminMutation, authedMutation, authedPaginatedQuery, authedQuery } from "./functions";
 import { scheduleAuditEvent } from "./auditTrailHelpers";
 import {
   activePlans,
@@ -119,7 +120,8 @@ export const myStatus = authedQuery({
 
 /**
  * The active organization's plan and payer, what the caller may do about them, and, when the
- * active organization is a billing organization, what it pays for.
+ * active organization is a billing organization, its payment method (`paidOrganizations` lists
+ * what it pays for, a page at a time).
  */
 export const overview = authedQuery({
   args: {},
@@ -139,17 +141,7 @@ export const overview = authedQuery({
     const ownBilling = await ctx.runQuery(components.platform.billing.billingByOrganization, { organizationId: organization._id });
     let billing = null;
     if (ownBilling && !ownBilling.deletedAt) {
-      const paid = await ctx.runQuery(components.platform.billing.paidBy, { billingOrganizationId: ownBilling._id });
-      billing = {
-        id: ownBilling._id,
-        paymentMethod: ownBilling.paymentMethod ?? null,
-        canManage: orgCanManage,
-        organizations: await Promise.all(paid.map(async ({ row, plan }) => ({
-          organizationId: row.organizationId,
-          name: (await findById(ctx, "organization", row.organizationId))?.name ?? row.organizationName,
-          plan: planView(plan),
-        }))),
-      };
+      billing = { id: ownBilling._id, paymentMethod: ownBilling.paymentMethod ?? null, canManage: orgCanManage };
     }
     return {
       mode,
@@ -163,6 +155,37 @@ export const overview = authedQuery({
       plans,
       billingOrganizations,
       billing,
+    };
+  },
+});
+
+/** Organizations listed per page of `paidOrganizations`. */
+const MAX_PAID_PAGE = 50;
+
+/**
+ * The organizations the active organization pays for, as a billing organization, with their
+ * plans: a page at a time (at most 50). Empty when it isn't one. Any member may see them, as
+ * `overview` shows its billing card to every member.
+ */
+export const paidOrganizations = authedPaginatedQuery({
+  args: {},
+  handler: async (ctx, args): Promise<PaginationResult<{ organizationId: string; name: string; plan: ReturnType<typeof planView> }>> => {
+    if (args.paginationOpts.numItems > MAX_PAID_PAGE) throw new Error("INVALID_PAGE_SIZE");
+    const none = { page: [], isDone: true, continueCursor: "" };
+    if (ctx.user.role === "admin") return none;
+    const active = await resolveActiveOrganization(ctx, ctx.user, ctx.session);
+    if (!active) return none;
+    const ownBilling = await ctx.runQuery(components.platform.billing.billingByOrganization, { organizationId: active.organizationId });
+    if (!ownBilling || ownBilling.deletedAt) return none;
+    const paid = await ctx.runQuery(components.platform.billing.paidBy, { billingOrganizationId: ownBilling._id, paginationOpts: args.paginationOpts });
+    return {
+      isDone: paid.isDone,
+      continueCursor: paid.continueCursor,
+      page: await Promise.all(paid.page.map(async ({ row, plan }) => ({
+        organizationId: row.organizationId,
+        name: (await findById(ctx, "organization", row.organizationId))?.name ?? row.organizationName,
+        plan: planView(plan),
+      }))),
     };
   },
 });

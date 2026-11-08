@@ -57,7 +57,16 @@ async function fixture(mode?: "organizations") {
     headers: { origin: "http://localhost:3001", "content-type": "application/json", authorization: `Bearer ${who}-session` },
     body: JSON.stringify(body),
   });
-  return { ...f, boss, paidPlan, drop, job, post };
+  /** Run a tenancy eligibility check to its end, its batches directly (a scheduled repeat of one does nothing). */
+  const checked = async () => {
+    await boss.caller.mutation(api.platform.tenancy.check, {});
+    for (;;) {
+      const row = await t.run((ctx) => ctx.db.query("tenancyChecks").order("desc").first());
+      if (!row || row.state !== "running") return row;
+      await t.mutation(internal.platform.tenancy.advanceCheck, { runId: row.runId, batch: row.batches });
+    }
+  };
+  return { ...f, boss, paidPlan, drop, job, post, checked };
 }
 
 describe("organization cleanup", () => {
@@ -135,7 +144,7 @@ describe("user deletion", () => {
     expect(await f.t.mutation(internal.platform.userDeletion.claim, { userId: alice.userId, requestId: original.requestId })).toBe(true);
     await f.drop(original.jobId);
     const pending = () => f.t.query(internal.platform.userDeletion.pending, { userId: alice.userId });
-    const listed = async () => (await f.boss.caller.query(api.platform.userDeletion.list, {})).find((row) => row.userId === alice.userId);
+    const listed = async () => (await f.boss.caller.query(api.platform.userDeletion.list, {})).rows.find((row) => row.userId === alice.userId);
     return { ...f, alice, original, pending, listed };
   }
 
@@ -216,6 +225,7 @@ describe("tenancy setup", () => {
     const alice = await f.user("alice");
     await alice.provision();
     await f.paidPlan();
+    await f.checked();
     await f.boss.caller.mutation(api.platform.tenancy.configure, { mode: "organizations", billingUserId: alice.userId, adminUserId: alice.userId, billingOrganizationName: "Payer", sharedOrganizationName: "Everyone" });
     const setup = () => f.t.run((ctx) => ctx.db.query("tenancySetups").first());
     const first = (await setup())!;
@@ -249,6 +259,7 @@ describe("tenancy setup", () => {
     const alice = await f.user("alice");
     await alice.provision();
     await f.paidPlan();
+    await f.checked();
     await f.boss.caller.mutation(api.platform.tenancy.configure, { mode: "organizations", billingUserId: alice.userId, adminUserId: alice.userId, billingOrganizationName: "Payer", sharedOrganizationName: "Everyone" });
     // The shared step fails once the plans are done: its owner can no longer act.
     await f.t.run(async (ctx) => { for (const job of await ctx.db.system.query("_scheduled_functions").collect()) if (job.state.kind === "pending") await ctx.scheduler.cancel(job._id); });

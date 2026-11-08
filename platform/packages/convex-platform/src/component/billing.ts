@@ -4,6 +4,7 @@
  * module keeps the billing rules that need no Better Auth data. Billing rows are history and
  * are never deleted.
  */
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./functions";
@@ -66,11 +67,18 @@ async function billingFor(ctx: QueryCtx, organizationId: string): Promise<Doc<"b
   return await ctx.db.query("billingOrganizations").withIndex("by_organization", (q) => q.eq("organizationId", organizationId)).first();
 }
 
-/** Current organization plans paid by a billing organization. */
-async function paidRows(ctx: QueryCtx, billingOrganizationId: Id<"billingOrganizations">): Promise<Doc<"organizationPlans">[]> {
-  return await ctx.db.query("organizationPlans")
-    .withIndex("by_billing_organization", (q) => q.eq("billingOrganizationId", billingOrganizationId).eq("endedAt", undefined))
-    .collect();
+/** Current organization plans paid by a billing organization, as a query to read a bounded part of. */
+function paidRows(ctx: QueryCtx, billingOrganizationId: Id<"billingOrganizations">) {
+  return ctx.db.query("organizationPlans")
+    .withIndex("by_billing_organization", (q) => q.eq("billingOrganizationId", billingOrganizationId).eq("endedAt", undefined));
+}
+
+/**
+ * Whether the billing organization pays for a current plan besides `organizationId`'s own. Reads
+ * at most two rows: an organization has one current plan, so a second row is another's.
+ */
+async function paysForOthers(ctx: QueryCtx, billingOrganizationId: Id<"billingOrganizations">, organizationId: string): Promise<boolean> {
+  return (await paidRows(ctx, billingOrganizationId).take(2)).some((row) => row.organizationId !== organizationId);
 }
 
 async function seededPlan(ctx: QueryCtx): Promise<Doc<"plans"> | null> {
@@ -239,18 +247,19 @@ export const setPaymentMethod = mutation({
   },
 });
 
-/** Current organization plans a billing organization pays for, with their plans. */
+/** Current organization plans a billing organization pays for, with their plans, a page at a time. */
 export const paidBy = query({
-  args: { billingOrganizationId: v.string() },
-  returns: v.array(v.object({ row: organizationPlanRow, plan: planRow })),
+  args: { billingOrganizationId: v.string(), paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(v.object({ row: organizationPlanRow, plan: planRow })),
   handler: async (ctx, args) => {
     const id = ctx.db.normalizeId("billingOrganizations", args.billingOrganizationId);
-    if (!id) return [];
-    const rows = await paidRows(ctx, id);
-    return (await Promise.all(rows.map(async (row) => {
+    if (!id) return { page: [], isDone: true, continueCursor: "" };
+    const result = await paidRows(ctx, id).paginate(args.paginationOpts);
+    const page = (await Promise.all(result.page.map(async (row) => {
       const plan = await ctx.db.get(row.planId);
       return plan ? { row, plan } : null;
     }))).filter((entry): entry is { row: Doc<"organizationPlans">; plan: Doc<"plans"> } => entry !== null);
+    return { page, isDone: result.isDone, continueCursor: result.continueCursor };
   },
 });
 
@@ -265,7 +274,7 @@ export const billingInUse = query({
   handler: async (ctx, args) => {
     const billing = await billingFor(ctx, args.organizationId);
     if (!billing || billing.deletedAt) return false;
-    return (await paidRows(ctx, billing._id)).some((row) => row.organizationId !== args.organizationId);
+    return await paysForOthers(ctx, billing._id, args.organizationId);
   },
 });
 
@@ -278,7 +287,7 @@ export const organizationDeleted = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const billing = await billingFor(ctx, args.organizationId);
-    if (billing && !billing.deletedAt && (await paidRows(ctx, billing._id)).some((row) => row.organizationId !== args.organizationId)) {
+    if (billing && !billing.deletedAt && await paysForOthers(ctx, billing._id, args.organizationId)) {
       throw new Error("BILLING_ORGANIZATION_IN_USE");
     }
     const now = Date.now();

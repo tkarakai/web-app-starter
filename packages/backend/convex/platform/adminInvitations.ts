@@ -1,3 +1,4 @@
+import { invalidateTenancyCheck } from "./organizationOwnership";
 import { rememberNative } from "./nativeCapabilities";
 import type { QueryCtx } from "../_generated/server";
 import type { ObjectType } from "convex/values";
@@ -42,6 +43,7 @@ export const invite = adminMutation({
     const email = args.email.trim().toLowerCase();
     const existing = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: email }] });
     if (existing) throw new Error("ACCOUNT_ALREADY_EXISTS");
+    await invalidateTenancyCheck(ctx);
     const result = await ctx.runMutation(components.platform.adminInvitations.invite, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
     await ctx.scheduler.runAfter(0, internal.platform.adminInvitationActions.generateTokenAndSendEmail, result);
   },
@@ -52,6 +54,7 @@ export const remove = adminMutation({
   handler: async (ctx, args) => {
     const role = (ctx.user as Record<string, unknown>).role;
     if (role !== "admin") throw new Error("NOT_ADMIN");
+    await invalidateTenancyCheck(ctx);
     return await ctx.runMutation(components.platform.adminInvitations.remove, { ...args, identity: { userId: ctx.ownerId, actor: String((ctx.user as Record<string, unknown>).email) } });
   },
 });
@@ -62,6 +65,7 @@ export const createForSeed = internalMutation({
   },
   handler: async (ctx, args) => {
     assertLocalFixtures();
+    await invalidateTenancyCheck(ctx);
     return await ctx.runMutation(components.platform.adminInvitations.createForSeed, args);
   },
 });
@@ -211,6 +215,7 @@ export const registerAccount = internalMutation({
     const existing = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", value: enrollment.email }] });
     if (existing) throw new Error("ACCOUNT_ALREADY_EXISTS");
     const now = Date.now();
+    await invalidateTenancyCheck(ctx);
     const user = await ctx.runMutation(components.betterAuth.adapter.create, { input: { model: "user", data: {
       email: enrollment.email, name: args.name, emailVerified: true, role: "user", createdAt: now, updatedAt: now,
     } } });

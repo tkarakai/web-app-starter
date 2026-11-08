@@ -34,7 +34,8 @@
     "minute": "分",
     "dayPeriod": "午前または午後",
     "daylightSaving": "夏時間",
-    "breadcrumb": "パンくずリスト"
+    "breadcrumb": "パンくずリスト",
+    "loadMore": "さらに読み込む"
   },
   "theme": {
     "light": "ライトテーマ",

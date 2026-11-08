@@ -146,7 +146,7 @@ describe("admin organizations", () => {
 
       await f.boss.caller.mutation(orgs.remove, { organizationId: f.acme });
       expect(await f.t.query(components.platform.billing.currentPlan, { organizationId: f.acme })).toBeNull();
-      expect(await f.t.query(components.platform.billing.paidBy, { billingOrganizationId: payerBilling })).toEqual([]);
+      expect((await f.t.query(components.platform.billing.paidBy, { billingOrganizationId: payerBilling, paginationOpts: { numItems: 100, cursor: null } })).page).toEqual([]);
       const acmeRow = await f.t.query(components.platform.billing.billingByOrganization, { organizationId: f.acme });
       expect(acmeRow).toMatchObject({ _id: acmeBilling, deletedAt: expect.any(Number) });
 

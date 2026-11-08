@@ -189,6 +189,9 @@ export const tables = {
     createdAt: v.number(),
   })
     .index("organizationId_userId", ["organizationId","userId"])
+    // Hand-added: an organization's owners (or admins, members) oldest first, without reading
+    // its other members (organizationOwnership.ts). The adapter picks it for organizationId + role.
+    .index("organizationId_role_createdAt", ["organizationId","role","createdAt"])
     .index("userId_organizationId", ["userId","organizationId"])
     .index("role", ["role"]),
   invitation: defineTable({
