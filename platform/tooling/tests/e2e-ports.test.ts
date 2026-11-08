@@ -26,7 +26,7 @@ test("the real listener probe avoids occupied defaults and shares a stable worke
   delete process.env.PLATFORM_E2E_PORTS;
   try {
     await new Promise<void>((resolve, reject) => {
-      server.once("error", (error: NodeJS.ErrnoException) => error.code === "EADDRINUSE" ? resolve() : reject(error));
+      server.once("error", (error: Error & { code?: string }) => error.code === "EADDRINUSE" ? resolve() : reject(error));
       server.listen(rawConfig.runtime.ports.web, resolve);
     });
     const origin = e2eOrigin("web");
