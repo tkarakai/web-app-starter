@@ -41,3 +41,18 @@ it("allows security and plan repair without dismissing bootstrap for normal page
   result.rerender(<TenancyRequired><p>Plan repair</p></TenancyRequired>);
   expect(screen.getByText("Plan repair")).toBeVisible();
 });
+
+ it("keeps one-time security state mounted through session-token rotation", () => {
+  state.status = { mode: "individuals", running: null, eligibility: null };
+  state.path = "/settings";
+  const view = () => <TenancyRequired><input aria-label="Issued backup codes" defaultValue="once-only" /></TenancyRequired>;
+  const result = render(view());
+  const codes = screen.getByLabelText("Issued backup codes");
+  for (const status of [undefined, null, { mode: "individuals", running: null, eligibility: null }]) {
+    state.status = status;
+    result.rerender(view());
+    expect(screen.getByLabelText("Issued backup codes")).toBe(codes);
+    expect(codes).toHaveValue("once-only");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  }
+});

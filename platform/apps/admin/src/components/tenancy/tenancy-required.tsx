@@ -21,7 +21,15 @@ export function useTenancyStatus() {
 
 /** Keep setup subscribed in the persistent shell; never mount normal pages before bootstrap. */
 export function TenancyRequired({ children }: { children: React.ReactNode }) {
-  const status = useQuery(api.platform.tenancy.status);
+  const liveStatus = useQuery(api.platform.tenancy.status);
+  // Tenancy is immutable once configured. Session rotation during 2FA temporarily clears
+  // authenticated subscriptions; it must not unmount the page holding one-time backup codes.
+  // The parent AuthGuard remains responsible for session invalidation and authorization.
+  const [configuredStatus, setConfiguredStatus] = React.useState<Status>(undefined);
+  React.useEffect(() => {
+    if (liveStatus?.mode) setConfiguredStatus(liveStatus);
+  }, [liveStatus]);
+  const status = liveStatus ?? configuredStatus;
   const pathname = usePathname();
   const signOut = useSignOut("/sign-in");
   const security = ["/settings", "/dashboard/settings", "/configure/setup-2fa", "/dashboard/setup-2fa"].includes(pathname);
