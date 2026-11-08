@@ -1,15 +1,15 @@
-import { expect, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { SidebarProvider } from "@web-app-starter/design-system";
 import platform from "@web-app-starter/i18n/messages/en.json";
 import app from "@repo/messages/en.json";
 
-const mocks = vi.hoisted(() => ({ create: vi.fn(), toast: vi.fn(), select: vi.fn() }));
+const mocks = vi.hoisted(() => ({ create: vi.fn(), toast: vi.fn(), select: vi.fn(), paginationStatus: "Exhausted" }));
 vi.mock("@repo/backend", () => ({ api: { projects: { list: "list", create: "create" }, platform: { userProfiles: { get: "get" } } } }));
 vi.mock("convex/react", () => ({
   useQuery: () => null,
-  usePaginatedQuery: () => ({ results: [], status: "Exhausted" }),
+  usePaginatedQuery: () => ({ results: [], status: mocks.paginationStatus }),
   useMutation: () => mocks.create,
 }));
 vi.mock("@web-app-starter/auth-ui", () => ({
@@ -40,4 +40,21 @@ test("a redacted stale-workspace refusal closes the create dialog and explains h
   expect(mocks.create).toHaveBeenCalledWith({ name: "My project", description: "", expectedOrganizationId: "original-org" });
   expect(mocks.select).not.toHaveBeenCalled();
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+});
+
+beforeEach(() => { mocks.paginationStatus = "Exhausted"; });
+
+test("a workspace whose first project page is pending does not claim to be empty", () => {
+  mocks.paginationStatus = "LoadingFirstPage";
+  const view = render(<NextIntlClientProvider locale="en" messages={{ ...platform, ...app }}>
+    <SidebarProvider><AppSidebar displayName="Alice" selectedProjectId={null} onSelectProject={mocks.select} /></SidebarProvider>
+  </NextIntlClientProvider>);
+  expect(screen.getByRole("status")).toHaveTextContent(platform.common.loading);
+  expect(screen.queryByText(app.projects.noProjects)).toBeNull();
+  mocks.paginationStatus = "Exhausted";
+  view.rerender(<NextIntlClientProvider locale="en" messages={{ ...platform, ...app }}>
+    <SidebarProvider><AppSidebar displayName="Alice" selectedProjectId={null} onSelectProject={mocks.select} /></SidebarProvider>
+  </NextIntlClientProvider>);
+  expect(screen.queryByRole("status")).toBeNull();
+  expect(screen.getByText(app.projects.noProjects)).toBeVisible();
 });
