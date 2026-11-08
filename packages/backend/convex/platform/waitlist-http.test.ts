@@ -8,7 +8,7 @@ async function fixture(mode = "publicWaitlist") {
   await t.mutation(components.platform.appSettings.set, { key: "onboardingType", value: mode, userId: "test-admin" });
   const join = (body: unknown, ip = "203.0.113.1") => t.fetch("/api/waitlist/join", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-forwarded-for": `${ip}, 192.0.2.1` },
+    headers: { "Content-Type": "application/json", "x-forwarded-for": `${ip}, 192.0.2.1`, "x-verified-ip": ip },
     body: JSON.stringify(body),
   });
   const rows = async () => (await t.query(components.platform.waitlist.list, { paginationOpts: { cursor: null, numItems: 100 } })).page;
@@ -80,6 +80,7 @@ describe("waitlist HTTP metadata boundary", () => {
   });
 
   test("retains email validation and per-visitor rate limiting including duplicates", async () => {
+    vi.stubEnv("AUTH_TRUSTED_IP_HEADER", "x-verified-ip");
     const { join, rows } = await fixture();
     expect((await join({ email: "invalid", meta: "{}" })).status).toBe(400);
     expect((await join({ email: "x".repeat(256) + "@example.test", meta: "{}" })).status).toBe(400);
@@ -89,6 +90,22 @@ describe("waitlist HTTP metadata boundary", () => {
     expect(await limited.json()).toEqual({ error: "RATE_LIMITED" });
     expect((await join({ email: "next@example.test", meta: "{}" }, "203.0.113.2")).status).toBe(200);
     expect(await rows()).toHaveLength(2);
+    vi.unstubAllEnvs();
+  });
+
+  test("a client-chosen x-forwarded-for never buys a fresh budget; the global one still applies", async () => {
+    const { t, rows } = await fixture();
+    const spoofed = (i: number) => t.fetch("/api/waitlist/join", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-forwarded-for": `198.51.100.${i}`, "x-real-ip": `198.51.100.${i}` },
+      body: JSON.stringify({ email: `buyer${i}@example.test`, meta: "{}" }),
+    });
+    const statuses: number[] = [];
+    for (let i = 0; i < 40; i++) statuses.push((await spoofed(i)).status);
+    // Without a verified ingress header only the global budget (burst 30) applies, however the header varies.
+    expect(statuses.filter((s) => s === 200)).toHaveLength(30);
+    expect(statuses.slice(30).every((s) => s === 400)).toBe(true);
+    expect(await rows()).toHaveLength(30);
   });
 });
 

@@ -86,7 +86,58 @@ export const adminInvitationsFields = {
     createdAt: v.number(),
   };
 
+export const planStatusValidator = v.union(v.literal("active"), v.literal("inactive"), v.literal("archived"));
+export const paymentMethodValidator = v.union(v.literal("cash"), v.literal("check"));
+
+/** The plan catalog (platform/docs/tenancy-and-billing.md). Plans are never deleted. */
+export const plansFields = {
+  name: v.string(),
+  /** Whole USD cents, at least 0. Can't change once any organization plan uses the plan. */
+  priceMonthlyUsdCents: v.number(),
+  /** The plan never charges; never changes after creation. */
+  isFreeForever: v.boolean(),
+  /** The free-forever plan seeded at install: only its status can change. */
+  isSeeded: v.boolean(),
+  /** Pre-selected in the plan picker. Exactly one, and it is active. */
+  isDefault: v.boolean(),
+  status: planStatusValidator,
+  createdAt: v.number(),
+  createdBy: v.string(),
+  updatedAt: v.number(),
+  updatedBy: v.optional(v.string()),
+};
+
+/** Marks an organization as a billing organization (a payer). Kept as billing history. */
+export const billingOrganizationsFields = {
+  /** Better Auth organization ID. One row per organization. */
+  organizationId: v.string(),
+  /** Copied when the row is created, so history stays readable after the organization is gone. */
+  organizationName: v.string(),
+  /** Stand-in until a payment provider is integrated. */
+  paymentMethod: v.optional(paymentMethodValidator),
+  createdAt: v.number(),
+  deletedAt: v.optional(v.number()),
+};
+
+/** Which plan an organization uses and which billing organization pays. Rows are never edited for plan or payer. */
+export const organizationPlansFields = {
+  organizationId: v.string(),
+  organizationName: v.string(),
+  planId: v.id("plans"),
+  /** Empty only when the plan is free-forever. */
+  billingOrganizationId: v.optional(v.id("billingOrganizations")),
+  createdAt: v.number(),
+  /** Set when the plan or payer changes, or the organization is deleted; the current row has none. */
+  endedAt: v.optional(v.number()),
+};
+
 export default defineSchema({
+  plans: defineTable(plansFields).index("by_status", ["status"]).index("by_default", ["isDefault"]),
+  billingOrganizations: defineTable(billingOrganizationsFields).index("by_organization", ["organizationId"]),
+  organizationPlans: defineTable(organizationPlansFields)
+    .index("by_organization", ["organizationId", "endedAt"])
+    .index("by_billing_organization", ["billingOrganizationId", "endedAt"])
+    .index("by_plan", ["planId"]),
   migrationState: defineTable({ name: v.string(), deployment: v.string(), phase: migrationPhaseValidator, startedAt: v.number(), verifiedAt: v.optional(v.number()), completedAt: v.optional(v.number()) }).index("by_name", ["name"]),
   migrationProgress: defineTable({ table: migrationTableValidator, cursor: v.union(v.string(), v.null()), complete: v.boolean() }).index("by_table", ["table"]),
   migrationRows: defineTable({ table: migrationTableValidator, legacyId: v.string(), componentId: v.string(), legacyCreationTime: v.number(), snapshot: v.string(), publishAt: v.optional(v.number()), unpublishAt: v.optional(v.number()), sourcePublishJobId: v.optional(v.string()), sourceUnpublishJobId: v.optional(v.string()), schedulesActivated: v.boolean() }).index("by_table_legacy", ["table", "legacyId"]).index("by_table", ["table"]).index("by_table_activated", ["table", "schedulesActivated"]),

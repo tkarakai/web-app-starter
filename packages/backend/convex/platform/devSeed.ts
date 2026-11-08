@@ -99,6 +99,9 @@ export const seed = internalAction({
       return;
     }
 
+    // Local accounts need a tenancy mode before they can sign up (tenancy.ts).
+    await ctx.runMutation(internal.platform.tenancy.ensureFixtureTenancy, {});
+
     for (const user of DEV_USERS) {
       // 1. Insert DB state (admin email, waitlist entry, invitation token)
       await ctx.runMutation(internal.platform.devSeed.setupDevUser, {

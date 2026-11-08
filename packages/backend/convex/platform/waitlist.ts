@@ -20,12 +20,11 @@ export const join = internalMutation({
   },
   handler: async (ctx, args) => {
 
-    // Rate limit by client IP to prevent spam
-    await rateLimit(ctx, {
-      name: "waitlistJoin",
-      key: args.clientIp ?? "unknown",
-      throws: true,
-    });
+    // Every join counts against the global budget; per client too when the IP is verified.
+    await rateLimit(ctx, { name: "waitlistJoinGlobal", throws: true });
+    if (args.clientIp) {
+      await rateLimit(ctx, { name: "waitlistJoin", key: args.clientIp, throws: true });
+    }
 
     // Waitlist joins are only allowed in waitlist onboarding mode.
     const onboardingTypeRaw = await ctx.runQuery(

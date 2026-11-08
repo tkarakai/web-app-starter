@@ -8,7 +8,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 
 import { ThemeToggle } from "@web-app-starter/design-patterns";
-import { OrganizationSwitcher, useAccountNavigation, useOrganizations, useSignOut } from "@web-app-starter/auth-ui";
+import { OrganizationSwitcher, useAccountNavigation, useOrganizations, useSignOut, useTenancyMode } from "@web-app-starter/auth-ui";
 
 import { api } from "@repo/backend";
 import { type Id } from "@repo/backend";
@@ -80,6 +80,8 @@ export function AppSidebar({
   const to = useTranslations("organization");
   const organizations = useOrganizations();
   const hasOrganization = Boolean(organizations?.activeOrganizationId);
+  // Individuals have one organization, shown as billing details in Settings.
+  const individuals = useTenancyMode() === "individuals";
 
   const projects: Project[] = useQuery(api.projects.list, hasOrganization ? {} : "skip") ?? [];
   const userProfile = useQuery(api.platform.userProfiles.get) ?? null;
@@ -242,7 +244,7 @@ export function AppSidebar({
                     <UserCog className="me-2 h-4 w-4" />
                     {td("account")}
                   </DropdownMenuItem>
-                  {hasOrganization && <DropdownMenuItem onSelect={() => openPage("organization")}>
+                  {hasOrganization && !individuals && <DropdownMenuItem onSelect={() => openPage("organization")}>
                     <Building2 className="me-2 h-4 w-4" />
                     {to("label")}
                   </DropdownMenuItem>}

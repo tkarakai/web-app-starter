@@ -30,7 +30,10 @@ describe("securityPolicies helpers", () => {
 
     expect(parsePasskeyPolicy("disabled")).toBe("disabled");
     expect(parsePasskeyPolicy("required")).toBe("required");
-    expect(parsePasskeyPolicy("unknown")).toBe("optional");
+    // Unset is optional; an invalid stored value fails closed, as enforcement reads it.
+    expect(parsePasskeyPolicy(undefined)).toBe("optional");
+    expect(parsePasskeyPolicy("unknown")).toBe("required");
+    expect(parsePasskeyPolicy(null)).toBe("required");
   });
 
   test("returns scope-specific settings keys", () => {

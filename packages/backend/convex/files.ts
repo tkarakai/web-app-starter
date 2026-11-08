@@ -43,7 +43,7 @@ export const saveUpload = orgMutation({
 export const beginUpload = internalMutation({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args): Promise<string> => {
-    const auth = await getOrgAuth(ctx);
+    const auth = await getOrgAuth(ctx, { write: true });
     if (!auth) throw new Error("NOT_AUTHENTICATED");
     await requireProjectAccess({ ...ctx, ...auth }, args.projectId);
     await rateLimit(ctx, { name: "mutationGlobal", key: auth.ownerId, throws: true });
@@ -57,7 +57,7 @@ export const finishUpload = internalMutation({
     contentType: v.string(), size: v.number(), ownerId: v.string(),
   },
   handler: async (ctx, args): Promise<Id<"uploads">> => {
-    const auth = await getOrgAuth(ctx);
+    const auth = await getOrgAuth(ctx, { write: true });
     if (!auth || auth.ownerId !== args.ownerId) throw new Error("NOT_AUTHENTICATED");
     await requireProjectAccess({ ...ctx, ...auth }, args.projectId);
     const existing = await ctx.db.query("uploads")

@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@web-
 import { InviteOnlyFeatureCard } from "@/components/features/invite-only-feature-card";
 import { SignupFeatureCard } from "@/components/features/signup-feature-card";
 import { WaitlistFeatureCard } from "@/components/features/waitlist-feature-card";
+import { DeletionGraceCard } from "@/components/tenancy/deletion-grace-card";
 
 // Optional platform features switched off in app.config.ts (`features`) are
 // not offered here. Their code stays in place and keeps receiving fixes.
@@ -35,6 +36,7 @@ export default function FeaturesPage() {
           </CardContent>
         </Card>
       </div>
+      <DeletionGraceCard />
     </div>
   );
 }

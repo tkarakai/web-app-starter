@@ -35,11 +35,11 @@ describe("organization projects", () => {
   test("a user without an organization stays signed in but cannot write app data or create one implicitly", async () => {
     const f = await fixture();
     const alice = await f.user("alice");
-    expect(await alice.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
+    expect(await alice.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: null, organizations: [] });
     expect(await alice.caller.query(api.projects.list, {})).toBeNull();
 
     await expect(alice.caller.mutation(api.projects.create, { name: "Launch", description: "" })).rejects.toThrow("NO_ORGANIZATION");
-    expect(await alice.caller.query(api.platform.organizations.mine, {})).toEqual({ activeOrganizationId: null, organizations: [] });
+    expect(await alice.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: null, organizations: [] });
     expect(await f.t.run((ctx) => ctx.db.query("projects").collect())).toEqual([]);
 
     // The initial sign-up hook provisions a personal organization, not ordinary app writes.
@@ -364,8 +364,49 @@ describe("deleting an organization", () => {
       input: { model: "organization", where: [{ field: "_id", value: acme }] },
     });
     expect(await bob.caller.query(api.projects.get, { id: secret })).toBeNull();
+    // Writes wait for an explicit switch to the organization the reads now show.
+    await expect(bob.caller.mutation(api.projects.create, { name: "Mine", description: "" })).rejects.toThrow("ORGANIZATION_CHANGED");
+    await bob.switchTo(bobsOwn);
     const id = await bob.caller.mutation(api.projects.create, { name: "Mine", description: "" });
     expect(await f.t.run((ctx) => ctx.db.get(id))).toMatchObject({ organizationId: bobsOwn });
+  });
+
+  test("losing the selected organization stops writes, not reads, until the session switches", async () => {
+    const f = await fixture();
+    const alice = await f.user("alice");
+    const bob = await f.user("bob");
+    const carol = await f.user("carol");
+    const shared = await alice.provision();
+    await f.addMember(shared, carol.userId, "member");
+    const target = await bob.provision();
+    const membership = await f.addMember(target, alice.userId, "member");
+    await alice.switchTo(target);
+    await f.t.mutation(components.betterAuth.adapter.deleteOne, {
+      input: { model: "member", where: [{ field: "_id", value: membership._id }] },
+    });
+
+    // Reads move to the oldest membership and say the selection is stale.
+    expect(await alice.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: shared, selectionStale: true });
+    expect(await alice.caller.query(api.projects.list, {})).toEqual([]);
+    // A write without any precondition is refused too, and nothing lands in the shared organization.
+    await expect(alice.caller.mutation(api.projects.create, { name: "Draft for target", description: "" })).rejects.toThrow("ORGANIZATION_CHANGED");
+    expect(await carol.caller.query(api.projects.list, {})).toEqual([]);
+
+    // Re-admission restores the selection only because the session never switched; once the UI
+    // switches (OrganizationAccessNotice), the old selection is gone for good.
+    await alice.switchTo(shared);
+    expect(await alice.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: shared, selectionStale: false });
+    await f.addMember(target, alice.userId, "member");
+    expect(await activeOrganization(alice.caller)).toBe(shared);
+    const id = await alice.caller.mutation(api.projects.create, { name: "Shared", description: "" });
+    expect(await f.t.run((ctx) => ctx.db.get(id))).toMatchObject({ organizationId: shared });
+
+    // A session that never selected an organization still starts in the oldest membership.
+    const dave = await f.user("dave");
+    const daves = await dave.provision();
+    await dave.switchTo(null);
+    const own = await dave.caller.mutation(api.projects.create, { name: "Dave's", description: "" });
+    expect(await f.t.run((ctx) => ctx.db.get(own))).toMatchObject({ organizationId: daves });
   });
 
   test("an administrator deleting the organization removes its projects too", async () => {

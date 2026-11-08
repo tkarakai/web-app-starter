@@ -1,18 +1,18 @@
 "use client";
 
-import { useState } from "react";
 import { Building2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useQuery } from "convex/react";
 import { api } from "@repo/backend";
-import { Button } from "@web-app-starter/design-system";
-import { CreateOrganizationDialog } from "./create-organization-dialog";
 
-/** Account access remains available when the user has no organization memberships. */
+/**
+ * Account access remains available when the user has no organization memberships. An
+ * invitation brings them back; organizations are created only by billing organizations
+ * (platform/docs/tenancy-and-billing.md).
+ */
 export function NoOrganization() {
   const t = useTranslations("organization");
   const invitations = useQuery(api.platform.organizations.myInvitations);
-  const [creating, setCreating] = useState(false);
 
   return (
     <section className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-16 text-center" data-testid="no-organization">
@@ -23,8 +23,6 @@ export function NoOrganization() {
         <h2 className="text-lg font-semibold text-foreground">{t("empty.title")}</h2>
         <p className="text-sm text-muted-foreground">{t(invitations?.length ? "empty.description" : "empty.createDescription")}</p>
       </div>
-      <Button onClick={() => setCreating(true)}>{t("create.action")}</Button>
-      <CreateOrganizationDialog open={creating} onOpenChange={setCreating} />
     </section>
   );
 }

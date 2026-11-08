@@ -4,16 +4,16 @@ import { createAuthOptions } from "./auth";
 
 type AuthCtx = Parameters<typeof createAuthOptions>[0];
 
-function resetPlugin() {
+function resetPlugin(owner: { email: string } | null = { email: "admin@example.com" }, adminEmail = "admin@example.com") {
   const convexCtx = {
     runAction: vi.fn(),
-    runQuery: vi.fn().mockResolvedValue([{ email: "admin@example.com" }]),
+    runQuery: vi.fn().mockResolvedValue([{ email: adminEmail }]),
   } as unknown as AuthCtx;
   const plugin: BetterAuthPlugin = createAuthOptions(convexCtx).plugins.find((p) => p.id === "password-strength")!;
   const authCtx = {
     internalAdapter: {
-      findVerificationValue: vi.fn().mockResolvedValue({ value: "admin-id" }),
-      findUserById: vi.fn().mockResolvedValue({ email: "admin@example.com" }),
+      findVerificationValue: vi.fn().mockResolvedValue(owner ? { value: "admin-id" } : null),
+      findUserById: vi.fn().mockResolvedValue(owner),
     },
   } as unknown as AuthContext;
   return { plugin, authCtx };
@@ -44,5 +44,20 @@ describe("admin reset password policy", () => {
     const { plugin, authCtx } = resetPlugin();
     const result = await plugin.onRequest!(request("orchid quartz lantern telescope meadow violin glacier"), authCtx);
     expect(result).toBeUndefined();
+  });
+
+  test("an account whose owner can't be resolved gets the administrator minimum", async () => {
+    const { plugin, authCtx } = resetPlugin(null);
+    const result = await plugin.onRequest!(request("orchid-quartz-river-lantern"), authCtx);
+    const response = result && "response" in result ? result.response : undefined;
+    expect(response?.status).toBe(400);
+    expect(await response?.json()).toMatchObject({ message: "Password must be at least 40 characters" });
+  });
+
+  test("administrator addresses match whatever their case", async () => {
+    const { plugin, authCtx } = resetPlugin({ email: "Admin@Example.com" }, "admin@example.COM");
+    const result = await plugin.onRequest!(request("orchid-quartz-river-lantern"), authCtx);
+    const response = result && "response" in result ? result.response : undefined;
+    expect(response?.status).toBe(400);
   });
 });

@@ -121,11 +121,18 @@ export function SendVerificationButton({ email, callbackURL, size, className, ch
  * Tells a signed-in user when an organization disappears without their doing (they were
  * removed, or an owner deleted it). Losing every membership leaves the account signed in
  * with no organization; this observer never creates one. Renders nothing.
+ *
+ * While the session still selects an organization the user can no longer use, the backend
+ * refuses writes (`ORGANIZATION_CHANGED`) and reads show another one. This switches the session
+ * to the organization the page now shows (or none), so writes follow what the user sees and
+ * a later re-invitation can't silently bring the old selection back. Mount it in every
+ * protected layout (`ProtectedLayout` does).
  */
 export function OrganizationAccessNotice() {
   const t = useTranslations("organization");
   const organizations = useOrganizations();
   const known = React.useRef<Map<string, string> | null>(null);
+  const switching = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     if (!organizations) return;
@@ -135,6 +142,16 @@ export function OrganizationAccessNotice() {
     }
     known.current = current;
 
+    const target = organizations.activeOrganizationId ?? "";
+    if (!organizations.selectionStale) {
+      switching.current = null;
+    } else if (switching.current !== target) {
+      switching.current = target;
+      void authClient.organization.setActive({ organizationId: organizations.activeOrganizationId }).then((result) => {
+        // Let the next update try again.
+        if (result.error) switching.current = null;
+      });
+    }
   }, [organizations, t]);
 
   return null;

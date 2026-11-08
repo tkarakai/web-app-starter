@@ -109,7 +109,7 @@ describe("documented org access", () => {
     await expect(alice.caller.mutation(publish, { id })).rejects.toThrow("NOTE_NOT_FOUND");
   });
 
-  test("removal revokes stale-session access, fallback uses another org, rejoining restores retained private notes", async () => {
+  test("removal revokes stale-session access, refuses writes until the session switches, rejoining restores retained private notes", async () => {
     const f = await fixture();
     const alice = await f.user("alice");
     const bob = await f.user("bob");
@@ -122,6 +122,9 @@ describe("documented org access", () => {
     await f.t.mutation(components.betterAuth.adapter.deleteOne, { input: { model: "member", where: [{ field: "_id", value: member._id }] } });
     expect(await bob.caller.query(privateNotes.get, { id })).toBeNull();
     expect(await bob.caller.query(team.get, { id: shared })).toBeNull();
+    await expect(bob.caller.mutation(publish, { id })).rejects.toThrow("ORGANIZATION_CHANGED");
+    await expect(bob.caller.mutation(privateNotes.add, { body: "other org" })).rejects.toThrow("ORGANIZATION_CHANGED");
+    await bob.switchTo(bobsOrg);
     await expect(bob.caller.mutation(publish, { id })).rejects.toThrow("NOTE_NOT_FOUND");
     const newNote = await bob.caller.mutation(privateNotes.add, { body: "other org" });
     expect(await bob.caller.query(privateNotes.get, { id: newNote })).toMatchObject({ organizationId: bobsOrg });

@@ -28,6 +28,11 @@ async function booleanPolicy(ctx: Reader, key: string, fallback: string | null, 
   return value !== false;
 }
 
+/** Whether email verification is required for a user with this platform role, as enforcement reads it. */
+export async function emailVerificationRequired(ctx: Reader, role: unknown): Promise<boolean> {
+  return await booleanPolicy(ctx, getEmailVerificationRequiredKey(getPolicyScopeFromRole(role)), LEGACY_EMAIL_VERIFICATION_REQUIRED_KEY, true);
+}
+
 export async function emailLoginEnabled(ctx: Reader): Promise<boolean> {
   return await setting(ctx, USER_MAGIC_LINK_ENABLED_KEY) === true;
 }
