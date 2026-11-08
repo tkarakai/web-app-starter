@@ -45,12 +45,17 @@ export function extractErrorInfo(error: unknown): ConvexErrorInfo | null {
 
   if (error instanceof Error) {
     // Convex server function errors: [CONVEX M(path)] errorMessage\n  Called by client
-    const match = error.message.match(
-      /^\[CONVEX [A-Z]\([^)]+\)\]\s*(.+?)(?:\n|$)/,
-    );
-    if (match) {
-      const rawMessage = match[1]!;
-      return { code: rawMessage, message: rawMessage };
+    // Parse the envelope in linear passes. Combining an unbounded whitespace
+    // match with a message capture can backtrack quadratically on blank input.
+    const prefix = /^\[CONVEX [A-Z]\(/.exec(error.message);
+    if (prefix) {
+      const close = error.message.indexOf(")", prefix[0].length);
+      if (close > prefix[0].length && error.message[close + 1] === "]") {
+        const body = error.message.slice(close + 2).trimStart();
+        const newline = body.indexOf("\n");
+        const rawMessage = newline < 0 ? body : body.slice(0, newline);
+        if (rawMessage) return { code: rawMessage, message: rawMessage };
+      }
     }
 
     // Network / infrastructure errors (Convex is down, no connectivity)

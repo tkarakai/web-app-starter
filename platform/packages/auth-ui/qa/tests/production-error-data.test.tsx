@@ -14,3 +14,11 @@ test("global handler uses structured codes for translated toasts without returni
 test("rate limits are parsed across Error prototypes with their retry interval", () => {
   expect(extractErrorInfo({ data: { kind: "RateLimited", retryAfter: 1200 } })).toMatchObject({ code: "RATE_LIMITED", params: { seconds: 2 } });
 });
+
+test("legacy envelopes handle long blank messages without ambiguous regex matching", () => {
+  expect(extractErrorInfo(new Error(`[CONVEX M(example:run)] ${" ".repeat(100_000)}\n`))).toBeNull();
+  expect(extractErrorInfo(new Error("[CONVEX M(example:run)] \n  readable refusal\n  Called by client"))).toEqual({
+    code: "readable refusal", message: "readable refusal",
+  });
+  expect(extractErrorInfo(new Error("[CONVEX M(example:run] readable refusal"))).toBeNull();
+});
