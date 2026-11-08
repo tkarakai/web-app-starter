@@ -48,21 +48,32 @@ async function membersWithUsers(ctx: Reader, organizationId: string) {
   }));
 }
 
-/** Counts and owners only: member identities beyond the owners are not read for a summary. */
-async function summary(ctx: Reader, organization: Doc<"organization">) {
+/** Live pending invitations counted on a list row; beyond this the row shows the count as "100+". */
+const PENDING_COUNT_CAP = 100;
+
+/**
+ * Counts and owners only: member identities beyond the owners are not read for a summary. The
+ * live pending count reads at most `PENDING_COUNT_CAP + 1` invitations unless `livePending` is
+ * given (`get` has already read them all).
+ */
+async function summary(ctx: Reader, organization: Doc<"organization">, livePending?: number) {
   const rows = await listOrganizationMembers(ctx, organization._id);
   const owners = await Promise.all(rows.filter((member) => parseRole(member.role) === "owner").map(async (member) => {
     const user = await findById(ctx, "user", member.userId);
     return { userId: member.userId, name: user?.name ?? "", email: user?.email ?? "", banned: isBanned(user) };
   }));
-  const pending = await livePendingInvitations(ctx, organization._id);
+  const capped = livePending === undefined;
+  const pending = livePending ?? (await livePendingInvitations(ctx, organization._id, PENDING_COUNT_CAP + 1)).length;
   return {
     id: organization._id,
     name: organization.name,
     createdAt: organization.createdAt,
     memberCount: rows.length,
     owners,
-    pendingInvitations: pending.length,
+    /** Live pending invitations, at most 100 on a list row. */
+    pendingInvitations: capped ? Math.min(pending, PENDING_COUNT_CAP) : pending,
+    /** There are more live pending invitations than `pendingInvitations` (list rows only): show "100+". */
+    morePendingInvitations: capped && pending > PENDING_COUNT_CAP,
   };
 }
 
@@ -90,8 +101,8 @@ export const get = authedQuery({
     requireAdmin(ctx.user);
     const organization = await target(ctx, organizationId);
     const members = await membersWithUsers(ctx, organizationId);
-    const invitations = await organizationInvitations(ctx, organizationId, new Set(members.map((m) => m.email.toLowerCase())));
-    return { ...(await summary(ctx, organization)), members, invitations };
+    const { invitations, livePending } = await organizationInvitations(ctx, organizationId, new Set(members.map((m) => m.email.toLowerCase())));
+    return { ...(await summary(ctx, organization, livePending)), members, invitations };
   },
 });
 

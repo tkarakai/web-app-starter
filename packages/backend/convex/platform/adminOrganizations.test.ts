@@ -4,7 +4,7 @@ import { describe, expect, test, vi } from "vitest";
 import { api, components, internal } from "../_generated/api";
 import { createTestEnv } from "../test.modules";
 import authSchema from "./betterAuth/schema";
-import { organizationFixture } from "./organizations.test-helpers";
+import { countReads, organizationFixture } from "./organizations.test-helpers";
 
 async function fixture() {
   const t = createTestEnv();
@@ -76,6 +76,28 @@ describe("admin organizations", () => {
     expect((await f.members(f.acme)).map((m) => [m.userId, m.role])).toEqual([[f.alice.userId, "member"], [f.bob.userId, "owner"]]);
     await expect(f.boss.caller.mutation(orgs.removeOwner, { organizationId: f.acme, userId: f.bob.userId, role: "admin" })).rejects.toThrow("LAST_OWNER");
   });
+
+  test("a list page reads at most 101 live invitations per organization, however large its history", async () => {
+    const f = await fixture();
+    const carol = await f.user("carol");
+    const carols = await carol.provision();
+    const rows = (organizationId: string, count: number, prefix: string, status: string, sentDaysAgo: (i: number) => number) =>
+      Array.from({ length: count }, (_, i) => ({ organizationId, email: `${prefix}${i}@example.test`, status, sentDaysAgo: sentDaysAgo(i), inviterId: f.alice.userId }));
+    await f.seedInvitations([
+      ...rows(f.acme, 150, "live", "pending", (i) => i % 7),
+      ...rows(f.acme, 1500, "expired", "pending", (i) => 8 + (i % 60)),
+      ...rows(carols, 2, "live", "pending", () => 1),
+      ...rows(carols, 1500, "expired", "pending", (i) => 8 + (i % 60)),
+      ...rows(carols, 500, "declined", "rejected", (i) => 1 + (i % 60)),
+    ]);
+
+    const list = await countReads(f.boss.caller, (ctx) => ctx.runQuery(orgs.list, { paginationOpts: { numItems: 10, cursor: null } }));
+    expect(list.result.page.find((o) => o.id === f.acme)).toMatchObject({ pendingInvitations: 100, morePendingInvitations: true });
+    expect(list.result.page.find((o) => o.id === carols)).toMatchObject({ pendingInvitations: 2, morePendingInvitations: false });
+    expect(list.documentsRead).toBeLessThan(101 + 2 + 50);
+    // The detail view counts every live invitation.
+    expect(await f.boss.caller.query(orgs.get, { organizationId: f.acme })).toMatchObject({ pendingInvitations: 150, morePendingInvitations: false });
+  }, 60_000);
 
   test("an administrator cancels a pending invitation", async () => {
     const f = await fixture();

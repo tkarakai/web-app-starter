@@ -201,6 +201,22 @@ version. Release-specific compatibility and deployment steps are listed explicit
   - Every run carries a run token that a retry replaces, so a late run of the stopped one does
     nothing. The helpers are in `backgroundJobs.ts`.
 
+- **Invitation listings read only live and recent invitations.** Better Auth leaves an expired
+  invitation `pending` forever, and the listings read an organization's whole pending and
+  declined history, so they slowed down and could fail on Convex read limits as it grew. They
+  now read through two new indexes on the Better Auth component's `invitation` table,
+  `organizationId_status_expiresAt` and `email_status_expiresAt` (added by the next deploy), and
+  a component query, `adapter.invitationsByExpiry`:
+  - The organization page and `adminOrganizations.get` list expired and declined invitations for
+    30 days after they were last sent (resends included), keyed on `expiresAt`. Before, the
+    window counted from the first send, so an invitation kept alive by resends for more than 30
+    days disappeared from the page and from the admin pending count.
+  - `adminOrganizations.list` reads at most 101 live invitations per organization: its
+    `pendingInvitations` stops at 100, with `morePendingInvitations` set beyond that (the admin
+    app shows "100+"). `get` reads them once and gives the exact count.
+  - The dashboard invitation banner and the sign-up gates read only an address's live
+    invitations.
+
 - **Org mutations no longer write to a fallback organization.** When the session's selected
   organization is no longer valid (the user was removed, or it was deleted), reads still move to
   the oldest membership, but `orgMutation`, and `getOrgAuth(ctx, { write: true })`, now refuse

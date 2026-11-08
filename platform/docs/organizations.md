@@ -179,7 +179,11 @@ others available.
 On the inviting side, the organization page lists each invited address once, with its latest
 invitation: **pending** (with its expiry; resend), **expired** (resend), or
 **declined** (invite again). Expired and declined invitations are listed for 30 days after they
-were sent; a live one is always listed, however much history the organization has. Owners and admins can delete an invitation in any
+were last sent (a resend counts); a live one is always listed, however long resends have kept it
+alive and however much history the organization has. The listing reads only invitations in that
+window: Better Auth sets `expiresAt` on every send, and the Better Auth component's
+`organizationId_status_expiresAt` index bounds the read, so older expired invitations, which stay
+`pending`, cost nothing. Owners and admins can delete an invitation in any
 state, after confirming (`api.platform.organizations.deleteInvitation`). Deleting the row removes
 all unaccepted invitations to that address in the active organization, so an older declined or
 expired invitation cannot take its place. Their links then read as no longer valid. Accepted
@@ -247,8 +251,8 @@ and through the `organizations_*` admin agent capabilities. Both use
 
 | Function | Does |
 |---|---|
-| `list` | Every organization, newest first, with owners, member count and pending invitations; `search` matches names (case-sensitive) |
-| `get` | One organization's members with roles, and its pending, expired and recently declined invitations |
+| `list` | Every organization, newest first, with owners, member count and live pending invitations (`pendingInvitations` stops at 100; `morePendingInvitations` means more, shown as "100+"); `search` matches names (case-sensitive) |
+| `get` | One organization's members with roles, its exact live pending count, and its pending, expired and recently declined invitations |
 | `forUser` | A user's memberships, what deleting the account would do to each organization, and `banSuccessor` (candidates and a suggestion) where banning needs a new owner first |
 | `addOwner` | Make an existing member an owner, alongside the current owners. Refused for banned members (`MEMBER_BANNED`) and platform administrators (`MEMBER_IS_ADMINISTRATOR`) |
 | `removeOwner` | Make an owner an admin or member. Refused (`LAST_OWNER`) for the only owner, or the only one who isn't banned while members can sign in |

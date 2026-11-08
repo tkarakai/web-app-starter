@@ -9,7 +9,7 @@
  * (organizationOwnership.ts). See platform/docs/organizations.md.
  */
 import { components, internal } from "../_generated/api";
-import { createFunctionHandle } from "convex/server";
+import { createFunctionHandle, type PaginationResult } from "convex/server";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { deleteMember, needsSuccessor, organizationSeats, pickSuccessor, setMemberRole } from "./organizationOwnership";
@@ -32,6 +32,14 @@ export type ActiveOrganization = {
 
 /** Page size for reading component rows; readers that decide anything read every page. */
 const MAX_ROWS = 200;
+
+/**
+ * How long an invitation stays valid. Better Auth sets `expiresAt` to this long after every
+ * send, both the first invite and each resend (organizationPlugin.ts), so `expiresAt` minus
+ * this is when the invitation was last sent.
+ */
+export const INVITATION_EXPIRY_DAYS = 7;
+export const INVITATION_EXPIRY_MS = INVITATION_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
 
 /**
  * Organizations one user may belong to. Better Auth's `organizationLimit` counts only the ones a
@@ -255,23 +263,33 @@ export async function personalOrganizationForOwner(ctx: Writer, ownerId: string)
 }
 
 /**
- * Pending invitations to this address that have not expired. Reads every page: accepted,
- * canceled and expired invitations accumulate, so a fixed-size first page could hide one.
+ * Invitations of one organization, or to one address, with this status that expire after
+ * `expiresAfter`, latest expiry first: every page, or the first `limit` rows. The index range
+ * skips older history, which only grows: Better Auth never rewrites an expired invitation's
+ * status, so it stays `pending`.
  */
-export async function pendingInvitationsFor(ctx: Reader, email: string): Promise<Doc<"invitation">[]> {
-  const now = Date.now();
-  const pending: Doc<"invitation">[] = [];
+export async function invitationsExpiringAfter(
+  ctx: Reader,
+  scope: { organizationId: string } | { email: string },
+  status: string,
+  expiresAfter: number,
+  limit = Infinity,
+): Promise<Doc<"invitation">[]> {
+  const rows: Doc<"invitation">[] = [];
   let cursor: string | null = null;
   do {
-    const result: { page: unknown[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(components.betterAuth.adapter.findMany, {
-      model: "invitation",
-      where: [{ field: "email", value: email.trim().toLowerCase() }, { field: "status", value: "pending" }],
-      paginationOpts: { numItems: MAX_ROWS, cursor },
-    });
-    pending.push(...(result.page as Doc<"invitation">[]).filter((invitation) => invitation.expiresAt > now));
+    const result = await ctx.runQuery(components.betterAuth.adapter.invitationsByExpiry, {
+      ...scope, status, expiresAfter, paginationOpts: { numItems: Math.min(MAX_ROWS, limit - rows.length), cursor },
+    }) as PaginationResult<Doc<"invitation">>;
+    rows.push(...result.page);
     cursor = result.isDone ? null : result.continueCursor;
-  } while (cursor);
-  return pending;
+  } while (cursor && rows.length < limit);
+  return rows;
+}
+
+/** Pending invitations to this address that have not expired; expired ones are not read. */
+export async function pendingInvitationsFor(ctx: Reader, email: string): Promise<Doc<"invitation">[]> {
+  return await invitationsExpiringAfter(ctx, { email: email.trim().toLowerCase() }, "pending", Date.now());
 }
 
 /**

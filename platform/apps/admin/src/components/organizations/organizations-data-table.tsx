@@ -100,7 +100,7 @@ export function OrganizationsDataTable() {
                   </div>
                 </TableCell>
                 <TableCell>{organization.memberCount}</TableCell>
-                <TableCell>{organization.pendingInvitations}</TableCell>
+                <TableCell>{organization.pendingInvitations}{organization.morePendingInvitations ? "+" : ""}</TableCell>
                 <TableCell>{formatDate(organization.createdAt)}</TableCell>
               </TableRow>
             ))}

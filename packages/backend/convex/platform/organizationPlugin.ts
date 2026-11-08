@@ -18,8 +18,7 @@ import type { AuditAction } from "./auditTrailConstants";
 import { runAuditEvent } from "./auditTrailHelpers";
 import { sendLimitedAuthEmail } from "./authRateLimits";
 import { organizationInvitationEmail } from "./sendAuthEmail";
-
-const INVITATION_EXPIRY_DAYS = 7;
+import { INVITATION_EXPIRY_DAYS } from "./organizationAccess";
 
 export function organizationPlugin(ctx: GenericCtx<DataModel>, siteUrl: string) {
   const audit = async (

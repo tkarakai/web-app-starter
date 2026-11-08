@@ -1,8 +1,10 @@
 import { createApi } from "@convex-dev/better-auth";
 import schema from "./schema";
 import { createAuthOptions } from "../auth";
+import { paginationOptsValidator } from "convex/server";
+import { stream } from "convex-helpers/server/stream";
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 
 export const {
   create,
@@ -27,5 +29,34 @@ export const reuseOtp = mutation({
     const data = { identifier: args.identifier, value: args.value, expiresAt: args.expiresAt, createdAt: now, updatedAt: now };
     const id = await ctx.db.insert("verification", data);
     return { ...data, id };
+  },
+});
+
+/**
+ * Invitations of one organization, or to one address, with this status whose `expiresAt` is
+ * after `expiresAfter`, latest expiry first. The adapter's `findMany` can't bound a range on an
+ * index, and Better Auth never rewrites an expired invitation's status, so listings read
+ * through this to skip expired history (platform/organizations.ts, organizationAccess.ts).
+ * Paginates a convex-helpers stream, as the adapter does: Convex allows one native
+ * `.paginate()` per query, nested component calls included.
+ */
+export const invitationsByExpiry = query({
+  args: {
+    organizationId: v.optional(v.string()),
+    email: v.optional(v.string()),
+    status: v.string(),
+    expiresAfter: v.number(),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    const { organizationId, email, status, expiresAfter } = args;
+    if ((organizationId === undefined) === (email === undefined)) throw new Error("INVALID_INVITATION_SCOPE");
+    const invitations = stream(ctx.db, schema).query("invitation");
+    const rows = organizationId !== undefined
+      ? invitations.withIndex("organizationId_status_expiresAt", (q) =>
+        q.eq("organizationId", organizationId).eq("status", status).gt("expiresAt", expiresAfter))
+      : invitations.withIndex("email_status_expiresAt", (q) =>
+        q.eq("email", email!).eq("status", status).gt("expiresAt", expiresAfter));
+    return await rows.order("desc").paginate(args.paginationOpts);
   },
 });
