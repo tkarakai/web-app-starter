@@ -9,7 +9,7 @@ import { components, internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
 import type { Doc } from "./betterAuth/_generated/dataModel";
 import { emailLoginEnabled, evaluateSession, readPolicies, readSession, type AuthSession } from "./sessionPolicy";
-import { ADMIN_SESSION_MS, RECENT_AUTH_MS, sessionFields } from "./sessionFields";
+import { ADMIN_SESSION_MS, sessionFields } from "./sessionFields";
 
 type Endpoint = Parameters<typeof getSessionFromCtx>[0];
 const bearerHook = bearer().hooks.before[0];
@@ -157,7 +157,7 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
       if (assurance.reason === "recovery") refuse("RECOVERY_REQUIRED");
       if (assurance.hasTotp || (assurance.hasPasskey && assurance.passkeyPolicy !== "disabled")) {
         if (!assurance.strong || !assurance.recent) refuse("RECENT_AUTHENTICATION_REQUIRED");
-      } else if (!pair.session.primaryVerifiedAt || pair.session.primaryVerifiedAt + RECENT_AUTH_MS <= Date.now()) refuse("RECENT_AUTHENTICATION_REQUIRED");
+      } else if (!pair.session.primaryVerifiedAt || assurance.primaryRecentUntil <= Date.now()) refuse("RECENT_AUTHENTICATION_REQUIRED");
       return;
     }
     if (!assurance.allowed) refuse("SECURITY_ENROLLMENT_REQUIRED");

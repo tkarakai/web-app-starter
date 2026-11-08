@@ -223,7 +223,7 @@ describe("backend session assurance through authentication endpoints", () => {
     const enrolled = await f.enroll(body.token);
     const strong = await f.caller(enrolled.token);
     await expect(strong.client.mutation(api.platform.appSettings.set, { key: "adminMfaRequired", value: "true" })).resolves.toBeNull();
-    vi.setSystemTime(Date.now() + 6 * 60_000);
+    vi.setSystemTime(Date.now() + 61 * 60_000);
     await expect(strong.client.mutation(api.platform.appSettings.set, { key: "adminMfaRequired", value: "false" })).rejects.toThrow("RECENT_AUTHENTICATION_REQUIRED");
     expect((await f.request("/two-factor/verify-totp", { code: totp(enrolled.uri) }, enrolled.token)).status).toBe(200);
     await expect(strong.client.mutation(api.platform.appSettings.set, { key: "adminMfaRequired", value: "true" })).resolves.toBeNull();
@@ -739,4 +739,23 @@ test("auth-only TOTP verification and JWT issuance preserve isolation through co
   expect(await f.t.query(api.platform.agentCapabilities.catalogue, { token: grant.access_token, resource })).not.toHaveLength(0);
   expect(await application.client.action(api.platform.auth.viewBackupCodes, { password })).toEqual(enrolled.codes);
   expect(await application.client.query(api.platform.adminInvitations.getMyOnboardingStatus, {})).toMatchObject({ completed: true });
+});
+
+test("admin recent login defaults to 60 minutes and follows live validated configuration", async () => {
+  const f = await fixture("admin");
+  const { body } = await f.signIn();
+  const { client } = await f.caller(body.token);
+  expect(await client.query(api.platform.appSettings.get, { key: "adminRecentLoginMinutes" })).toBe(60);
+  vi.setSystemTime(Date.now() + 30 * 60_000);
+  expect(await client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ recent: true, recentLoginMinutes: 60 });
+  for (const value of ["0", "241", "1.5", "null", "NaN"]) {
+    await expect(client.mutation(api.platform.appSettings.set, { key: "adminRecentLoginMinutes", value })).rejects.toThrow("INVALID_VALUE");
+  }
+  await client.mutation(api.platform.appSettings.set, { key: "adminRecentLoginMinutes", value: "20" });
+  expect(await client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ recent: false, recentLoginMinutes: 20 });
+  await expect(client.mutation(api.platform.appSettings.set, { key: "adminRecentLoginMinutes", value: "60" })).rejects.toThrow("RECENT_AUTHENTICATION_REQUIRED");
+  const user = await fixture();
+  const login = await user.signIn();
+  const ordinary = await user.caller(login.body.token);
+  expect(await ordinary.client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ recentLoginMinutes: 5 });
 });

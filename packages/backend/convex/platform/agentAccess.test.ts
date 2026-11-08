@@ -11,6 +11,8 @@ async function challenge(value: string) {
 async function fixture(role = "admin") {
   const t = createTestEnv();
   t.registerComponent("betterAuth", authSchema, import.meta.glob("./betterAuth/**/*.*s"));
+  // Keep short-lived delegation expiry scenarios independent of the admin default.
+  await t.mutation(components.platform.appSettings.putRaw, { key: "adminRecentLoginMinutes", value: "5" });
   const now = Date.now();
   const user = await t.mutation(components.betterAuth.adapter.create, {
     input: { model: "user", data: { name: "Agent admin", email: "agent@example.test", emailVerified: true, role, createdAt: now, updatedAt: now } },

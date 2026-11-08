@@ -11,6 +11,13 @@ import { PasswordInput, OtpInput } from "./localized-controls";
 import { TwoFactorSection } from "../settings/two-factor-section";
 import { PasskeySection } from "../settings/passkey-section";
 
+/** Admin is English-only; express the configured interval without fractional hours. */
+export function formatVerificationPeriod(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return [hours ? `${hours} ${hours === 1 ? "hour" : "hours"}` : "", remainder ? `${remainder} ${remainder === 1 ? "minute" : "minutes"}` : ""].filter(Boolean).join(" and ");
+}
+
 type Props = {
   children: React.ReactNode; requireRecent?: boolean; enrollment?: boolean; admin?: boolean; authorizationOnly?: boolean;
   /** Within a page or dialog with its own navigation: no page margins or sign-out escape. */
@@ -107,6 +114,7 @@ export function SessionAccessGate({ children, requireRecent = false, enrollment 
   const needsPassword = status.reason === "reauthenticate" || status.reason === "method_disabled" || !status.strongForChanges || ((status.reason === "mfa_enrollment" || status.reason === "passkey_enrollment") && status.primaryRecentUntil <= now && !hasFactor) || (enrolling && !hasFactor);
   return display(<Card className={cardClass}><CardHeader><CardTitle>{t("title")}</CardTitle></CardHeader><CardContent className="space-y-4">
     <p>{t(live ? "description" : "expired")}</p>
+    {admin && live && <p>This app asks you to authenticate every {formatVerificationPeriod(status.recentLoginMinutes)} for security reasons.</p>}
     {error && <p role="alert" className="text-destructive">{t("failed")}</p>}
     {live && authorizationOnly && ["email_verification", "enrollment", "recovery", "mfa_enrollment", "passkey_enrollment"].includes(status.reason) ? <p>Complete account verification and security setup in the normal admin app, then restart authorization.</p>
       : live && status.reason === "email_verification" ? <>{emailSent && <p role="status">{te("resent")}</p>}<Button disabled={busy || !user} onClick={() => void sendVerification()}>{t("verifyEmail")}</Button></>
