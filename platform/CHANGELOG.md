@@ -15,6 +15,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Admin bootstrap uses a mandatory tenancy dialog with explicit final confirmation. Normal navigation and pages stay hidden until setup completes; setup remains subscribed across navigation, with security, sign-out and failure recovery available.
+
 - Tenancy setup accepts the seeded Free plan alone; additional plans are optional. The default must still be active and free forever.
 
 ### Added

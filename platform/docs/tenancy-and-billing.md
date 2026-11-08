@@ -73,8 +73,16 @@ existing users keep working. One-way; individuals → organizations may come lat
 
 Turning on either mode needs an active, free-forever default plan. The seeded Free plan is sufficient; additional plans are optional.
 
-**Fresh install:** after the first platform admin is set up, the admin app shows only the tenancy
-step. **Existing deployment:** the upgrade's migration gives every organization a free-forever
+**Fresh install:** after the first platform admin is set up, a mandatory bootstrap dialog asks
+who the app serves. Normal admin navigation and pages stay unmounted until setup completes.
+There is no plan-selection step: the seeded Free plan is sufficient. Confirm the installation-wide,
+irreversible choice before applying it. Setup progress and failures stay in the dialog; retry keeps
+completed work. Account security and sign-out remain available. If an existing installation has
+an invalid default plan, the dialog links to plan repair.
+
+The shell keeps the status subscription mounted while bootstrap is open, so normal navigation
+cannot restart the eligibility query or discard an unsaved choice. The initial eligibility query
+still checks existing users, organizations and memberships; larger installations can take longer. **Existing deployment:** the upgrade's migration gives every organization a free-forever
 `organizationPlan`, independent of mode.
 
 ### Individuals
