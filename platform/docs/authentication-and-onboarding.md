@@ -394,7 +394,11 @@ using an earlier Convex JWT. An already delivered response cannot be withdrawn f
 subsequent requests and reactive queries that rerun check the live policy again.
 
 Administrative HTTP operations and platform administrative mutations, password/profile/factor
-changes and recovery-code export require authentication within **five minutes**. When an enrolled
+changes and recovery-code export require recent authentication. For administrators the interval is
+configured in **Configure → Security → Recent Login Requirement**, in whole minutes from 1–240,
+and defaults to **60 minutes** (`adminRecentLoginMinutes`). Changes apply to active sessions.
+Ordinary users retain a **five-minute** interval. The admin verification prompt displays the configured
+period in human-readable form. The separate four-hour absolute administrator session lifetime is unchanged. When an enrolled
 or required factor exists, that must be recent strong proof; a password alone cannot substitute.
 Otherwise recent primary proof is sufficient. Recovery-code export additionally requires the
 current password each time. Password and two-factor code verification consume the durable account budgets

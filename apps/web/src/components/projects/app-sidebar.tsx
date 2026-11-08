@@ -87,8 +87,6 @@ export function AppSidebar({
   // Individuals have one organization, shown as billing details in Settings.
   const individuals = useTenancyMode() === "individuals";
 
-  const projectPages = usePaginatedQuery(api.projects.list, hasOrganization ? {} : "skip", { initialNumItems: PROJECTS_PAGE });
-  const projects: Project[] = projectPages.results;
   const userProfile = useQuery(api.platform.userProfiles.get) ?? null;
   const createProject = useMutation(api.projects.create);
 
@@ -177,39 +175,7 @@ export function AppSidebar({
               </div>
               <CollapsibleContent>
                 <SidebarGroupContent>
-                  <SidebarMenu>
-                    {projects.length === 0 ? (
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          className="text-muted-foreground italic"
-                          onClick={() => setDialogOpen(true)}
-                          tooltip={tp("createFirst")}
-                        >
-                          <span>{tp("noProjects")}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ) : (
-                      projects.map((project) => (
-                        <SidebarMenuItem key={project._id}>
-                          <SidebarMenuButton
-                            isActive={project._id === selectedProjectId}
-                            closeOnSelectMobile
-                            onClick={() => onSelectProject(project._id)}
-                            tooltip={project.name}
-                          >
-                            <span className="truncate">{project.name}</span>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      ))
-                    )}
-                    {projectPages.status === "CanLoadMore" && (
-                      <SidebarMenuItem>
-                        <SidebarMenuButton className="text-muted-foreground" onClick={() => projectPages.loadMore(PROJECTS_PAGE)} tooltip={tc("loadMore")}>
-                          <span>{tc("loadMore")}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    )}
-                  </SidebarMenu>
+                  <OrganizationProjects key={organizations?.activeOrganizationId} selectedProjectId={selectedProjectId} onSelectProject={onSelectProject} onCreate={() => setDialogOpen(true)} />
                 </SidebarGroupContent>
               </CollapsibleContent>
             </Collapsible>
@@ -306,5 +272,48 @@ export function AppSidebar({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+/** Reset only project pagination, preserving account menus and drafts during session refresh. */
+function OrganizationProjects({ selectedProjectId, onSelectProject, onCreate }: Pick<AppSidebarProps, "selectedProjectId" | "onSelectProject"> & { onCreate: () => void }) {
+  const tc = useTranslations("common");
+  const tp = useTranslations("projects");
+  const projectPages = usePaginatedQuery(api.projects.list, {}, { initialNumItems: PROJECTS_PAGE });
+  const projects: Project[] = projectPages.results;
+  return (
+    <SidebarMenu>
+      {projects.length === 0 ? (
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            className="text-muted-foreground italic"
+            onClick={() => onCreate()}
+            tooltip={tp("createFirst")}
+          >
+            <span>{tp("noProjects")}</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      ) : (
+        projects.map((project) => (
+          <SidebarMenuItem key={project._id}>
+            <SidebarMenuButton
+              isActive={project._id === selectedProjectId}
+              closeOnSelectMobile
+              onClick={() => onSelectProject(project._id)}
+              tooltip={project.name}
+            >
+              <span className="truncate">{project.name}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        ))
+      )}
+      {projectPages.status === "CanLoadMore" && (
+        <SidebarMenuItem>
+          <SidebarMenuButton className="text-muted-foreground" onClick={() => projectPages.loadMore(PROJECTS_PAGE)} tooltip={tc("loadMore")}>
+            <span>{tc("loadMore")}</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      )}
+    </SidebarMenu>
   );
 }
