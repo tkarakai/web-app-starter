@@ -279,7 +279,7 @@ export function AppSidebar({
 function OrganizationProjects({ selectedProjectId, onSelectProject, onCreate }: Pick<AppSidebarProps, "selectedProjectId" | "onSelectProject"> & { onCreate: () => void }) {
   const tc = useTranslations("common");
   const tp = useTranslations("projects");
-  const projectPages = usePaginatedQuery(api.projects.list, {}, { initialNumItems: PROJECTS_PAGE });
+  const projectPages = usePaginatedQuery(api.projects.list, { expectedOrganizationId: useOrganizations()?.activeOrganizationId ?? "" }, { initialNumItems: PROJECTS_PAGE });
   const projects: Project[] = projectPages.results;
   return (
     <SidebarMenu>
