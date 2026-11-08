@@ -113,7 +113,6 @@ export function TenancySetup() {
         mode,
         ...(shared ? { billingUserId, adminUserId, billingOrganizationName: billingName.trim(), sharedOrganizationName: sharedName.trim() } : {}),
       });
-
     } catch (error) {
       toast.error(message(error));
     } finally {
@@ -137,7 +136,7 @@ export function TenancySetup() {
     <Card data-testid="tenancy-setup">
       <CardHeader>
         <CardTitle className="text-lg">Choose your tenancy model</CardTitle>
-        <CardDescription>The Free plan is ready to use. You can add more plans after setup.</CardDescription>
+        <CardDescription>{check.plans.ready ? "Your free-forever default plan is ready. You can add more plans after setup." : "An active, free-forever default plan is needed before setup can finish."}</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="grid gap-6" onSubmit={(event) => void submit(event)}>
