@@ -71,6 +71,9 @@ For only web, run `CI=true bun run --cwd apps/web test:e2e`. `CI=true` selects t
 supported single-worker configuration and prevents reuse of an unrelated existing server.
 Managed local runs select distinct free ports before Playwright checks server availability, ignoring stale origins in `.env.local`. Each app uses its configured port through that port + 10; Convex uses 3210–3220 and 3211–3221. The launcher receives the same plan for app URLs, cross-app links and backend trusted origins. Exhausted ranges fail explicitly; a port taken after selection fails rather than reusing a listener. Other checkouts can keep running. GitHub Actions keeps the configured defaults when they are free.
 
+Playwright waits for the launcher's readiness message after page warmup before starting tests.
+Port selection and the launcher's occupied-port check prevent reuse of another listener.
+
 Without it, Playwright chooses several local workers. Their requests share one IP and can
 exceed the web proxy's default **200 page requests per 60 seconds**, producing HTTP 429
 `Too Many Requests`, empty titles and cascading locator/`fillStable` timeouts that look like

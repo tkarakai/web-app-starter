@@ -51,7 +51,7 @@ export default defineConfig({
         // start. Exit code: 1" and nothing else — no way to tell what broke.
         stdout: "pipe",
         stderr: "pipe",
-        url: managedOrigin,
+        wait: { stdout: /PLATFORM_E2E_READY/ },
         reuseExistingServer: false,
         timeout: 180 * 1000,
       },

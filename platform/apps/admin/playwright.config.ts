@@ -44,7 +44,7 @@ export default defineConfig({
         // boot failure into a bare "Exit code: 1" with no diagnostics.
         stdout: "pipe",
         stderr: "pipe",
-        url: managedOrigin,
+        wait: { stdout: /PLATFORM_E2E_READY/ },
         reuseExistingServer: false,
         timeout: 180 * 1000,
       },

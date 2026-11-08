@@ -1056,6 +1056,7 @@ fi
 # FOREGROUND MODE (CI/Playwright)
 # ============================================================
 if [ "$NON_INTERACTIVE" = true ]; then
+    echo "PLATFORM_E2E_READY"
     echo "[CI MODE] Staying in foreground, streaming logs..."
     echo "[CI MODE] Press Ctrl+C to stop"
     echo ""
