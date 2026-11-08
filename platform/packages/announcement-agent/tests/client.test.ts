@@ -13,7 +13,7 @@ function connection(callTool: AdminToolConnection["callTool"]): AdminToolConnect
 
 describe("pi tool bridge", () => {
   test("preserves remote discovery metadata and forwards arguments and cancellation", async () => {
-    const abort = new AbortController();
+    const abort = new globalThis.AbortController();
     const calls: unknown[] = [];
     const remote = connection(async (...args) => {
       calls.push(args);

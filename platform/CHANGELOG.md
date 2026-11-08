@@ -124,6 +124,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Action required
 
+- **Announcement pi agent: Pi 1.4.0.** If your personal Pi configuration uses the Azure provider, rename `azure-openai-responses` to `azure` in `auth.json`, `models.json` and provider settings (or sign in again). Custom `kimi-coding` base URLs in `models.json` must include `/v1`. These are user-owned files outside the starter; the announcement agent's MCP/CLI/A2A access flow is unchanged.
+
 - After deploying, a platform admin must create a plan and choose a tenancy mode under
   **Configure → Tenancy** before anyone can sign up. Existing organizations get the free plan
   when the mode is turned on. Apps that compose `CreateOrganizationDialog` or rely on users
