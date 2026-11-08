@@ -186,6 +186,21 @@ describe("organization switcher", () => {
     expect(screen.queryByRole("menuitem", { name: t.switcher.create })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: /settings/i })).not.toBeInTheDocument();
   });
+
+  it("keeps an open menu through a reload of the organization list", async () => {
+    mocks.mine = two;
+    const switcher = () => wrap(<SidebarProvider><OrganizationSwitcher logo={null} productName="Product" /></SidebarProvider>);
+    const result = render(switcher());
+    fireEvent.pointerDown(screen.getByRole("button", { name: t.switcher.label }), { button: 0, ctrlKey: false });
+    expect(await screen.findAllByRole("menuitem")).toHaveLength(2);
+    // The Convex client re-subscribes after refreshing its auth token: the query is briefly loading.
+    mocks.mine = undefined;
+    result.rerender(switcher());
+    mocks.mine = { ...two };
+    result.rerender(switcher());
+    expect(screen.getAllByRole("menuitem")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: t.switcher.label, hidden: true })).toHaveAttribute("aria-expanded", "true");
+  });
 });
 
 describe("lost access", () => {

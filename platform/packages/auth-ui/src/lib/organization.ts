@@ -1,14 +1,23 @@
 "use client";
 
+import * as React from "react";
 import { useQuery } from "convex/react";
 
 import { api } from "@repo/backend";
 
 export type OrganizationRole = "owner" | "admin" | "member";
 
-/** The caller's organizations and the active one: `undefined` while loading, `null` signed out. */
+/**
+ * The caller's organizations and the active one: `undefined` while first loading, `null`
+ * signed out. Once loaded, the last answer stands while the query reloads (the Convex client
+ * re-subscribes when it refreshes its auth token), so organization menus and workspaces are
+ * not torn down and rebuilt by a momentary gap. Every new answer, `null` included, replaces it.
+ */
 export function useOrganizations() {
-  return useQuery(api.platform.organizations.mine);
+  const current = useQuery(api.platform.organizations.mine);
+  const [last, setLast] = React.useState(current);
+  if (current !== undefined && current !== last) setLast(current);
+  return current === undefined ? last : current;
 }
 
 const departing = new Set<string>();
