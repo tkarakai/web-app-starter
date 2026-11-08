@@ -66,3 +66,13 @@ test("failed process ownership validation leaves database and environment untouc
   assert.equal(fs.readFileSync(path.join(f.state, "db.sqlite3"), "utf8"), "old data");
   assert.equal(fs.readFileSync(env, "utf8"), "CONVEX_DEPLOYMENT=anonymous:test\n");
 });
+
+test("redirected environment refuses reset and preserves its target", t => {
+  const f = fixture(t);
+  const external = path.join(f.root, "external.env");
+  fs.writeFileSync(external, "CONVEX_DEPLOYMENT=anonymous:preserved\n");
+  fs.symlinkSync(external, path.join(f.backend, ".env.local"));
+  assert.equal(f.run().status, 1);
+  assert.equal(fs.readFileSync(external, "utf8"), "CONVEX_DEPLOYMENT=anonymous:preserved\n");
+  assert.equal(fs.existsSync(f.state), true);
+});
