@@ -22,7 +22,7 @@
     "@zxcvbn-ts/language-common": "^3.0.4",
     "@zxcvbn-ts/language-en": "^3.0.2",
     "better-auth": "1.6.34",
-    "convex": "1.48.0",
+    "convex": "1.49.0",
     "convex-helpers": "^0.1.134",
     "resend": "^6.37.0",
     "@web-app-starter/convex-platform": "workspace:*",
@@ -31,7 +31,7 @@
   "devDependencies": {
     "@types/node": "^24.19.2",
     "@types/react": "19.3.0",
-    "convex-test": "^0.0.65",
+    "convex-test": "^0.0.66",
     "typescript": "6.0.3",
     "vitest": "^5.0.5"
   }

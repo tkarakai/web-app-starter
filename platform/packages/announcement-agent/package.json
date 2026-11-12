@@ -12,7 +12,7 @@
     "simulate": "bun src/simulator.ts"
   },
   "dependencies": {
-    "@earendil-works/pi-coding-agent": "1.4.0",
+    "@earendil-works/pi-coding-agent": "1.5.0",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@web-app-starter/agentic": "workspace:*",
     "typebox": "1.4.3"
