@@ -6,7 +6,7 @@ import { readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { matchesGlob } from "node:path";
 import { waitForPage } from "../http-ready.ts";
 import { assessAdvisoryRace, runRaceCheck } from "../advisory-race.ts";
-import { auditResult, parseExceptions } from "../dependency-audit.ts";
+import { auditResult, parseExceptions, reviewAllowlist } from "../dependency-audit.ts";
 import { CHECKOUT_CHECKS, PLATFORM_CHECKS, UPGRADE_CHECKS, checksFor, runChecks } from "../ci-checks.ts";
 
 test("HTTP readiness retries compilation failures, follows redirects and rejects permanent failure", async t => {
@@ -227,4 +227,11 @@ test("Security Complete rejects failed, cancelled and unexpected skipped scans",
       results[name].result = original;
     }
   }
+});
+
+test("Dependency Review uses only validated, unexpired advisory exceptions", () => {
+  const exception = { advisory: "GHSA-965c-763c-88jm", package: "better-auth", expires: "2026-11-12", reason: "Unreachable plugin", ticket: "https://github.com/tkarakai/web-app-starter/issues/350" };
+  assert.equal(reviewAllowlist(parseExceptions(JSON.stringify({ exceptions: [exception] })), "2026-11-12"), exception.advisory);
+  assert.equal(reviewAllowlist([], "2026-11-12"), "");
+  assert.throws(() => reviewAllowlist([exception], "2026-11-13"), /expired on 2026-11-12/);
 });

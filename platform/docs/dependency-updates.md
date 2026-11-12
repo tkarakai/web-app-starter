@@ -430,3 +430,7 @@ manifest update does not prove its resolved versions meet the age policy.
 The `@isaacs/nonrecursive-glob-match` override similarly holds minimatch's caret
 transitive at eligible 1.0.3 instead of the younger 1.1.0. Renovate may advance
 these exact pins once the proposed release meets the same age policy.
+
+GitHub Dependency Review reads the same `dependency-audit-exceptions.json` as the
+Bun audit. Its allowlist is generated only after schema and expiry validation;
+an expired acceptance fails both gates and must be reassessed on its linked ticket.

@@ -99,9 +99,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Validate reviewed advisory exceptions
+        id: exceptions
+        run: ./platform/tooling/node-ts.sh platform/tooling/dependency-audit.ts --review-exceptions
+
       - name: Dependency Review
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
+          allow-ghsas: ${{ steps.exceptions.outputs.allow-ghsas }}
           fail-on-severity: high
           # Only deny GPL-3.0 for runtime dependencies
           # AGPL-3.0 removed since our only AGPL dep (TruffleHog) is a CI tool
