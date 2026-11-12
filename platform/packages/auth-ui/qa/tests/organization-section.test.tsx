@@ -11,8 +11,9 @@ type Org = { id: string; name: string; role: string };
 const mocks = vi.hoisted(() => ({
   active: undefined as unknown,
   incoming: [] as unknown[],
-  mine: undefined as { activeOrganizationId: string | null; organizations: Org[] } | undefined,
+  mine: undefined as { activeOrganizationId: string | null; organizations: Org[] } | null | undefined,
   ensure: vi.fn(),
+  setActive: vi.fn(),
   deleteInvitation: vi.fn(),
   inviteMember: vi.fn(),
   cancelInvitation: vi.fn(),
@@ -41,7 +42,7 @@ vi.mock("@web-app-starter/auth/client", () => ({
   authClient: {
     organization: {
       inviteMember: mocks.inviteMember, cancelInvitation: mocks.cancelInvitation, leave: mocks.leave,
-      delete: mocks.deleteOrganization, update: vi.fn(), updateMemberRole: vi.fn(), removeMember: vi.fn(), setActive: vi.fn(),
+      delete: mocks.deleteOrganization, update: vi.fn(), updateMemberRole: vi.fn(), removeMember: vi.fn(), setActive: mocks.setActive,
     },
   },
 }));
@@ -70,6 +71,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   for (const call of [mocks.inviteMember, mocks.cancelInvitation, mocks.leave, mocks.deleteOrganization]) call.mockResolvedValue({ data: {} });
   mocks.ensure.mockResolvedValue("org-new");
+  mocks.setActive.mockResolvedValue({ data: {} });
   mocks.deleteInvitation.mockResolvedValue(null);
   mocks.active = organization();
   mocks.incoming = [];
@@ -185,6 +187,33 @@ describe("organization switcher", () => {
     expect(await screen.findAllByRole("menuitem")).toHaveLength(1);
     expect(screen.queryByRole("menuitem", { name: t.switcher.create })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: /settings/i })).not.toBeInTheDocument();
+  });
+
+  it("restores an open menu after a transient unauthenticated query response without showing stale memberships", async () => {
+    const switcher = () => wrap(<SidebarProvider><OrganizationSwitcher logo={null} productName="Product" /></SidebarProvider>);
+    const result = render(switcher());
+    fireEvent.pointerDown(screen.getByRole("button", { name: t.switcher.label }), { button: 0, ctrlKey: false });
+    expect(await screen.findAllByRole("menuitem")).toHaveLength(2);
+    mocks.mine = null; result.rerender(switcher());
+    expect(screen.queryByRole("menuitem", { name: "Ada" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("active-organization")).not.toBeInTheDocument();
+    mocks.mine = { ...two }; result.rerender(switcher());
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Ada" }));
+    await waitFor(() => expect(mocks.setActive).toHaveBeenCalledWith({ organizationId: "org-2" }));
+  });
+
+  it("uses the new memberships when restoring a menu, including an empty membership list", async () => {
+    const switcher = () => wrap(<SidebarProvider><OrganizationSwitcher logo={null} productName="Product" /></SidebarProvider>);
+    const result = render(switcher());
+    fireEvent.pointerDown(screen.getByRole("button", { name: t.switcher.label }), { button: 0, ctrlKey: false });
+    expect(await screen.findAllByRole("menuitem")).toHaveLength(2);
+    mocks.mine = null; result.rerender(switcher());
+    mocks.mine = { ...two, organizations: two.organizations.slice(0, 1) }; result.rerender(switcher());
+    expect(await screen.findAllByRole("menuitem")).toHaveLength(1);
+    expect(screen.queryByRole("menuitem", { name: "Ada" })).not.toBeInTheDocument();
+    mocks.mine = { activeOrganizationId: null, organizations: [] }; result.rerender(switcher());
+    expect(screen.queryAllByRole("menuitem")).toHaveLength(0);
+    expect(screen.getByTestId("active-organization")).toHaveTextContent(t.switcher.none);
   });
 
   it("keeps an open menu through a reload of the organization list", async () => {
