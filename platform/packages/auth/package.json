@@ -15,7 +15,7 @@
     "@better-auth/passkey": "~1.6.33",
     "@convex-dev/better-auth": "^0.12.6",
     "@web-app-starter/app-config": "workspace:*",
-    "better-auth": "~1.6.33",
+    "better-auth": "~1.6.34",
     "convex": "^1.48.0",
     "@web-app-starter/agentic": "workspace:*"
   },

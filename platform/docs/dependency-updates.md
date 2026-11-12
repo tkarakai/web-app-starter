@@ -412,3 +412,25 @@ LOG_LEVEL=debug npx renovate --platform=local
 
 Confirm it proposes bumps, **withholds** releases younger than 10 days ("Not enough time has
 elapsed"), and plans to update `bun.lock` and the root `overrides`.
+
+## Auth peer resolution
+
+Keep the root `better-auth` and `@better-auth/core` overrides aligned on the supported
+1.6 patch line while the Convex adapter requires `<1.7.0`. A Renovate version cap
+controls proposed manifest updates, but does not constrain Bun's transitive peer
+resolution: passkey's caret core peer can otherwise install a 1.7 core alongside
+better-auth's exact 1.6 core. The two cores resolve different `better-call` copies,
+so an MFA hook's `APIError` fails the passkey handler's `instanceof` check and loses
+its 403 status and error code. Keep the real passkey session-assurance test passing;
+do not relax its expected response to accommodate a split auth stack.
+
+The Resend override also protects the ten-day release age during Renovate lockfile
+regeneration. Check publication times of changed lock entries: an eligible direct
+manifest update does not prove its resolved versions meet the age policy.
+The `@isaacs/nonrecursive-glob-match` override similarly holds minimatch's caret
+transitive at eligible 1.0.3 instead of the younger 1.1.0. Renovate may advance
+these exact pins once the proposed release meets the same age policy.
+
+GitHub Dependency Review reads the same `dependency-audit-exceptions.json` as the
+Bun audit. Its allowlist is generated only after schema and expiry validation;
+an expired acceptance fails both gates and must be reassessed on its linked ticket.

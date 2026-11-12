@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 export const EXCEPTIONS_FILE = "dependency-audit-exceptions.json";
@@ -24,11 +24,16 @@ export function parseExceptions(text: string): AuditException[] {
   });
 }
 
+export function reviewAllowlist(exceptions: AuditException[], today = new Date().toISOString().slice(0, 10)): string {
+  for (const exception of exceptions) if (exception.expires < today) throw new Error(`Audit exception for ${exception.advisory} (${exception.package}) expired on ${exception.expires}; re-assess it (${exception.ticket})`);
+  return [...new Set(exceptions.map(entry => entry.advisory))].join(",");
+}
+
 export function auditResult(output: string, status: number | null, exceptions: AuditException[] = [], today = new Date().toISOString().slice(0, 10)): { high: number; lower: number; excepted: number } {
   if (status !== 0 && status !== 1) throw new Error(`Dependency scanner failed (exit ${status})`);
   const parsed: unknown = JSON.parse(output);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Invalid audit response");
-  for (const exception of exceptions) if (exception.expires < today) throw new Error(`Audit exception for ${exception.advisory} (${exception.package}) expired on ${exception.expires}; re-assess it (${exception.ticket})`);
+  reviewAllowlist(exceptions, today);
   const used = new Set<AuditException>();
   let high = 0, lower = 0, excepted = 0;
   for (const [name, rows] of Object.entries(parsed)) {
@@ -58,5 +63,11 @@ export function runAudit(): void {
   if (counts.lower || counts.excepted) console.warn(result.stdout);
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  try { runAudit(); } catch (error) { console.error(String(error)); process.exitCode = 1; }
+  try {
+    if (process.argv[2] === "--review-exceptions") {
+      if (!process.env.GITHUB_OUTPUT) throw new Error("Missing GITHUB_OUTPUT");
+      const exceptions = existsSync(EXCEPTIONS_FILE) ? parseExceptions(readFileSync(EXCEPTIONS_FILE, "utf8")) : [];
+      appendFileSync(process.env.GITHUB_OUTPUT, `allow-ghsas=${reviewAllowlist(exceptions)}\n`);
+    } else runAudit();
+  } catch (error) { console.error(String(error)); process.exitCode = 1; }
 }

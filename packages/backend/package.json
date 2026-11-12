@@ -21,10 +21,10 @@
     "@zxcvbn-ts/core": "^3.0.4",
     "@zxcvbn-ts/language-common": "^3.0.4",
     "@zxcvbn-ts/language-en": "^3.0.2",
-    "better-auth": "1.6.33",
+    "better-auth": "1.6.34",
     "convex": "1.48.0",
     "convex-helpers": "^0.1.134",
-    "resend": "^6.34.1",
+    "resend": "^6.37.0",
     "@web-app-starter/convex-platform": "workspace:*",
     "@web-app-starter/agentic": "workspace:*"
   },
