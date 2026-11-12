@@ -427,3 +427,6 @@ do not relax its expected response to accommodate a split auth stack.
 The Resend override also protects the ten-day release age during Renovate lockfile
 regeneration. Check publication times of changed lock entries: an eligible direct
 manifest update does not prove its resolved versions meet the age policy.
+The `@isaacs/nonrecursive-glob-match` override similarly holds minimatch's caret
+transitive at eligible 1.0.3 instead of the younger 1.1.0. Renovate may advance
+these exact pins once the proposed release meets the same age policy.
