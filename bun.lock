@@ -139,7 +139,7 @@
       "name": "@repo/backend",
       "version": "0.0.0",
       "dependencies": {
-        "@better-auth/passkey": "1.6.33",
+        "@better-auth/passkey": "1.6.34",
         "@convex-dev/better-auth": "0.12.6",
         "@web-app-starter/agentic": "workspace:*",
         "@web-app-starter/app-config": "workspace:*",
@@ -302,7 +302,7 @@
       "name": "@web-app-starter/auth",
       "version": "0.0.0",
       "dependencies": {
-        "@better-auth/passkey": "~1.6.33",
+        "@better-auth/passkey": "~1.6.34",
         "@convex-dev/better-auth": "^0.12.6",
         "@web-app-starter/agentic": "workspace:*",
         "@web-app-starter/app-config": "workspace:*",
@@ -594,7 +594,7 @@
 
     "@better-auth/mongo-adapter": ["@better-auth/mongo-adapter@1.6.34", "", { "peerDependencies": { "@better-auth/core": "^1.6.34", "@better-auth/utils": "0.4.2", "mongodb": "^6.0.0 || ^7.0.0" }, "optionalPeers": ["mongodb"] }, "sha512-MCR6Oa7NPLQpRkx4+e/Kn7E0yEcDHxWlbKQ6zEg6qEA9kT0VXp2LHii/doXOPg6/YVlAvaXTxtQGYoNdyN4BFw=="],
 
-    "@better-auth/passkey": ["@better-auth/passkey@1.6.33", "", { "dependencies": { "@simplewebauthn/browser": "^13.2.2", "@simplewebauthn/server": "^13.2.3", "zod": "^4.3.6" }, "peerDependencies": { "@better-auth/core": "^1.6.33", "@better-auth/utils": "0.4.2", "@better-fetch/fetch": "1.3.1", "better-auth": "^1.6.33", "better-call": "1.4.0", "nanostores": "^1.0.1" } }, "sha512-lYJq3d2gxnaOY63UN+aY2NtFB+9SvbqXOv+vOcl5hJdAC3jYXKoAxaitV3/sXNsywef9MYhcTCVl0Oipgnfm5Q=="],
+    "@better-auth/passkey": ["@better-auth/passkey@1.6.34", "", { "dependencies": { "@simplewebauthn/browser": "^13.2.2", "@simplewebauthn/server": "^13.2.3", "zod": "^4.3.6" }, "peerDependencies": { "@better-auth/core": "^1.6.34", "@better-auth/utils": "0.4.2", "@better-fetch/fetch": "1.3.1", "better-auth": "^1.6.34", "better-call": "1.4.0", "nanostores": "^1.0.1" } }, "sha512-8bOFPihF+YQkUDx15c3A8WNnERZlvcmFW9726F2uF8BqUDwUjzZJ20dC/eXC3J3+NgIokaPT8BnccXotZID5aQ=="],
 
     "@better-auth/prisma-adapter": ["@better-auth/prisma-adapter@1.6.34", "", { "peerDependencies": { "@better-auth/core": "^1.6.34", "@better-auth/utils": "0.4.2", "@prisma/client": "^5.0.0 || ^6.0.0 || ^7.0.0", "prisma": "^5.0.0 || ^6.0.0 || ^7.0.0" }, "optionalPeers": ["@prisma/client", "prisma"] }, "sha512-0CEGQXMuWQ6TF/XKFKXeLzXilb8aeXhovLs0pO6EUO4H+Z3tCNAUu0PcvfG94fI8puxxPg3xkmRHQgC30Fh7SA=="],
 
