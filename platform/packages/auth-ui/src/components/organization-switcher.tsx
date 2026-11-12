@@ -36,6 +36,10 @@ interface OrganizationSwitcherProps {
  */
 export function OrganizationSwitcher({ logo, productName, onSwitch }: OrganizationSwitcherProps) {
   const t = useTranslations("organization");
+  // Keep the interaction state outside the authenticated-data branch. A token
+  // transition can temporarily remove that branch; no stale memberships render,
+  // but a restored session should not silently discard an open menu.
+  const [open, setOpen] = React.useState(false);
   const data = useOrganizations();
   const mode = useTenancyMode();
 
@@ -77,7 +81,7 @@ export function OrganizationSwitcher({ logo, productName, onSwitch }: Organizati
     <>
       <SidebarMenu>
         <SidebarMenuItem>
-          <DropdownMenu>
+          <DropdownMenu open={open} onOpenChange={setOpen}>
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton
                 size="lg"
