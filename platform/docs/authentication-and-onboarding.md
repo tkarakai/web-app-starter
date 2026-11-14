@@ -383,7 +383,16 @@ administrators or bound administrator candidates. Email-OTP sign-in, social/acco
 and administrator impersonation are disabled because the platform has no supported flow for them.
 Email verification and password-reset OTPs remain available. Email OTP and trusted-device cookies
 do not supply strong session proof. An email-only session for an MFA account can verify its factor
-but cannot read application data, administer users, or replace the factor.
+but cannot read application data, administer users, or replace the factor. Two-factor enrollment is
+TOTP-only: Better Auth's email-OTP-only enrollment (`/two-factor/enable` with `method: "otp"`) is
+refused with `AUTH_METHOD_DISABLED`.
+
+Redeeming a magic link proves control of the mailbox. If the account's email was never verified,
+Better Auth treats that proof as the source of truth: it removes the account's password (and any
+other linked credential account), ends all its existing sessions, marks the email verified and only
+then signs the user in. Passkeys and an enrolled TOTP stay. Such a user sets a new password through
+password reset. This only affects accounts that never verified their email, which is possible while
+email verification is turned off.
 
 Administrator sessions have a **four-hour absolute lifetime**, measured from authentication.
 Routine refresh, password verification, password changes and factor-related session rotation,
@@ -425,7 +434,8 @@ Password verification by itself does not clear recovery status. Recovery does no
 passkeys, changing policy, exporting old recovery codes or accessing ordinary application data.
 The session is bound to the replacement created by its successful current-password setup request;
 verification of the original authenticator or a replacement created in another session does not
-complete recovery. Setup can resume on that session while the bound factor remains current.
+complete recovery. Setting up a replacement removes the old authenticator and its backup codes; the
+replacement is a new factor that counts for sign-in only once a code from it verifies. Setup can resume on that session while the bound factor remains current.
 If a required passkey is also lost, an authorized administrator must adjust that policy or restore
 access through the deployment's support process; the recovery code does not waive it.
 
