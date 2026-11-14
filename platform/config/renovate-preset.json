@@ -83,7 +83,7 @@
       "dependencyDashboardApproval": true
     },
     {
-      "description": "The auth stack moves together. @convex-dev/better-auth pins its own nested copy of better-auth, so bumping better-auth alone upgrades nothing the adapter actually runs, and it breaks the build — dependabot PRs #74 and #77 both failed exactly this way. Never automerged: the 1.4 -> 1.6 move also needed convex/platform/betterAuth/schema.ts reconciled by hand.",
+      "description": "The auth stack moves together. @convex-dev/better-auth pins its own nested copy of better-auth, so bumping better-auth alone upgrades nothing the adapter actually runs, and it breaks the build — dependabot PRs #74 and #77 both failed exactly this way. Never automerged: the 1.4 -> 1.6 and 1.6 -> 1.7 moves also needed convex/platform/betterAuth/schema.ts reconciled by hand.",
       "matchPackageNames": [
         "better-auth",
         "@better-auth/**",
@@ -93,12 +93,12 @@
       "automerge": false
     },
     {
-      "description": "Cap the whole peer-bound auth stack below 1.7. @convex-dev/better-auth@0.12.5 declares peer better-auth '>=1.6.11 <1.7.0', and @better-auth/passkey 1.7.x additionally requires better-auth ^1.7.5. Capping only @better-auth/passkey is NOT enough: the 2026-09-16 verification dispatch planned better-auth 1.6.33 -> 1.7.3 inside renovate/auth-stack, which no version of the adapter can satisfy, so the group would have opened a PR that cannot install. REMOVE once the adapter widens — check with `bun info @convex-dev/better-auth@latest peerDependencies`.",
+      "description": "Cap the whole peer-bound auth stack below 1.8. @convex-dev/better-auth@0.13.0 declares peer better-auth '>=1.7.16 <1.8.0', and each @better-auth/* minor requires the matching better-auth minor. Capping only some packages is NOT enough: on 2026-09-16 the group planned better-auth 1.6.33 -> 1.7.3, which no adapter version then satisfied, so it would have opened a PR that cannot install. REMOVE (or raise) once the adapter widens — check with `bun info @convex-dev/better-auth@latest peerDependencies`.",
       "matchPackageNames": [
         "better-auth",
         "@better-auth/**"
       ],
-      "allowedVersions": "<1.7.0"
+      "allowedVersions": "<1.8.0"
     },
     {
       "description": "Runtime baseline: Node moves as one change across .node-version, engines, CI and @types/node (platform/docs/dependency-migrations.md#runtime-baseline). Renovate reads .node-version and proposes the next major once it is LTS; like every major it waits for dashboard approval.",

@@ -47,7 +47,8 @@ function totp(uri: string): string {
 }
 
 // Magic-link tokens are stored as their unpadded base64url SHA-256 (`storeToken: "hashed"`).
-const magicLinkIdentifier = (token: string) => createHash("sha256").update(token).digest("base64url");
+// Better Auth 1.7 stores a magic link as `magic-link:<hash>` with a typed record.
+const magicLinkIdentifier = (token: string) => `magic-link:${createHash("sha256").update(token).digest("base64url")}`;
 
 async function fixture(role = "user") {
   const t = createSessionAssuranceTestEnv(modules);
@@ -235,7 +236,7 @@ describe("backend session assurance through authentication endpoints", () => {
     expect(sendAuthEmail).not.toHaveBeenCalled();
     const now = Date.now();
     await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "verification", data: {
-      identifier: magicLinkIdentifier("known-link-token"), value: JSON.stringify({ email: f.email, name: "Fixture" }), createdAt: now, updatedAt: now, expiresAt: now + 300000,
+      identifier: magicLinkIdentifier("known-link-token"), value: JSON.stringify({ type: "magic-link", email: f.email, name: "Fixture" }), createdAt: now, updatedAt: now, expiresAt: now + 300000,
     } } });
     expect((await f.request("/magic-link/verify?token=known-link-token&callbackURL=%2Fdashboard")).status).toBe(403);
     expect((await f.request("/sign-in/email-otp", { email: f.email, otp: "123456" })).status).toBe(403);
@@ -283,6 +284,45 @@ describe("backend session assurance through authentication endpoints", () => {
     expect((await f.caller(body.token)).session).toMatchObject({ authMethod: "magic-link" });
   });
 
+  test("a magic link to an unverified account removes the password and sessions nobody proved", async () => {
+    // Better Auth 1.7: proving the mailbox makes it the source of truth for an unverified account.
+    const f = await fixture();
+    await f.setting("userMagicLinkEnabled", true);
+    const earlier = (await f.signIn()).body.token;
+    await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "user", where: [{ field: "_id", value: f.user._id }], update: { emailVerified: false } } });
+    expect((await f.request("/sign-in/magic-link", { email: f.email, callbackURL: "/dashboard" })).status).toBe(200);
+    const token = new URL(vi.mocked(sendAuthEmail).mock.calls.at(-1)![0].urlOrCode).searchParams.get("token")!;
+    const response = await f.request(`/magic-link/verify?token=${token}`);
+    const body = await response.json();
+    expect(response.status, JSON.stringify(body)).toBe(200);
+    expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "_id", value: f.user._id }] })).toMatchObject({ emailVerified: true });
+    expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "account", where: [{ field: "userId", value: f.user._id }] })).toBeNull();
+    expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "session", where: [{ field: "token", value: earlier }] })).toBeNull();
+    expect((await f.caller(body.token)).session).toMatchObject({ authMethod: "magic-link" });
+    expect((await f.request("/sign-in/email", { email: f.email, password })).status).toBe(401);
+  });
+
+  test("two-factor enrollment stays TOTP-only", async () => {
+    const f = await fixture();
+    const token = (await f.signIn()).body.token;
+    const response = await f.request("/two-factor/enable", { password, method: "otp" }, token);
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "AUTH_METHOD_DISABLED" });
+    expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "_id", value: f.user._id }] })).not.toMatchObject({ twoFactorEnabled: true });
+  });
+
+  test("replacing an authenticator issues a new factor and a wrong password keeps the old one", async () => {
+    const f = await fixture();
+    const enrolled = await f.enroll((await f.signIn()).body.token);
+    const before = await f.t.query(components.betterAuth.adapter.findOne, { model: "twoFactor", where: [{ field: "userId", value: f.user._id }] });
+    expect((await f.request("/two-factor/enable", { password: "wrong" }, enrolled.token)).status).toBe(400);
+    expect(await f.t.query(components.betterAuth.adapter.findOne, { model: "twoFactor", where: [{ field: "userId", value: f.user._id }] })).toEqual(before);
+    const replaced = await f.enroll(enrolled.token);
+    const after = await f.t.query(components.betterAuth.adapter.findOne, { model: "twoFactor", where: [{ field: "userId", value: f.user._id }] });
+    expect(after!._id).not.toBe(before!._id);
+    expect(replaced.uri).not.toBe(enrolled.uri);
+  });
+
   test("an email-only session cannot bypass an enrolled factor or replace it", async () => {
     const f = await fixture();
     await f.setting("userMagicLinkEnabled", true);
@@ -290,7 +330,7 @@ describe("backend session assurance through authentication endpoints", () => {
     const enrolled = await f.enroll(initial);
     const now = Date.now();
     await f.t.mutation(components.betterAuth.adapter.create, { input: { model: "verification", data: {
-      identifier: magicLinkIdentifier("email-only"), value: JSON.stringify({ email: f.email }), createdAt: now, updatedAt: now, expiresAt: now + 300000,
+      identifier: magicLinkIdentifier("email-only"), value: JSON.stringify({ type: "magic-link", email: f.email }), createdAt: now, updatedAt: now, expiresAt: now + 300000,
     } } });
     const response = await f.request("/magic-link/verify?token=email-only");
     const body = await response.json();
@@ -354,8 +394,15 @@ describe("backend session assurance through authentication endpoints", () => {
     const f = await fixture();
     await f.setting("userMfaRequired", true);
     const passkey = await passkeyFixture(f);
-    expect((await passkey.authenticate(false)).status).toBe(403);
+    // Better Auth 1.7 enforces required user verification in the WebAuthn verifier itself, so
+    // an assertion without UV now fails there (400) before the platform's own UV check (403).
+    const sessionsBefore = await f.t.query(components.betterAuth.adapter.findMany, { model: "session", where: [{ field: "userId", value: f.user._id }], paginationOpts: { cursor: null, numItems: 100 } });
+    const withoutUv = await passkey.authenticate(false);
+    expect(withoutUv.status).toBe(400);
+    expect(await withoutUv.json()).toMatchObject({ code: "AUTHENTICATION_FAILED" });
     expect((await passkey.authenticate(false, true)).status).toBeGreaterThanOrEqual(400);
+    const sessionsAfter = await f.t.query(components.betterAuth.adapter.findMany, { model: "session", where: [{ field: "userId", value: f.user._id }], paginationOpts: { cursor: null, numItems: 100 } });
+    expect(sessionsAfter.page).toHaveLength(sessionsBefore.page.length);
     const response = await passkey.authenticate(true);
     const result = await response.json();
     expect(response.status, JSON.stringify(result)).toBe(200);

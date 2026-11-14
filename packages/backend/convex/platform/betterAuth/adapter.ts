@@ -15,6 +15,9 @@ export const {
   updateMany,
   deleteOne,
   deleteMany,
+  // Better Auth 1.7's atomic single-row writes (verification consumption, counters).
+  consumeOne,
+  incrementOne,
 } = createApi(schema, createAuthOptions);
 
 export const reuseOtp = mutation({
