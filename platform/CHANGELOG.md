@@ -13,6 +13,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-11-14
+
 ### Added
 
 - **Tenancy modes, plans and billing organizations.** The platform admin chooses, once,
@@ -1389,5 +1391,7 @@ tag/commit immediately; their own setup and deployment still need validation.
 
 [4.0.0]: https://github.com/tkarakai/web-app-starter/compare/v3.1.0...v4.0.0
 
-[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v4.1.0...HEAD
 [4.1.0]: https://github.com/tkarakai/web-app-starter/compare/v4.0.0...v4.1.0
+
+[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v5.0.0...HEAD
+[5.0.0]: https://github.com/tkarakai/web-app-starter/compare/v4.1.0...v5.0.0

@@ -979,6 +979,115 @@
         "packages.backend.package.json",
         "renovate.json"
       ]
+    },
+    {
+      "version": "5.0.0",
+      "previous": "4.1.0",
+      "supportedBaseline": ">=2.0.0 <5.0.0",
+      "codemods": [
+        {
+          "id": "v5-public-hosted-runners",
+          "path": "platform/tooling/codemods/v5-public-hosted-runners.ts",
+          "touches": [
+            ".github/workflows/"
+          ]
+        }
+      ],
+      "migrations": [
+        {
+          "id": "v5-projects-to-organizations",
+          "changesRows": true,
+          "expansion": "Intermediate organizations revision b81d0a10 (#360, optional projects.organizationId with sampleMigrations.projectsToOrganizations), merged into a customized app and deployed to each target before taking 5.0.0; not a published release. Apps that removed the sample projects or have no existing projects skip this.",
+          "contract": "5.0.0",
+          "dependsOn": [],
+          "statusCommand": [
+            "bunx",
+            "convex",
+            "data",
+            "migrations"
+          ],
+          "completion": "In each target deployment, sampleMigrations:projectsToOrganizations has isDone true with no error, and no retained project lacks organizationId (projects logged PROJECT_WITHOUT_OWNER_ACCOUNT were reassigned to a verified organization or deleted). Then the required schema deploys.",
+          "instructions": "platform/docs/organizations.md"
+        }
+      ],
+      "env": [
+        {
+          "name": "AGENT_MCP_ENABLED",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "AGENT_MCP_ORIGIN",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "AGENT_MCP_AUTH_ORIGIN",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "AGENT_MCP_RESOURCE",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "WAITLIST_GLOBAL_RATE_PER_MINUTE",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "WAITLIST_GLOBAL_BURST",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "PLATFORM_SOURCE_REPOSITORY",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        }
+      ],
+      "removedFiles": [],
+      "renamedExports": [],
+      "dependencyFloors": [
+        {
+          "path": "package.json",
+          "name": "next",
+          "minimum": "16.4.1"
+        },
+        {
+          "path": "apps/web/package.json",
+          "name": "next",
+          "minimum": "16.4.1",
+          "optionalApp": "apps/web"
+        }
+      ],
+      "changedSeams": [
+        "root.github.actions.build-app.action.yml",
+        "root.github.actions.deploy-vercel.action.yml",
+        "root.github.actions.setup-bun.action.yml",
+        "root.github.workflows.ci-admin.yml",
+        "root.github.workflows.ci-landing.yml",
+        "root.github.workflows.ci-shared.yml",
+        "root.github.workflows.ci-storybook.yml",
+        "root.github.workflows.ci-verify.yml",
+        "root.github.workflows.ci-web.yml",
+        "root.github.workflows.security.yml",
+        "apps.demo.package.json",
+        "apps.landing.package.json",
+        "apps.web.package.json",
+        "package.json",
+        "packages.backend.convex._generated.api.d.ts",
+        "packages.backend.package.json",
+        "turbo.json"
+      ]
     }
   ]
 }
