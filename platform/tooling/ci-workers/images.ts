@@ -100,7 +100,7 @@ async function toolEnvironment(c: Config, input: Inputs, refresh: boolean, state
   const download = (file: string): string => path.join(context, 'downloads', file);
   const runner = await asset('actions/runner', 'latest', `actions-runner-linux-${arm ? 'arm64' : 'x64'}-{version}.tar.gz`, download('runner.tar.gz'), credential);
   await asset('oven-sh/bun', `tags/bun-v${input.bun}`, `bun-linux-${arm ? 'aarch64' : 'x64'}.zip`, download('bun.zip'), credential);
-  const backend = await asset('get-convex/convex-backend', 'latest', `convex-local-backend-${arm ? 'aarch64' : 'x86_64'}-unknown-linux-gnu.zip`, download('backend.zip'), credential);
+  const backend = await asset('convex/convex-backend', 'latest', `convex-local-backend-${arm ? 'aarch64' : 'x86_64'}-unknown-linux-gnu.zip`, download('backend.zip'), credential);
   const identity = hash(JSON.stringify([family, nodeImage, runner, backend, new Date().toISOString().slice(0, 10)]));
   const args = [`NODE_IMAGE=${nodeImage}`, `BUN_VERSION=${input.bun}`, `PLAYWRIGHT_VERSION=${input.playwright}`, `BACKEND_VERSION=${backend}`, `TOOL_KEY=${identity}`];
   const layout = path.join(directory, 'layout');
