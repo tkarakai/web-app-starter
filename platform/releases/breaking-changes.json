@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "runtime": {
     "nodeMajor": 24,
-    "bun": "1.4.2"
+    "bun": "1.4.4"
   },
   "seams": [
     {
@@ -978,6 +978,127 @@
         "package.json",
         "packages.backend.package.json",
         "renovate.json"
+      ]
+    },
+    {
+      "version": "5.0.0",
+      "previous": "4.1.0",
+      "supportedBaseline": ">=2.0.0 <5.0.0",
+      "codemods": [
+        {
+          "id": "v5-public-hosted-runners",
+          "path": "platform/tooling/codemods/v5-public-hosted-runners.ts",
+          "touches": [
+            ".github/workflows/"
+          ]
+        },
+        {
+          "id": "v5-auth-audit-exceptions",
+          "path": "platform/tooling/codemods/v5-auth-audit-exceptions.ts",
+          "touches": [
+            "dependency-audit-exceptions.json"
+          ]
+        }
+      ],
+      "migrations": [],
+      "env": [
+        {
+          "name": "AGENT_MCP_ENABLED",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "AGENT_MCP_ORIGIN",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "AGENT_MCP_AUTH_ORIGIN",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "AGENT_MCP_RESOURCE",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "WAITLIST_GLOBAL_RATE_PER_MINUTE",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "WAITLIST_GLOBAL_BURST",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        },
+        {
+          "name": "PLATFORM_SOURCE_REPOSITORY",
+          "kind": "new",
+          "secret": false,
+          "required": false
+        }
+      ],
+      "removedFiles": [],
+      "renamedExports": [],
+      "dependencyFloors": [
+        {
+          "path": "package.json",
+          "name": "next",
+          "minimum": "16.4.1"
+        },
+        {
+          "path": "apps/web/package.json",
+          "name": "next",
+          "minimum": "16.4.1",
+          "optionalApp": "apps/web"
+        },
+        {
+          "path": "package.json",
+          "name": "better-auth",
+          "minimum": "1.7.17"
+        },
+        {
+          "path": "packages/backend/package.json",
+          "name": "better-auth",
+          "minimum": "1.7.17"
+        },
+        {
+          "path": "packages/backend/package.json",
+          "name": "@convex-dev/better-auth",
+          "minimum": "0.13.0"
+        },
+        {
+          "path": "apps/web/package.json",
+          "name": "@convex-dev/better-auth",
+          "minimum": "0.13.0",
+          "optionalApp": "apps/web"
+        }
+      ],
+      "changedSeams": [
+        "root.github.actions.build-app.action.yml",
+        "root.github.actions.deploy-vercel.action.yml",
+        "root.github.actions.setup-bun.action.yml",
+        "root.github.workflows.ci-admin.yml",
+        "root.github.workflows.ci-landing.yml",
+        "root.github.workflows.ci-shared.yml",
+        "root.github.workflows.ci-storybook.yml",
+        "root.github.workflows.ci-verify.yml",
+        "root.github.workflows.ci-web.yml",
+        "root.github.workflows.security.yml",
+        "apps.demo.package.json",
+        "apps.landing.package.json",
+        "apps.web.package.json",
+        "package.json",
+        "packages.backend.convex._generated.api.d.ts",
+        "packages.backend.package.json",
+        "turbo.json"
       ]
     }
   ]

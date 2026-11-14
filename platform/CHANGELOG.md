@@ -13,13 +13,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
-### Fixed
-
-- The organization switcher no longer snaps shut, and the dashboard no longer flashes Loading, when the Convex client refreshes its auth token. `useOrganizations()` keeps its last answer while the query reloads; any new answer, `null` included, still replaces it.
-
-- Admin bootstrap uses a mandatory tenancy dialog with explicit final confirmation. Normal navigation and pages stay hidden until setup completes; setup remains subscribed across navigation, with security, sign-out and failure recovery available.
-
-- Tenancy setup accepts the seeded Free plan alone; additional plans are optional. The default must still be active and free forever.
+## [5.0.0] - 2026-11-14
 
 ### Added
 
@@ -117,8 +111,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
   through their project.
 
 - Bun baseline 1.4.2 → 1.4.4 (`packageManager`, the `setup-bun` default and the AWS Dockerfiles), with
-  the pending non-major dependency updates: React 19.3.1, Next.js 16.4.3, Convex 1.48.0,
-  typescript-eslint 8.72.0, Radix primitives, lucide-react 1.69.0, Vitest 5.0.5, Playwright 1.64.1
+  the pending non-major dependency updates: React 19.3.1, Next.js 16.4.4, Convex 1.49.0,
+  typescript-eslint 8.72.1, Radix primitives, lucide-react 1.69.0, Vitest 5.0.5, Playwright 1.64.1
   and pinned GitHub Actions.
 
 - Public repositories always use standard GitHub-hosted runners, ignoring local routing overrides.
@@ -134,6 +128,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
   **Configure → Tenancy** before anyone can sign up. Existing organizations get the free plan
   when the mode is turned on. Apps that compose `CreateOrganizationDialog` or rely on users
   creating organizations must move that to a billing organization's page (`BillingSection`).
+  **Done when:** **Configure → Tenancy** shows the chosen mode and a new test user can sign up.
 
 - **Apps that still rely on the legacy `waitlistEnabled: false` setting** (no onboarding type
   ever saved) now default to invite-only instead of public sign-up. If you want public sign-up,
@@ -179,6 +174,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
   steps are in [the worker guide](docs/ci-workers.md#retire-public-local-runners).
 
 ### Fixed
+
+- The organization switcher no longer snaps shut, and the dashboard no longer flashes Loading, when the Convex client refreshes its auth token. `useOrganizations()` keeps its last answer while the query reloads; any new answer, `null` included, still replaces it.
+
+- Admin bootstrap uses a mandatory tenancy dialog with explicit final confirmation. Normal navigation and pages stay hidden until setup completes; setup remains subscribed across navigation, with security, sign-out and failure recovery available.
+
+- Tenancy setup accepts the seeded Free plan alone; additional plans are optional. The default must still be active and free forever.
 
 - **Bounded organization and tenancy work.** Membership guards read owners through an indexed
   role lookup. Deleted users lose memberships in durable batches; administrators can retry a
@@ -1419,5 +1420,7 @@ tag/commit immediately; their own setup and deployment still need validation.
 
 [4.0.0]: https://github.com/tkarakai/web-app-starter/compare/v3.1.0...v4.0.0
 
-[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v4.1.0...HEAD
 [4.1.0]: https://github.com/tkarakai/web-app-starter/compare/v4.0.0...v4.1.0
+
+[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v5.0.0...HEAD
+[5.0.0]: https://github.com/tkarakai/web-app-starter/compare/v4.1.0...v5.0.0
