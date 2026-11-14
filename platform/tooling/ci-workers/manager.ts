@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, readdir, rename, rm, rmdir, statfs, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { assignment } from './assignment.ts';
-import { api, assertOrgAccess, privateRepository, remoteSource, token } from './github.ts';
+import { api, assertOrgAccess, GitHubError, privateRepository, remoteSource, token } from './github.ts';
 import { prepare, rotateLogs } from './images.ts';
 import { launch, reconcile } from './runtime.ts';
 import { assert, assertPrivateMode, catalog, config, configuredRepos, docker, exists, expiredEnvironments, hash, home, label, preparedScope, readJson, save, sourceRequest, type Config, type Job, type Run } from './core.ts';
@@ -9,6 +9,71 @@ import { assert, assertPrivateMode, catalog, config, configuredRepos, docker, ex
 export function runnerName(pool: string, jobId: number, now = Date.now()): string {
   // Keep the cleanup prefix intact; two base-36 safe integers fit the 64-character limit.
   return `${pool}-${jobId.toString(36)}-${now.toString(36)}`;
+}
+
+export const pollInterval = 15_000;
+const maintenanceInterval = 86400_000;
+/** Exponential backoff: `base` after the first failure, doubling up to `max`. */
+export function failureDelay(failures: number, base: number, max: number): number {
+  return failures <= 0 ? base : Math.min(max, base * 2 ** Math.min(failures - 1, 30));
+}
+/** Wait before retrying after an error, honouring GitHub rate-limit reset times up to `max`. */
+export function retryDelay(error: unknown, backoff: number, max: number, now = Date.now()): number {
+  const retryAt = error instanceof GitHubError ? error.retryAt : undefined;
+  return retryAt === undefined ? backoff : Math.min(max, Math.max(backoff, retryAt - now + 1000));
+}
+export interface MaintenanceState { next: number; failures: number; at?: string; error?: string; }
+export const maintenanceFile = (): string => path.join(home, 'maintenance.json');
+/**
+ * Run daily maintenance when due. A success schedules the next run a day later; a failure backs off
+ * from 15 minutes to 6 hours instead of retrying on every poll. The schedule survives restarts.
+ */
+export async function maintain(action: () => Promise<void>, now = Date.now): Promise<MaintenanceState> {
+  const state = await readJson<MaintenanceState>(maintenanceFile(), { next: 0, failures: 0 }).catch(() => ({ next: 0, failures: 0 }));
+  if (now() < state.next) return state;
+  let next: MaintenanceState;
+  try {
+    await action();
+    next = { next: now() + maintenanceInterval, failures: 0, at: new Date(now()).toISOString() };
+  } catch (error) {
+    const failures = state.failures + 1;
+    const delay = retryDelay(error, failureDelay(failures, 15 * 60_000, 6 * 3600_000), maintenanceInterval, now());
+    next = { next: now() + delay, failures, at: new Date(now()).toISOString(), error: String(error) };
+    process.stderr.write(`${next.at} Maintenance failed (attempt ${failures}); next attempt after ${new Date(next.next).toISOString()}: ${String(error)}\n`);
+  }
+  await save(maintenanceFile(), next);
+  return next;
+}
+/** Treat rate limits and rejected credentials as shared failures that pause the whole manager. */
+export function sharedFailure(error: unknown): boolean {
+  return error instanceof GitHubError && (error.retryAt !== undefined || error.status === 401);
+}
+/** Per-job and per-repository backoff: one failing item neither blocks the others nor repeats every poll. */
+export class Deferrals {
+  readonly #entries = new Map<string, { failures: number; next: number }>();
+  ready(key: string, now = Date.now()): boolean { return (this.#entries.get(key)?.next ?? 0) <= now; }
+  succeeded(key: string): void { this.#entries.delete(key); }
+  failed(key: string, error: unknown, now = Date.now()): void {
+    if (sharedFailure(error)) throw error;
+    for (const [entry, value] of this.#entries) if (value.next < now - 86400_000) this.#entries.delete(entry);
+    const failures = (this.#entries.get(key)?.failures ?? 0) + 1;
+    const next = now + failureDelay(failures, 60_000, 30 * 60_000);
+    this.#entries.set(key, { failures, next });
+    process.stderr.write(`${new Date(now).toISOString()} ${key}: ${String(error)} (failure ${failures}; retry after ${new Date(next).toISOString()})\n`);
+  }
+}
+/** A full disk must not prevent the cleanup that frees it: reclaim once when idle, then recheck. */
+async function admissionCapacity(c: Config, idle: boolean): Promise<void> {
+  try { await capacity(c); }
+  catch (error) {
+    if (!idle) throw error;
+    await lock('mutation', () => cleanup(c, false).then(() => undefined));
+    await capacity(c);
+  }
+}
+async function pause(milliseconds: number, stopped: () => boolean): Promise<void> {
+  const until = Date.now() + milliseconds;
+  while (!stopped() && Date.now() < until) await new Promise(resolve => setTimeout(resolve, Math.min(1000, until - Date.now())));
 }
 
 export async function lock<T>(name: string, action: () => Promise<T>): Promise<T> {
@@ -115,8 +180,10 @@ export async function serve(): Promise<void> {
     // Reconcile only registrations created by this installation, never somebody else's runners.
     const registrations = await api<{ runners: { id: number; name: string }[] }>(`/repos/${c.repo}/actions/runners?per_page=100`, credential);
     for (const runner of registrations.runners.filter(r => r.name.startsWith(`${c.pool}-`))) await api(`/repos/${c.repo}/actions/runners/${runner.id}`, credential, undefined, 'DELETE');
-    let maintenance = 0;
+    let failures = 0;
+    const deferrals = new Deferrals();
     while (!stop) {
+      let wait = pollInterval;
       try {
         c = await config(); credential = await token();
         repo = await privateRepository(c, credential);
@@ -128,7 +195,7 @@ export async function serve(): Promise<void> {
           }
         }
         if (!c.paused && active.size < c.concurrency) {
-          await capacity(c);
+          await admissionCapacity(c, active.size === 0);
           const runs: Run[] = [];
           for (const status of ['queued', 'in_progress']) {
             for (let page = 1; page <= 5; page++) {
@@ -146,59 +213,65 @@ export async function serve(): Promise<void> {
               jobs.push(...response.jobs);
               if (response.jobs.length < 100) break;
             }
-            for (const job of jobs.filter(j => j.status === 'queued' && !active.has(j.id))) {
+            for (const job of jobs.filter(j => j.status === 'queued' && !active.has(j.id) && deferrals.ready(`job ${j.id}`))) {
               c = await config();
               if (stop || c.paused || active.size >= c.concurrency) break;
-              const request = sourceRequest(c, run, job, repo.id);
-              if (!request) continue;
-              if (c.updateRole && run.head_branch !== repo.default_branch) continue;
-              if (run.event === 'pull_request' && request.sha !== run.head_sha) {
-                const commit = await api<{ parents: { sha: string }[] }>(`/repos/${c.repo}/git/commits/${request.sha}`, credential);
-                const pr = run.pull_requests[0];
-                if (commit.parents.length !== 2 || commit.parents[0].sha !== pr.base.sha || commit.parents[1].sha !== pr.head.sha) continue;
-              }
-              const environment = await lock('mutation', async () => {
-                const git = await remoteSource(c, request.sha, credential);
-                return prepare(c, git, request.sha, request.scope);
-              });
-              const current = await api<Job>(`/repos/${c.repo}/actions/jobs/${job.id}`, credential);
-              c = await config();
-              if (stop || c.paused || current.status !== 'queued') continue;
-              const admitted = await privateRepository(c, credential);
-              assert(admitted.id === repo.id, 'Repository identity changed before registration');
-              const expected = assignment(c, run, request.sha, repo.id, request.job);
-              const name = runnerName(c.pool, job.id);
-              const jit = await api<{ encoded_jit_config: string; runner: { id: number } }>(`/repos/${c.repo}/actions/runners/generate-jitconfig`, credential, {
-                name, runner_group_id: 1, labels: ['self-hosted', 'Linux', c.pool, `starter-source-${request.sha}`, `starter-run-${run.id}`, ...(request.job ? [`starter-update-${request.job}`, `starter-attempt-${run.run_attempt}`] : [])], work_folder: '_work',
-              });
-              const runningConfig = c, runningToken = credential;
-              const task = launch(c, c.updateRole === 'deliver' ? environment.tools : environment.image, ['github'], jit.encoded_jit_config + '\n', undefined, expected)
-                .then(() => undefined).catch(error => { process.stderr.write(`Worker ${job.id}: ${String(error)}\n`); })
-                .finally(async () => { await api(`/repos/${runningConfig.repo}/actions/runners/${jit.runner.id}`, runningToken, undefined, 'DELETE').catch(() => undefined); active.delete(job.id); activeRuns.delete(job.id); });
-              active.set(job.id, task); activeRuns.set(job.id, run.id);
+              try {
+                const request = sourceRequest(c, run, job, repo.id);
+                if (!request) continue;
+                if (c.updateRole && run.head_branch !== repo.default_branch) continue;
+                if (run.event === 'pull_request' && request.sha !== run.head_sha) {
+                  const commit = await api<{ parents: { sha: string }[] }>(`/repos/${c.repo}/git/commits/${request.sha}`, credential);
+                  const pr = run.pull_requests[0];
+                  if (commit.parents.length !== 2 || commit.parents[0].sha !== pr.base.sha || commit.parents[1].sha !== pr.head.sha) continue;
+                }
+                const environment = await lock('mutation', async () => {
+                  const git = await remoteSource(c, request.sha, credential);
+                  return prepare(c, git, request.sha, request.scope, false, credential);
+                });
+                const current = await api<Job>(`/repos/${c.repo}/actions/jobs/${job.id}`, credential);
+                c = await config();
+                if (stop || c.paused || current.status !== 'queued') continue;
+                const admitted = await privateRepository(c, credential);
+                assert(admitted.id === repo.id, 'Repository identity changed before registration');
+                const expected = assignment(c, run, request.sha, repo.id, request.job);
+                const name = runnerName(c.pool, job.id);
+                const jit = await api<{ encoded_jit_config: string; runner: { id: number } }>(`/repos/${c.repo}/actions/runners/generate-jitconfig`, credential, {
+                  name, runner_group_id: 1, labels: ['self-hosted', 'Linux', c.pool, `starter-source-${request.sha}`, `starter-run-${run.id}`, ...(request.job ? [`starter-update-${request.job}`, `starter-attempt-${run.run_attempt}`] : [])], work_folder: '_work',
+                });
+                const runningConfig = c, runningToken = credential;
+                const task = launch(c, c.updateRole === 'deliver' ? environment.tools : environment.image, ['github'], jit.encoded_jit_config + '\n', undefined, expected)
+                  .then(() => undefined).catch(error => { process.stderr.write(`Worker ${job.id}: ${String(error)}\n`); })
+                  .finally(async () => { await api(`/repos/${runningConfig.repo}/actions/runners/${jit.runner.id}`, runningToken, undefined, 'DELETE').catch(() => undefined); active.delete(job.id); activeRuns.delete(job.id); });
+                active.set(job.id, task); activeRuns.set(job.id, run.id);
+                deferrals.succeeded(`job ${job.id}`);
+              } catch (error) { deferrals.failed(`job ${job.id}`, error); }
             }
           }
         }
-        if (active.size === 0 && !c.paused && Date.now() - maintenance > 86400_000) {
-          await lock('mutation', async () => { await cleanup(c, false);
+        if (active.size === 0 && !c.paused) {
+          await maintain(() => lock('mutation', async () => { await cleanup(c, false);
             const state = await catalog();
-            if (state.toolsCreated && Date.now() - Date.parse(state.toolsCreated) > 86400_000) {
+            if (state.toolsCreated && Date.now() - Date.parse(state.toolsCreated) > maintenanceInterval) {
               const repository = await privateRepository(c, credential);
               const branch = repository.default_branch;
               const commit = await api<{ sha: string }>(`/repos/${c.repo}/commits/${encodeURIComponent(branch)}`, credential);
               const git = await remoteSource(c, commit.sha, credential);
-              await prepare(c, git, commit.sha, `branch-${hash(branch).slice(0, 16)}`, true);
+              await prepare(c, git, commit.sha, `branch-${hash(branch).slice(0, 16)}`, true, credential);
             }
-          });
-          maintenance = Date.now();
+          }));
         }
         c = await config();
+        failures = 0;
         await save(path.join(home, 'status.json'), { pauseRequest: c.pauseRequest, pid: process.pid, polled: new Date().toISOString(), active: [...active.keys()], paused: c.paused });
       } catch (error) {
-        process.stderr.write(`${new Date().toISOString()} ${String(error)}\n`);
-        await save(path.join(home, 'status.json'), { pid: process.pid, error: String(error), active: [...active.keys()], polled: new Date().toISOString() });
+        failures++;
+        wait = retryDelay(error, failureDelay(failures, pollInterval, 10 * 60_000), 3600_000);
+        const retry = new Date(Date.now() + wait).toISOString();
+        process.stderr.write(`${new Date().toISOString()} ${String(error)} (failure ${failures}; next poll after ${retry})\n`);
+        await save(path.join(home, 'status.json'), { pid: process.pid, error: String(error), failures, retry, active: [...active.keys()], polled: new Date().toISOString() });
       }
-      for (let n = 0; n < 15 && !stop; n++) await new Promise(resolve => setTimeout(resolve, 1000));
+      await pause(wait, () => stop);
     }
     await Promise.allSettled(active.values());
   });
@@ -226,8 +299,10 @@ async function serveOrg(): Promise<void> {
     }
     assert(listedAll, 'Organization runner listing exceeds 1000; cannot complete owned-registration reconciliation');
     for (const id of stale) await api(`/orgs/${org}/actions/runners/${id}`, credential, undefined, 'DELETE');
-    let maintenance = 0;
+    let failures = 0;
+    const deferrals = new Deferrals();
     while (!stop) {
+      let wait = pollInterval;
       try {
         c = await config(); credential = await token();
         assert(c.org === org && c.runnerGroupId, 'Organization configuration changed while running');
@@ -238,88 +313,98 @@ async function serveOrg(): Promise<void> {
           for (const name of names) await docker(c, ['stop', '--time', '10', name]);
         }
         if (!c.paused && active.size < c.concurrency) {
-          await capacity(c);
+          await admissionCapacity(c, active.size === 0);
           const names = configuredRepos(c);
           for (let offset = 0; offset < names.length; offset++) {
             const repoName = names[(cursor + offset) % names.length];
             if (stop || active.size >= c.concurrency) break;
-            const repoId = await assertOrgAccess(c, credential, repoName);
-            const runs: Run[] = [];
-            for (const status of ['queued', 'in_progress']) {
-              for (let page = 1; page <= 5; page++) {
-                const response = await api<{ workflow_runs: Run[] }>(`/repos/${repoName}/actions/runs?status=${status}&per_page=100&page=${page}`, credential);
-                runs.push(...response.workflow_runs);
-                if (response.workflow_runs.length < 100) break;
-              }
-            }
-            for (const run of runs) {
-              if (stop || active.size >= c.concurrency) break;
-              const jobs: Job[] = [];
-              for (let page = 1; page <= 5; page++) {
-                const response = await api<{ jobs: Job[] }>(`/repos/${repoName}/actions/runs/${run.id}/jobs?per_page=100&page=${page}`, credential);
-                jobs.push(...response.jobs);
-                if (response.jobs.length < 100) break;
-              }
-              for (const job of jobs.filter(j => j.status === 'queued' && !active.has(j.id))) {
-                c = await config();
-                if (stop || c.paused || active.size >= c.concurrency || !configuredRepos(c).includes(repoName)) break;
-                const selected = { ...c, repo: repoName };
-                const request = sourceRequest(selected, run, job, repoId);
-                if (!request) continue;
-                if (run.event === 'pull_request' && request.sha !== run.head_sha) {
-                  const commit = await api<{ parents: { sha: string }[] }>(`/repos/${repoName}/git/commits/${request.sha}`, credential);
-                  const pr = run.pull_requests[0];
-                  if (commit.parents.length !== 2 || commit.parents[0].sha !== pr.base.sha || commit.parents[1].sha !== pr.head.sha) continue;
+            if (!deferrals.ready(`repository ${repoName}`)) continue;
+            try {
+              const repoId = await assertOrgAccess(c, credential, repoName);
+              const runs: Run[] = [];
+              for (const status of ['queued', 'in_progress']) {
+                for (let page = 1; page <= 5; page++) {
+                  const response = await api<{ workflow_runs: Run[] }>(`/repos/${repoName}/actions/runs?status=${status}&per_page=100&page=${page}`, credential);
+                  runs.push(...response.workflow_runs);
+                  if (response.workflow_runs.length < 100) break;
                 }
-                const environment = await lock('mutation', async () => {
-                  const git = await remoteSource(selected, request.sha, credential);
-                  return prepare(selected, git, request.sha, preparedScope(selected, request.scope));
-                });
-                const current = await api<Job>(`/repos/${repoName}/actions/jobs/${job.id}`, credential);
-                c = await config();
-                if (stop || c.paused || current.status !== 'queued' || !configuredRepos(c).includes(repoName)) continue;
-                await assertOrgAccess(c, credential, repoName);
-                const expected = assignment(selected, run, request.sha, repoId);
-                const jit = await api<{ encoded_jit_config: string; runner: { id: number } }>(`/orgs/${org}/actions/runners/generate-jitconfig`, credential, {
-                  name: runnerName(c.pool, job.id), runner_group_id: c.runnerGroupId,
-                  labels: ['self-hosted', 'Linux', c.pool, `starter-source-${request.sha}`, `starter-run-${run.id}`], work_folder: '_work',
-                });
-                const runningToken = credential;
-                const task = launch(selected, environment.image, ['github'], jit.encoded_jit_config + '\n', undefined, expected)
-                  .then(() => undefined).catch(error => { process.stderr.write(`Worker ${job.id}: ${String(error)}\n`); })
-                  .finally(async () => {
-                    await api(`/orgs/${org}/actions/runners/${jit.runner.id}`, runningToken, undefined, 'DELETE').catch(() => undefined);
-                    active.delete(job.id);
-                  });
-                active.set(job.id, { repo: repoName, runId: run.id, task });
               }
-            }
+              for (const run of runs) {
+                if (stop || active.size >= c.concurrency) break;
+                const jobs: Job[] = [];
+                for (let page = 1; page <= 5; page++) {
+                  const response = await api<{ jobs: Job[] }>(`/repos/${repoName}/actions/runs/${run.id}/jobs?per_page=100&page=${page}`, credential);
+                  jobs.push(...response.jobs);
+                  if (response.jobs.length < 100) break;
+                }
+                for (const job of jobs.filter(j => j.status === 'queued' && !active.has(j.id) && deferrals.ready(`job ${j.id}`))) {
+                  c = await config();
+                  if (stop || c.paused || active.size >= c.concurrency || !configuredRepos(c).includes(repoName)) break;
+                  try {
+                    const selected = { ...c, repo: repoName };
+                    const request = sourceRequest(selected, run, job, repoId);
+                    if (!request) continue;
+                    if (run.event === 'pull_request' && request.sha !== run.head_sha) {
+                      const commit = await api<{ parents: { sha: string }[] }>(`/repos/${repoName}/git/commits/${request.sha}`, credential);
+                      const pr = run.pull_requests[0];
+                      if (commit.parents.length !== 2 || commit.parents[0].sha !== pr.base.sha || commit.parents[1].sha !== pr.head.sha) continue;
+                    }
+                    const environment = await lock('mutation', async () => {
+                      const git = await remoteSource(selected, request.sha, credential);
+                      return prepare(selected, git, request.sha, preparedScope(selected, request.scope), false, credential);
+                    });
+                    const current = await api<Job>(`/repos/${repoName}/actions/jobs/${job.id}`, credential);
+                    c = await config();
+                    if (stop || c.paused || current.status !== 'queued' || !configuredRepos(c).includes(repoName)) continue;
+                    await assertOrgAccess(c, credential, repoName);
+                    const expected = assignment(selected, run, request.sha, repoId);
+                    const jit = await api<{ encoded_jit_config: string; runner: { id: number } }>(`/orgs/${org}/actions/runners/generate-jitconfig`, credential, {
+                      name: runnerName(c.pool, job.id), runner_group_id: c.runnerGroupId,
+                      labels: ['self-hosted', 'Linux', c.pool, `starter-source-${request.sha}`, `starter-run-${run.id}`], work_folder: '_work',
+                    });
+                    const runningToken = credential;
+                    const task = launch(selected, environment.image, ['github'], jit.encoded_jit_config + '\n', undefined, expected)
+                      .then(() => undefined).catch(error => { process.stderr.write(`Worker ${job.id}: ${String(error)}\n`); })
+                      .finally(async () => {
+                        await api(`/orgs/${org}/actions/runners/${jit.runner.id}`, runningToken, undefined, 'DELETE').catch(() => undefined);
+                        active.delete(job.id);
+                      });
+                    active.set(job.id, { repo: repoName, runId: run.id, task });
+                    deferrals.succeeded(`job ${job.id}`);
+                  } catch (error) { deferrals.failed(`job ${job.id}`, error); }
+                }
+              }
+              deferrals.succeeded(`repository ${repoName}`);
+            } catch (error) { deferrals.failed(`repository ${repoName}`, error); }
           }
           cursor = names.length ? (cursor + 1) % names.length : 0;
         }
-        if (active.size === 0 && !c.paused && Date.now() - maintenance > 86400_000) {
-          await lock('mutation', async () => {
+        if (active.size === 0 && !c.paused) {
+          await maintain(() => lock('mutation', async () => {
             await cleanup(c, false);
             const state = await catalog();
-            if (state.toolsCreated && Date.now() - Date.parse(state.toolsCreated) > 86400_000) {
+            if (state.toolsCreated && Date.now() - Date.parse(state.toolsCreated) > maintenanceInterval) {
               const repoName = configuredRepos(c)[0];
               const selected = { ...c, repo: repoName };
               await assertOrgAccess(c, credential, repoName);
               const repository = await api<{ default_branch: string }>(`/repos/${repoName}`, credential);
               const commit = await api<{ sha: string }>(`/repos/${repoName}/commits/${encodeURIComponent(repository.default_branch)}`, credential);
               const git = await remoteSource(selected, commit.sha, credential);
-              await prepare(selected, git, commit.sha, preparedScope(selected, `branch-${hash(repository.default_branch).slice(0, 16)}`), true);
+              await prepare(selected, git, commit.sha, preparedScope(selected, `branch-${hash(repository.default_branch).slice(0, 16)}`), true, credential);
             }
-          });
-          maintenance = Date.now();
+          }));
         }
         c = await config();
+        failures = 0;
         await save(path.join(home, 'status.json'), { pauseRequest: c.pauseRequest, pid: process.pid, polled: new Date().toISOString(), active: [...active.keys()], paused: c.paused });
       } catch (error) {
-        process.stderr.write(`${new Date().toISOString()} ${String(error)}\n`);
-        await save(path.join(home, 'status.json'), { pid: process.pid, error: String(error), active: [...active.keys()], polled: new Date().toISOString() });
+        failures++;
+        wait = retryDelay(error, failureDelay(failures, pollInterval, 10 * 60_000), 3600_000);
+        const retry = new Date(Date.now() + wait).toISOString();
+        process.stderr.write(`${new Date().toISOString()} ${String(error)} (failure ${failures}; next poll after ${retry})\n`);
+        await save(path.join(home, 'status.json'), { pid: process.pid, error: String(error), failures, retry, active: [...active.keys()], polled: new Date().toISOString() });
       }
-      for (let n = 0; n < 15 && !stop; n++) await new Promise(resolve => setTimeout(resolve, 1000));
+      await pause(wait, () => stop);
     }
     await Promise.allSettled([...active.values()].map(value => value.task));
   });
@@ -328,5 +413,6 @@ export async function status(): Promise<unknown> {
   const c = await config();
   const heartbeat = await readJson<Record<string, unknown>>(path.join(home, 'status.json'), {});
   const engine = await docker(c, ['info', '--format', '{{.OSType}}/{{.Architecture}}']).catch(() => 'unavailable');
-  return { ...c, engine, ...heartbeat, credentialWarning: c.tokenExpiry && Date.parse(c.tokenExpiry) - Date.now() < 14 * 86400_000 ? `Replace credential before ${c.tokenExpiry}` : undefined, environments: (await catalog()).environments.length };
+  const maintenance = await readJson<MaintenanceState | undefined>(maintenanceFile(), undefined).catch(() => undefined);
+  return { ...c, engine, ...heartbeat, maintenance, credentialWarning: c.tokenExpiry && Date.parse(c.tokenExpiry) - Date.now() < 14 * 86400_000 ? `Replace credential before ${c.tokenExpiry}` : undefined, environments: (await catalog()).environments.length };
 }

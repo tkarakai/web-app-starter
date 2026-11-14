@@ -17,7 +17,25 @@ export async function storeToken(value: string): Promise<void> {
     await chmod(path.join(home, 'credential'), 0o600);
   }
 }
+export class GitHubError extends Error {
+  readonly status: number;
+  readonly retryAt?: number;
+  constructor(message: string, status: number, retryAt?: number) { super(message); this.name = 'GitHubError'; this.status = status; this.retryAt = retryAt; }
+}
+// GitHub signals primary limits with x-ratelimit-remaining: 0 and secondary limits with Retry-After.
+export function rateLimitRetryAt(status: number, headers: Headers, now = Date.now()): number | undefined {
+  if (status !== 403 && status !== 429) return;
+  const after = Number(headers.get('retry-after'));
+  if (headers.get('retry-after') !== null && Number.isFinite(after) && after >= 0) return now + after * 1000;
+  const reset = Number(headers.get('x-ratelimit-reset'));
+  if (headers.get('x-ratelimit-remaining') === '0' && Number.isFinite(reset) && reset > 0) return Math.max(now, reset * 1000);
+  return status === 429 ? now + 60_000 : undefined;
+}
+// Conditional-request cache for the long-running manager. Per-run and per-job endpoints change constantly,
+// so keep only the most recently used entries instead of every response body seen since start.
 const responses = new Map<string, { etag: string; data: unknown }>();
+export const responseCacheLimit = 256;
+export function responseCacheSize(): number { return responses.size; }
 export async function api<T>(endpoint: string, credential?: string, body?: unknown, method?: string): Promise<T> {
   assert(endpoint.startsWith('/') && !endpoint.startsWith('//'), 'Invalid API path');
   const cacheKey = endpoint + (credential ? ':authenticated' : ':public');
@@ -28,11 +46,18 @@ export async function api<T>(endpoint: string, credential?: string, body?: unkno
       ...(cached ? { 'If-None-Match': cached.etag } : {}), ...(credential ? { Authorization: `Bearer ${credential}` } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) },
     body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(30_000), redirect: 'error',
   });
-  if (response.status === 304 && cached) return cached.data as T;
-  if (!response.ok) throw new Error(`GitHub ${endpoint.split('?')[0]}: HTTP ${response.status}; check credential permissions, expiry and API limits`);
+  if (response.status === 304 && cached) { responses.delete(cacheKey); responses.set(cacheKey, cached); return cached.data as T; }
+  if (!response.ok) {
+    const retryAt = rateLimitRetryAt(response.status, response.headers);
+    const detail = retryAt === undefined ? 'check credential permissions, expiry and API limits' : `rate limited until ${new Date(retryAt).toISOString()}`;
+    throw new GitHubError(`GitHub ${endpoint.split('?')[0]}: HTTP ${response.status}; ${detail}`, response.status, retryAt);
+  }
   const data = response.status === 204 ? undefined : await response.json();
   const etag = response.headers.get('etag');
-  if (!body && !method && etag) responses.set(cacheKey, { etag, data });
+  if (!body && !method && etag) {
+    responses.delete(cacheKey); responses.set(cacheKey, { etag, data });
+    for (const key of responses.keys()) { if (responses.size <= responseCacheLimit) break; responses.delete(key); }
+  }
   return data as T;
 }
 export async function privateRepository(c: Config, credential: string): Promise<{ id: number; private: boolean; default_branch: string }> {

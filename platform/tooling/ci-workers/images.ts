@@ -8,8 +8,10 @@ import { launch, recipe } from './runtime.ts';
 
 interface Asset { name: string; browser_download_url: string; digest: string; }
 interface Release { tag_name: string; assets: Asset[]; }
-async function asset(repository: string, tag: string, filename: string, destination: string): Promise<string> {
-  const release = await api<Release>(`/repos/${repository}/releases/${tag}`);
+// Release metadata uses the manager credential: anonymous requests share a 60/hour quota per public IP
+// with every other client on the network. The download itself carries no credential.
+async function asset(repository: string, tag: string, filename: string, destination: string, credential?: string): Promise<string> {
+  const release = await api<Release>(`/repos/${repository}/releases/${tag}`, credential);
   const a = release.assets.find(a => a.name === filename.replace('{version}', release.tag_name.replace(/^v/, '')));
   assert(a && /^sha256:[a-f0-9]{64}$/.test(a.digest), `No authenticated checksum for ${repository}/${filename}`);
   const url = new URL(a.browser_download_url);
@@ -42,7 +44,7 @@ export function toolLayout(image: string): string {
   assert(/^sha256:[a-f0-9]{64}$/.test(image), 'Expected immutable tool image ID');
   return path.join(home, 'tool-layouts', image.slice(7));
 }
-async function toolEnvironment(c: Config, input: Inputs, refresh: boolean, state: Catalog, directory: string, tag: string): Promise<{ tools: ToolImage; family: string; layout: string }> {
+async function toolEnvironment(c: Config, input: Inputs, refresh: boolean, state: Catalog, directory: string, tag: string, credential?: string): Promise<{ tools: ToolImage; family: string; layout: string }> {
   const engine = JSON.parse(await docker(c, ['info', '--format', '{{json .}}'])) as { Architecture: string; OSType: string };
   assert(engine.OSType === 'linux', 'Linux Docker containers are required');
   const arm = ['aarch64', 'arm64'].includes(engine.Architecture);
@@ -62,9 +64,9 @@ async function toolEnvironment(c: Config, input: Inputs, refresh: boolean, state
   await docker(c, ['pull', nodeTag], { stream: true, timeout: 300_000 });
   const nodeImage = await docker(c, ['image', 'inspect', '--format', '{{index .RepoDigests 0}}', nodeTag]);
   const download = (file: string): string => path.join(context, 'downloads', file);
-  const runner = await asset('actions/runner', 'latest', `actions-runner-linux-${arm ? 'arm64' : 'x64'}-{version}.tar.gz`, download('runner.tar.gz'));
-  await asset('oven-sh/bun', `tags/bun-v${input.bun}`, `bun-linux-${arm ? 'aarch64' : 'x64'}.zip`, download('bun.zip'));
-  const backend = await asset('get-convex/convex-backend', 'latest', `convex-local-backend-${arm ? 'aarch64' : 'x86_64'}-unknown-linux-gnu.zip`, download('backend.zip'));
+  const runner = await asset('actions/runner', 'latest', `actions-runner-linux-${arm ? 'arm64' : 'x64'}-{version}.tar.gz`, download('runner.tar.gz'), credential);
+  await asset('oven-sh/bun', `tags/bun-v${input.bun}`, `bun-linux-${arm ? 'aarch64' : 'x64'}.zip`, download('bun.zip'), credential);
+  const backend = await asset('get-convex/convex-backend', 'latest', `convex-local-backend-${arm ? 'aarch64' : 'x86_64'}-unknown-linux-gnu.zip`, download('backend.zip'), credential);
   const identity = hash(JSON.stringify([family, nodeImage, runner, backend, new Date().toISOString().slice(0, 10)]));
   const args = [`NODE_IMAGE=${nodeImage}`, `BUN_VERSION=${input.bun}`, `PLAYWRIGHT_VERSION=${input.playwright}`, `BACKEND_VERSION=${backend}`, `TOOL_KEY=${identity}`];
   const layout = path.join(directory, 'layout');
@@ -83,7 +85,7 @@ async function toolEnvironment(c: Config, input: Inputs, refresh: boolean, state
   await launch(c, image, ['smoke']);
   return { tools: { image, manifest, created: new Date().toISOString() }, family, layout };
 }
-export async function prepare(c: Config, git: string, sha: string, scope: string, refresh = false): Promise<Environment> {
+export async function prepare(c: Config, git: string, sha: string, scope: string, refresh = false, credential?: string): Promise<Environment> {
   const input = await inputs(git, sha);
   const state = await catalog();
   const retained = new Set([state.tools, ...state.environments.flatMap(e => [e.image, e.tools]), ...Object.values(state.toolchains ?? {}).map(t => t.image)]);
@@ -94,7 +96,7 @@ export async function prepare(c: Config, git: string, sha: string, scope: string
   const promotions: string[] = [];
   let promoted = false, movedLayout: string | undefined;
   try {
-    const { tools, family, layout } = await toolEnvironment(c, input, refresh, state, directory, toolTag);
+    const { tools, family, layout } = await toolEnvironment(c, input, refresh, state, directory, toolTag, credential);
     if (c.updateRole === 'deliver') {
       // Publish only independently built tools: no dependency seed or app execution.
       const destination = toolLayout(tools.image);

@@ -108,9 +108,15 @@ async function setup(args: string[]): Promise<void> {
   print(`Repository: ${repo}\nInstalled: ${wrapper}\nAdd ${path.dirname(wrapper)} to PATH. Docker context: ${context}.\nPreparing the committed revision; uncommitted files are not included.`);
   const sha = await command('git', ['-C', root, 'rev-parse', 'HEAD']);
   const branch = await command('git', ['-C', root, 'branch', '--show-current']);
-  await lock('mutation', () => prepare(c, root, sha, preparedScope(c, c.updateRole ? `update-${c.updateRole}` : `branch-${hash(branch).slice(0, 16)}`)));
+  const credential = await releaseCredential(c);
+  await lock('mutation', () => prepare(c, root, sha, preparedScope(c, c.updateRole ? `update-${c.updateRole}` : `branch-${hash(branch).slice(0, 16)}`), false, credential));
   if (!c.localOnly) await service(c, true);
   print(c.updateRole ? 'Prepared updater workers. Continue bun run platform:setup-updates --workers local --yes to test and enable routing.' : 'Ready. Normal GitHub routing is unchanged. Run starter-workers check, then check --github before enable.');
+}
+// Authenticated release lookups avoid the shared anonymous per-IP quota. Manual checks stay usable for
+// local-only installs or an unreadable credential (for example a locked Keychain) with one anonymous lookup.
+async function releaseCredential(c: Config): Promise<string | undefined> {
+  return c.localOnly ? undefined : token().catch(() => undefined);
 }
 function member(c: Config, args: string[]): Config {
   const name = option(args, 'repo');
@@ -126,7 +132,8 @@ async function localCheck(c: Config, args: string[]): Promise<void> {
   }
   const sha = await command('git', ['-C', root, 'rev-parse', `${option(args, 'ref') ?? 'HEAD'}^{commit}`]);
   const branch = option(args, 'ref') ?? await command('git', ['-C', root, 'branch', '--show-current']);
-  const env = await lock('mutation', () => prepare(c, root, sha, preparedScope(c, c.updateRole ? `update-${c.updateRole}` : `branch-${hash(branch).slice(0, 16)}`), args.includes('--refresh')));
+  const credential = await releaseCredential(c);
+  const env = await lock('mutation', () => prepare(c, root, sha, preparedScope(c, c.updateRole ? `update-${c.updateRole}` : `branch-${hash(branch).slice(0, 16)}`), args.includes('--refresh'), credential));
   for (let n = 0; n < 2; n++) print(await launch(c, env.image, ['smoke']));
   if (args.includes('--ci') || args.includes('--quick') || args.includes('--install')) {
     const archive = path.join(home, `source-${sha}.tar`);
@@ -312,7 +319,8 @@ export async function main(args: string[]): Promise<void> {
       if (c.org) c = selectedRepo(c, repository(await command('git', ['-C', root, 'remote', 'get-url', 'origin'])));
       const sha = await command('git', ['-C', root, 'rev-parse', 'HEAD']);
       const branch = await command('git', ['-C', root, 'branch', '--show-current']);
-      await lock('mutation', () => prepare(c, root, sha, preparedScope(c, c.updateRole ? `update-${c.updateRole}` : `branch-${hash(branch).slice(0, 16)}`)));
+      const credential = await releaseCredential(c);
+      await lock('mutation', () => prepare(c, root, sha, preparedScope(c, c.updateRole ? `update-${c.updateRole}` : `branch-${hash(branch).slice(0, 16)}`), false, credential));
       await install(c); return;
     }
     case 'uninstall':

@@ -248,7 +248,7 @@ and credential separation before enabling private package registries.
 ## Operate and maintain
 
 ```sh
-starter-workers status              # Docker, last poll, active jobs, configuration, expiry warning
+starter-workers status              # Docker, last poll, failures, maintenance schedule, active jobs, expiry warning
 starter-workers status --watch
 starter-workers images             # image IDs, scopes, creation and last-use times
 starter-workers logs --follow       # manager log (Linux: also journalctl --user -u POOL -f)
@@ -258,10 +258,21 @@ starter-workers cleanup
 ```
 
 Keep Docker and the host available. The manager checks for compatible upstream tool refreshes daily
-when idle; it validates replacements before promoting them. It does not upgrade your application's
+when idle; it validates replacements before promoting them. A failed daily maintenance run is retried
+after 15 minutes, doubling to at most six hours, and the schedule in `maintenance.json` survives
+restarts. Status shows the last error and the next attempt. It does not upgrade your application's
 lockfile. `starter-workers refresh` prepares/validates a refreshed environment for the committed
 checkout immediately. If a refresh fails, inspect the error and fix it; an incompatible image is
 never silently substituted. Runner security updates may require prompt operator action.
+
+The manager polls every 15 seconds. After a failed poll it waits longer, doubling up to ten minutes,
+and a GitHub rate limit pauses polling until GitHub's reset time (at most an hour). A job or
+organization member that fails preparation or admission is retried with its own backoff, from one
+minute up to 30 minutes, while other jobs continue. The manager credential authenticates every
+GitHub API request, including the runner, Bun and Convex release lookups. Anonymous requests would
+share GitHub's 60-per-hour limit with every other client behind the same public IP. Release
+downloads never carry the credential. When admission is refused for disk space or the image budget
+while the manager is idle, it runs cleanup once before rechecking.
 
 `starter-workers auth replace --token-expires YYYY-MM-DD` prompts for and validates a new dedicated
 token before storing it and recording its expiry. Status warns within 14 days of

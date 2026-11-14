@@ -15,6 +15,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- Local CI worker managers no longer use up the anonymous GitHub API quota for their public IP. Before this fix, a failed daily tool refresh retried every 15 seconds, and each retry made anonymous release lookups. The resulting 403 responses then blocked other GitHub clients behind the same IP, including other tools' update checks. Release lookups now use the manager credential. Failed maintenance backs off from 15 minutes to six hours, and the schedule persists across restarts. Failed polls back off up to ten minutes and honour GitHub rate-limit reset times. A failing job or organization member backs off on its own, without blocking other jobs. When the manager is idle and disk is low, it cleans up before refusing work. Its conditional-request cache is bounded. Installed managers pick this up through `starter-workers update`.
+
 - The organization switcher no longer snaps shut, and the dashboard no longer flashes Loading, when the Convex client refreshes its auth token. `useOrganizations()` keeps its last answer while the query reloads; any new answer, `null` included, still replaces it.
 
 - Admin bootstrap uses a mandatory tenancy dialog with explicit final confirmation. Normal navigation and pages stay hidden until setup completes; setup remains subscribed across navigation, with security, sign-out and failure recovery available.
