@@ -248,7 +248,7 @@ and credential separation before enabling private package registries.
 ## Operate and maintain
 
 ```sh
-starter-workers status              # Docker, last poll, active jobs, configuration, expiry warning
+starter-workers status              # Docker, last poll, failures, maintenance schedule, active jobs, expiry warning
 starter-workers status --watch
 starter-workers images             # image IDs, scopes, creation and last-use times
 starter-workers logs --follow       # manager log (Linux: also journalctl --user -u POOL -f)
@@ -258,10 +258,43 @@ starter-workers cleanup
 ```
 
 Keep Docker and the host available. The manager checks for compatible upstream tool refreshes daily
-when idle; it validates replacements before promoting them. It does not upgrade your application's
+when idle; it validates replacements before promoting them. A failed daily maintenance run is retried
+after 15 minutes, doubling to at most six hours, and the schedule in `maintenance.json` survives
+restarts. Status shows the last error and the next attempt. It does not upgrade your application's
 lockfile. `starter-workers refresh` prepares/validates a refreshed environment for the committed
 checkout immediately. If a refresh fails, inspect the error and fix it; an incompatible image is
 never silently substituted. Runner security updates may require prompt operator action.
+
+The manager polls every 15 seconds. After a failed poll it waits longer, doubling up to ten minutes,
+and a GitHub rate limit pauses polling until GitHub's reset time (at most an hour). A job or
+organization member that fails preparation or admission is retried with its own backoff, from one
+minute up to 30 minutes, while other jobs continue. The manager credential authenticates every
+GitHub API request, including the runner, Bun and Convex release lookups. Anonymous requests would
+share GitHub's 60-per-hour limit with every other client behind the same public IP. Release
+downloads never carry the credential. They stream to disk, are verified against the release's
+SHA-256 digest and are cached by that digest in `release-cache/`, so a refresh does not download an
+unchanged asset again. When admission is refused for disk space or the image budget while the
+manager is idle, it runs cleanup once before rechecking.
+
+Queued and in-progress runs are admitted oldest first. The manager reads up to 500 runs per status
+and logs once when a backlog exceeds that. In organization mode, listing a member's runs reuses an
+access check made within five minutes, but preparation and runner registration always recheck the
+repository's visibility, identity and runner-group membership. Conditional requests answered with
+`304 Not Modified` do not count against the credential's rate limit.
+
+The manager removes each JIT runner registration when its worker exits. If a removal fails, it is
+retried on later polls and listed as `pendingRunnerRemovals` in status. Startup, idle maintenance
+and any registration attempt whose response was lost remove this installation's registrations that
+no running worker uses; runners from other installations or other tools are never touched.
+
+On macOS the service writes to `logs/manager.log`. When the file exceeds 10 MiB the manager keeps the
+most recent 10 MiB in `logs/manager.log.1` and empties the live file. Linux services log to the user
+journal. Cleanup also removes the `source.git` fetch cache, release-cache entries unused for seven
+days and worker logs older than seven days. An update keeps only the current and previous
+installations under `versions/`.
+
+Lock files record the owner's PID and the boot it started in. A lock left behind by a crash or
+reboot does not block startup, updates or uninstall, even if another process later reuses its PID.
 
 `starter-workers auth replace --token-expires YYYY-MM-DD` prompts for and validates a new dedicated
 token before storing it and recording its expiry. Status warns within 14 days of

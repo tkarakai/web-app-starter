@@ -61,7 +61,7 @@ test('guided preparation resumes authenticated incomplete installations for both
         assert.deepEqual(args, ['setup']);
         assert.deepEqual(JSON.parse(fs.readFileSync(path.join(home, 'config.json'), 'utf8')), config);
         assert.equal(fs.readFileSync(path.join(home, 'token'), 'utf8'), 'private-manager-credential');
-        fs.writeFileSync(path.join(home, 'daemon.lock'), 'running');
+        fs.mkdirSync(path.join(home, 'daemon.lock'), { recursive: true }); fs.writeFileSync(path.join(home, 'daemon.lock', 'owner'), String(process.pid));
         fs.writeFileSync(path.join(home, 'status.json'), JSON.stringify({ polled: new Date().toISOString() }));
       }
     });
@@ -108,7 +108,7 @@ test('installed artifact truncation and missing receipts resume both roles witho
           if (args[0] === 'setup') await install(c);
           if (args[0] === 'service') {
             assert.equal(await installationComplete(c.pool), true);
-            await fs.writeFile(path.join(home, 'daemon.lock'), 'running');
+            await fs.mkdir(path.join(home, 'daemon.lock'), { recursive: true }); await fs.writeFile(path.join(home, 'daemon.lock', 'owner'), String(process.pid));
             await fs.writeFile(path.join(home, 'status.json'), JSON.stringify({ polled: new Date().toISOString() }));
           }
         });
@@ -129,11 +129,11 @@ test('installed artifact truncation and missing receipts resume both roles witho
         assert.equal(await fs.readFile(wrapper, 'utf8'), 'truncated while running');
         await fs.writeFile(wrapper, contents);
         assert.equal(await installationComplete(c.pool), true);
-        await fs.rm(path.join(home, 'daemon.lock'));
+        await fs.rm(path.join(home, 'daemon.lock'), { recursive: true });
         calls.length = 0;
         await host.prepare(role, home);
         assert.deepEqual(calls, [role === 'verify' ? ['check', '--install'] : ['check'], ['service', 'start']]);
-        await fs.rm(path.join(home, 'daemon.lock'));
+        await fs.rm(path.join(home, 'daemon.lock'), { recursive: true });
       }
     }
   `], { env: { ...process.env, HOME: root, STARTER_WORKERS_HOME: path.join(root, 'installation') }, stdio: 'pipe' });

@@ -241,6 +241,51 @@ assert.equal(await core.exists(path.join(core.home, 'daemon.lock')), false);
 `);
 });
 
+test('locks from an earlier boot are stale even when their PID is alive; status checks need a live owner', async t => {
+  const dir = await fixture(t);
+  await run(dir, `
+const { bootId, lock, lockHeld } = await import(path.join(base, 'manager.ts'));
+const boot = await bootId();
+assert.match(boot, /^[a-f0-9]{16}$/, 'the host exposes a boot identity');
+const directory = path.join(core.home, 'daemon.lock');
+assert.equal(await lockHeld('daemon'), false);
+await fs.mkdir(directory);
+assert.equal(await lockHeld('daemon'), false, 'an abandoned lock directory is not a running manager');
+await fs.writeFile(path.join(directory, 'daemon.owner-old.boot-' + 'f'.repeat(16)), String(process.pid));
+assert.equal(await lockHeld('daemon'), false, 'a PID recorded before a reboot may belong to an unrelated process');
+await lock('daemon', async () => {
+  assert.equal(await lockHeld('daemon'), true);
+  const [owner] = await fs.readdir(directory);
+  assert(owner.endsWith('.boot-' + boot));
+  assert.equal(await fs.readFile(path.join(directory, owner), 'utf8'), String(process.pid), 'older managers still read a bare PID');
+  await assert.rejects(lock('daemon', async () => assert.fail('overlapping owner')), /Another worker operation/);
+});
+assert.equal(await core.exists(directory), false);
+await fs.mkdir(directory);
+await fs.writeFile(path.join(directory, 'legacy-owner'), String(process.pid));
+assert.equal(await lockHeld('daemon'), true, 'a legacy owner without a boot tag falls back to its PID');
+await fs.rm(directory, { recursive: true });
+`);
+});
+
+test('manager log rotation keeps a bounded tail and later appends continue in the truncated file', async t => {
+  const dir = await fixture(t);
+  await run(dir, `
+const { rotateManagerLog } = await import(path.join(base, 'images.ts'));
+assert.equal(rotateManagerLog(16), false, 'a missing log (systemd journal) is a no-op');
+await fs.mkdir(path.join(core.home, 'logs'));
+const file = path.join(core.home, 'logs/manager.log');
+const handle = await fs.open(file, 'a');
+await handle.write('first line\\nsecond line\\nthird\\n');
+assert.equal(rotateManagerLog(64), false);
+assert.equal(rotateManagerLog(16), true);
+assert.equal(await fs.readFile(file + '.1', 'utf8'), 'third\\n', 'the kept tail starts at a line boundary');
+await handle.write('after\\n');
+await handle.close();
+assert.equal(await fs.readFile(file, 'utf8'), 'after\\n');
+`);
+});
+
 test('separate installations keep service executables and convenience ownership independent', async t => {
   const dir = await fixture(t);
   await mkdir(path.join(dir, 'second'));
@@ -275,6 +320,8 @@ assert.equal(await installationComplete(c.pool), true);
 await removeConvenienceCommand();
 `, 'second');
   assert.deepEqual(await readFile(convenience), original);
+  await run(dir, `const { install } = await import(path.join(base, 'service.ts')); await install(await core.config());`, 'second');
+  assert.equal((await readdir(path.join(dir, 'second/versions'))).length, 2, 'only current and previous installations are kept');
   assert.equal(JSON.parse(await command(convenience, ['status'])).pool, 'pool');
   assert.equal(JSON.parse(await command(path.join(dir, 'second/starter-workers'), ['status'])).pool, 'second');
 });
@@ -409,6 +456,71 @@ test('failed refresh preserves active tools and catalog until exact-source offli
   assert.equal(state.calls.some((a: string[]) => a[0] === 'commit'), false);
 });
 
+test('release metadata uses the manager credential while asset downloads carry none', async t => {
+  const { dir, sha, prepare } = await preparationFixture(t);
+  await run(dir, prepare.replace('globalThis.fetch = async url => {', `const seen = [];
+globalThis.fetch = async (url, init) => {
+  seen.push([String(url), new Headers(init?.headers).get('authorization')]);
+  url = String(url);
+  if (!url.startsWith('https://api.github.com')) return new Response(bytes);
+  return realFetch(url);
+};
+const realFetch = async url => {`).replace("'branch-test', true);", "'branch-test', true, 'manager-credential');" + `
+const metadata = seen.filter(([url]) => url.startsWith('https://api.github.com/'));
+const downloads = seen.filter(([url]) => !url.startsWith('https://api.github.com/'));
+assert.deepEqual(metadata.map(([url]) => url.split('/').slice(4, 6).join('/')), ['actions/runner', 'oven-sh/bun', 'get-convex/convex-backend']);
+assert(metadata.every(([, authorization]) => authorization === 'Bearer manager-credential'), 'release metadata must not use the anonymous per-IP quota');
+assert.equal(downloads.length, 1, 'the fixture assets share one digest, so one cached download serves all three');
+assert(downloads.every(([url, authorization]) => url.startsWith('https://github.com/') && authorization === null), 'downloads must never carry the credential');
+seen.length = 0;
+await prepare(c, ${JSON.stringify(dir)}, ${JSON.stringify(sha)}, 'branch-test', true, 'manager-credential');
+assert.equal(seen.filter(([url]) => !url.startsWith('https://api.github.com/')).length, 0, 'a refresh reuses cached release assets with the same digest');
+const cache = await fs.readdir(path.join(core.home, 'release-cache'));
+assert.deepEqual(cache, [core.hash(bytes)]);
+await fs.writeFile(path.join(core.home, 'release-cache', cache[0]), 'corrupted');
+await prepare(c, ${JSON.stringify(dir)}, ${JSON.stringify(sha)}, 'branch-test', true, 'manager-credential');
+assert.equal(seen.filter(([url]) => !url.startsWith('https://api.github.com/')).length, 1, 'a corrupted cache entry is downloaded again');
+assert.equal(await fs.readFile(path.join(core.home, 'release-cache', cache[0]), 'utf8'), bytes.toString());
+`));
+});
+
+test('failed maintenance backs off and persists its schedule instead of retrying every poll', async t => {
+  const dir = await fixture(t);
+  await run(dir, `
+const { maintain, maintenanceFile } = await import(path.join(base, 'manager.ts'));
+const { GitHubError } = await import(path.join(base, 'github.ts'));
+let now = 1_000_000_000, attempts = 0;
+const clock = () => now;
+const failing = async () => { attempts++; throw new Error('fetch failed'); };
+let state = await maintain(failing, clock);
+assert.equal(attempts, 1);
+assert.deepEqual([state.failures, state.next - now], [1, 15 * 60_000]);
+assert.match(state.error, /fetch failed/);
+for (const elapsed of [15_000, 60_000, 14 * 60_000]) { now = 1_000_000_000 + elapsed; await maintain(failing, clock); }
+assert.equal(attempts, 1, 'polls before the backoff expires must not retry maintenance');
+now = state.next;
+state = await maintain(failing, clock);
+assert.deepEqual([attempts, state.failures, state.next - now], [2, 2, 30 * 60_000]);
+for (let n = 0; n < 8; n++) { now = state.next; state = await maintain(failing, clock); }
+assert.equal(state.next - now, 6 * 3600_000, 'backoff is capped at six hours');
+now = state.next;
+state = await maintain(async () => { attempts++; throw new GitHubError('limited', 403, now + 7 * 3600_000); }, clock);
+assert.equal(state.next - now, 7 * 3600_000 + 1000, 'a GitHub reset later than the backoff is honoured');
+assert.deepEqual(await core.readJson(maintenanceFile()), state, 'the schedule survives a manager restart');
+now = state.next;
+state = await maintain(async () => { attempts++; }, clock);
+assert.deepEqual([state.failures, state.next - now, state.error], [0, 86400_000, undefined]);
+const completed = attempts;
+now += 86400_000 - 1;
+await maintain(async () => { attempts++; }, clock);
+assert.equal(attempts, completed, 'successful maintenance runs once a day');
+await fs.writeFile(maintenanceFile(), 'not json');
+now += 1;
+state = await maintain(async () => { attempts++; }, clock);
+assert.equal(attempts, completed + 1, 'an unreadable schedule runs maintenance instead of failing every poll');
+`);
+});
+
 test('update allows preparation longer than the ordinary command budget', async t => {
   const dir = await fixture(t);
   const target = path.join(dir, 'platform/tooling/ci-workers');
@@ -477,8 +589,10 @@ assert.equal((await core.catalog()).environments.length, 2);
 await fs.rm(marker);
 await fs.mkdir(path.join(core.home, 'logs'));
 for (const file of ['manager.log', 'disposable.log']) { const target = path.join(core.home, 'logs', file); await fs.writeFile(target, 'log'); await fs.utimes(target, new Date(old), new Date(old)); }
+await fs.mkdir(path.join(core.home, 'source.git/objects'), { recursive: true });
 await cleanup({ ...c, localOnly: true }, false);
 assert.equal((await core.catalog()).environments.length, 0);
+assert.equal(await core.exists(path.join(core.home, 'source.git')), false, 'cleanup prunes the source mirror');
 assert.equal(await fs.readFile(path.join(core.home, 'logs/manager.log'), 'utf8'), 'log');
 assert.equal(await core.exists(path.join(core.home, 'logs/disposable.log')), false);
 `);
@@ -489,6 +603,7 @@ test('drain requires current pause acknowledgement and all admitted work to fini
   await run(dir, `
 await core.save(path.join(core.home, 'config.json'), c);
 await fs.mkdir(path.join(core.home, 'daemon.lock'));
+await fs.writeFile(path.join(core.home, 'daemon.lock', 'owner'), String(process.pid));
 await core.save(path.join(core.home, 'status.json'), { pauseRequest: 'old', paused: true, active: [] });
 const { main } = await import(path.join(base, 'cli.ts'));
 let finished = false;
@@ -575,6 +690,7 @@ process.stdin.pause = () => process.stdin;
 globalThis.fetch = async () => Response.json({ private: true });
 await core.save(path.join(core.home, 'config.json'), { ...c, concurrency: 1, paused: false, localOnly: true, tokenExpiry: 'old' });
 await fs.mkdir(path.join(core.home, 'daemon.lock'));
+await fs.writeFile(path.join(core.home, 'daemon.lock', 'owner'), String(process.pid));
 const { main } = await import(path.join(base, 'cli.ts'));
 const authenticating = main(['auth', 'replace']);
 for (let n = 0; n < 100 && process.stdin.listenerCount('data') === 0; n++) await new Promise(resolve => setTimeout(resolve, 10));

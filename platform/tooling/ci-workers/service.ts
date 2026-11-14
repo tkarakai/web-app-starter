@@ -3,6 +3,7 @@ import os from 'node:os';
 import { cp, mkdir, readFile, readlink, rm, symlink, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { assert, command, exists, hash, home, save, type Config } from './core.ts';
+import { lockHeld } from './manager.ts';
 
 const xml = (s: string): string => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;');
 const shell = (s: string): string => `'${s.replaceAll("'", "'\\''")}'`;
@@ -20,7 +21,7 @@ export async function installationComplete(pool: string, directory: string = hom
   } catch { return false; }
 }
 export async function install(c: Config): Promise<string> {
-  assert(!await exists(path.join(home, 'daemon.lock')), 'Stop the manager before installing');
+  assert(!await lockHeld('daemon'), 'Stop the manager before installing');
   await rm(path.join(home, 'installation.json'), { force: true });
   const source = path.dirname(fileURLToPath(import.meta.url));
   const target = path.join(home, 'versions', `${Date.now()}-${hash(source).slice(0, 8)}`);
@@ -28,7 +29,10 @@ export async function install(c: Config): Promise<string> {
   const current = path.join(home, 'current');
   if (await exists(current)) { const old = await readlink(current); await rm(path.join(home, 'previous'), { force: true }); await symlink(old, path.join(home, 'previous')); }
   const replacement = path.join(home, 'current.next'); await rm(replacement, { force: true }); await symlink(target, replacement);
-  const { rename } = await import('node:fs/promises'); await rename(replacement, current);
+  const { readdir, rename } = await import('node:fs/promises'); await rename(replacement, current);
+  // Keep only the current and previous installations.
+  const kept = new Set([target, await readlink(path.join(home, 'previous')).catch(() => '')].map(entry => path.basename(entry)));
+  for (const entry of await readdir(path.join(home, 'versions'))) if (!kept.has(entry)) await rm(path.join(home, 'versions', entry), { recursive: true, force: true });
   const wrapper = path.join(home, 'starter-workers');
   await writeFile(wrapper, `#!/bin/sh\nexport STARTER_WORKERS_HOME=${shell(home)}\nexec ${shell(process.execPath)} ${shell(path.join(current, 'cli.ts'))} "$@"\n`, { mode: 0o755 });
   if (c.convenienceCommand !== false) {

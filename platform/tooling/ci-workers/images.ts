@@ -1,4 +1,6 @@
-import { cp, mkdtemp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { closeSync, createReadStream, fstatSync, openSync, readSync, truncateSync, writeFileSync } from 'node:fs';
+import { copyFile, cp, mkdtemp, mkdir, open, readFile, readdir, rename, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { api } from './github.ts';
@@ -8,20 +10,54 @@ import { launch, recipe } from './runtime.ts';
 
 interface Asset { name: string; browser_download_url: string; digest: string; }
 interface Release { tag_name: string; assets: Asset[]; }
-async function asset(repository: string, tag: string, filename: string, destination: string): Promise<string> {
-  const release = await api<Release>(`/repos/${repository}/releases/${tag}`);
+// Release metadata uses the manager credential: anonymous requests share a 60/hour quota per public IP
+// with every other client on the network. The download itself carries no credential.
+async function asset(repository: string, tag: string, filename: string, destination: string, credential?: string): Promise<string> {
+  const release = await api<Release>(`/repos/${repository}/releases/${tag}`, credential);
   const a = release.assets.find(a => a.name === filename.replace('{version}', release.tag_name.replace(/^v/, '')));
   assert(a && /^sha256:[a-f0-9]{64}$/.test(a.digest), `No authenticated checksum for ${repository}/${filename}`);
   const url = new URL(a.browser_download_url);
   assert(url.protocol === 'https:' && url.hostname === 'github.com' && url.pathname.startsWith(`/${repository}/releases/download/`), 'Unexpected release asset URL');
-  const response = await fetch(url, { signal: AbortSignal.timeout(180_000) });
-  assert(response.ok && response.body, 'Release download failed');
-  const chunks: Buffer[] = []; let size = 0;
-  for await (const chunk of response.body) { size += chunk.byteLength; assert(size < 400 * 1024 * 1024, 'Release asset too large'); chunks.push(Buffer.from(chunk)); }
-  const bytes = Buffer.concat(chunks);
-  assert(hash(bytes) === a.digest.slice(7), 'Release asset checksum mismatch');
-  await writeFile(destination, bytes);
+  await copyFile(await cachedDownload(url, a.digest.slice(7)), destination);
   return release.tag_name;
+}
+export const releaseCache = (): string => path.join(home, 'release-cache');
+export const releaseAssetLimit = 400 * 1024 * 1024;
+async function fileDigest(file: string): Promise<string> {
+  const digest = createHash('sha256');
+  for await (const chunk of createReadStream(file)) digest.update(chunk as Buffer);
+  return digest.digest('hex');
+}
+/**
+ * Release assets are cached by their authenticated digest, so unchanged releases are not downloaded again on
+ * every toolchain refresh. Downloads stream to disk while hashing instead of buffering the asset in memory.
+ */
+async function cachedDownload(url: URL, digest: string): Promise<string> {
+  const directory = releaseCache();
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  const file = path.join(directory, digest);
+  if (await exists(file)) {
+    if (await fileDigest(file) === digest) { const now = new Date(); await utimes(file, now, now); return file; }
+    await rm(file, { force: true });
+  }
+  const response = await fetch(url, { signal: AbortSignal.timeout(15 * 60_000) });
+  assert(response.ok && response.body, 'Release download failed');
+  const temporary = await mkdtemp(path.join(directory, 'download-'));
+  try {
+    const partial = path.join(temporary, 'asset');
+    const handle = await open(partial, 'wx', 0o600);
+    const hasher = createHash('sha256'); let size = 0;
+    try {
+      for await (const chunk of response.body) {
+        size += chunk.byteLength;
+        assert(size < releaseAssetLimit, 'Release asset too large');
+        hasher.update(chunk); await handle.write(chunk);
+      }
+    } finally { await handle.close(); }
+    assert(hasher.digest('hex') === digest, 'Release asset checksum mismatch');
+    await rename(partial, file);
+    return file;
+  } finally { await rm(temporary, { recursive: true, force: true }); }
 }
 async function ensureBuilder(c: Config): Promise<void> {
   const name = `${c.pool}-build`;
@@ -42,7 +78,7 @@ export function toolLayout(image: string): string {
   assert(/^sha256:[a-f0-9]{64}$/.test(image), 'Expected immutable tool image ID');
   return path.join(home, 'tool-layouts', image.slice(7));
 }
-async function toolEnvironment(c: Config, input: Inputs, refresh: boolean, state: Catalog, directory: string, tag: string): Promise<{ tools: ToolImage; family: string; layout: string }> {
+async function toolEnvironment(c: Config, input: Inputs, refresh: boolean, state: Catalog, directory: string, tag: string, credential?: string): Promise<{ tools: ToolImage; family: string; layout: string }> {
   const engine = JSON.parse(await docker(c, ['info', '--format', '{{json .}}'])) as { Architecture: string; OSType: string };
   assert(engine.OSType === 'linux', 'Linux Docker containers are required');
   const arm = ['aarch64', 'arm64'].includes(engine.Architecture);
@@ -62,9 +98,9 @@ async function toolEnvironment(c: Config, input: Inputs, refresh: boolean, state
   await docker(c, ['pull', nodeTag], { stream: true, timeout: 300_000 });
   const nodeImage = await docker(c, ['image', 'inspect', '--format', '{{index .RepoDigests 0}}', nodeTag]);
   const download = (file: string): string => path.join(context, 'downloads', file);
-  const runner = await asset('actions/runner', 'latest', `actions-runner-linux-${arm ? 'arm64' : 'x64'}-{version}.tar.gz`, download('runner.tar.gz'));
-  await asset('oven-sh/bun', `tags/bun-v${input.bun}`, `bun-linux-${arm ? 'aarch64' : 'x64'}.zip`, download('bun.zip'));
-  const backend = await asset('get-convex/convex-backend', 'latest', `convex-local-backend-${arm ? 'aarch64' : 'x86_64'}-unknown-linux-gnu.zip`, download('backend.zip'));
+  const runner = await asset('actions/runner', 'latest', `actions-runner-linux-${arm ? 'arm64' : 'x64'}-{version}.tar.gz`, download('runner.tar.gz'), credential);
+  await asset('oven-sh/bun', `tags/bun-v${input.bun}`, `bun-linux-${arm ? 'aarch64' : 'x64'}.zip`, download('bun.zip'), credential);
+  const backend = await asset('get-convex/convex-backend', 'latest', `convex-local-backend-${arm ? 'aarch64' : 'x86_64'}-unknown-linux-gnu.zip`, download('backend.zip'), credential);
   const identity = hash(JSON.stringify([family, nodeImage, runner, backend, new Date().toISOString().slice(0, 10)]));
   const args = [`NODE_IMAGE=${nodeImage}`, `BUN_VERSION=${input.bun}`, `PLAYWRIGHT_VERSION=${input.playwright}`, `BACKEND_VERSION=${backend}`, `TOOL_KEY=${identity}`];
   const layout = path.join(directory, 'layout');
@@ -83,7 +119,7 @@ async function toolEnvironment(c: Config, input: Inputs, refresh: boolean, state
   await launch(c, image, ['smoke']);
   return { tools: { image, manifest, created: new Date().toISOString() }, family, layout };
 }
-export async function prepare(c: Config, git: string, sha: string, scope: string, refresh = false): Promise<Environment> {
+export async function prepare(c: Config, git: string, sha: string, scope: string, refresh = false, credential?: string): Promise<Environment> {
   const input = await inputs(git, sha);
   const state = await catalog();
   const retained = new Set([state.tools, ...state.environments.flatMap(e => [e.image, e.tools]), ...Object.values(state.toolchains ?? {}).map(t => t.image)]);
@@ -94,7 +130,7 @@ export async function prepare(c: Config, git: string, sha: string, scope: string
   const promotions: string[] = [];
   let promoted = false, movedLayout: string | undefined;
   try {
-    const { tools, family, layout } = await toolEnvironment(c, input, refresh, state, directory, toolTag);
+    const { tools, family, layout } = await toolEnvironment(c, input, refresh, state, directory, toolTag, credential);
     if (c.updateRole === 'deliver') {
       // Publish only independently built tools: no dependency seed or app execution.
       const destination = toolLayout(tools.image);
@@ -148,9 +184,30 @@ export async function prepare(c: Config, git: string, sha: string, scope: string
   }
 }
 export async function rotateLogs(): Promise<void> {
-  for (const folder of ['logs', 'evidence']) {
+  for (const folder of ['logs', 'evidence', 'release-cache']) {
     const dir = path.join(home, folder);
     if (!await exists(dir)) continue;
-    for (const file of await readdir(dir)) if (!(folder === 'logs' && file === 'manager.log') && Date.now() - (await stat(path.join(dir, file))).mtimeMs > 7 * 86400_000) await rm(path.join(dir, file));
+    for (const file of await readdir(dir)) if (!(folder === 'logs' && file.startsWith('manager.log')) && Date.now() - (await stat(path.join(dir, file))).mtimeMs > 7 * 86400_000) await rm(path.join(dir, file), { recursive: true, force: true });
   }
+}
+export const managerLogLimit = 10 * 1024 * 1024;
+/**
+ * launchd appends service output to logs/manager.log (systemd uses the journal instead). Keep the most recent
+ * `limit` bytes in manager.log.1 and truncate the live file in place: the service holds it open in append
+ * mode, so later writes continue at the new end. Synchronous calls keep this process's own writes ordered.
+ */
+export function rotateManagerLog(limit = managerLogLimit): boolean {
+  const file = path.join(home, 'logs', 'manager.log');
+  let descriptor: number;
+  try { descriptor = openSync(file, 'r'); } catch { return false; }
+  try {
+    const size = fstatSync(descriptor).size;
+    if (size <= limit) return false;
+    const tail = Buffer.alloc(limit);
+    const read = readSync(descriptor, tail, 0, limit, size - limit);
+    const start = tail.indexOf(10) + 1;
+    writeFileSync(`${file}.1`, tail.subarray(start > 0 && start < read ? start : 0, read), { mode: 0o600 });
+  } finally { closeSync(descriptor); }
+  truncateSync(file, 0);
+  return true;
 }
