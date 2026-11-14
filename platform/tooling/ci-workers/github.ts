@@ -60,6 +60,19 @@ export async function api<T>(endpoint: string, credential?: string, body?: unkno
   }
   return data as T;
 }
+/** Read up to `maxPages` pages of a list endpoint; `complete` is false when more items remain. */
+export async function listPages<T>(endpoint: string, key: string, credential: string | undefined, maxPages: number): Promise<{ items: T[]; complete: boolean }> {
+  const items: T[] = [];
+  const separator = endpoint.includes('?') ? '&' : '?';
+  for (let page = 1; page <= maxPages; page++) {
+    const response = await api<Record<string, T[]>>(`${endpoint}${separator}per_page=100&page=${page}`, credential);
+    const batch = response[key];
+    assert(Array.isArray(batch), `Invalid GitHub list response for ${endpoint.split('?')[0]}`);
+    items.push(...batch);
+    if (batch.length < 100) return { items, complete: true };
+  }
+  return { items, complete: false };
+}
 export async function privateRepository(c: Config, credential: string): Promise<{ id: number; private: boolean; default_branch: string }> {
   assertPrivateMode(c);
   const info = await api<{ id: number; private: boolean; default_branch: string }>(`/repos/${c.repo}`, credential);
@@ -75,7 +88,8 @@ export async function remoteSource(c: Config, sha: string, credential: string): 
     GIT_CONFIG_COUNT: '3', GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader',
     GIT_CONFIG_VALUE_0: `Authorization: Basic ${Buffer.from(`x-access-token:${credential}`).toString('base64')}`,
     GIT_CONFIG_KEY_1: 'core.hooksPath', GIT_CONFIG_VALUE_1: '/dev/null', GIT_CONFIG_KEY_2: 'credential.helper', GIT_CONFIG_VALUE_2: '' };
-  await command('git', ['-C', mirror, 'fetch', '--no-tags', '--depth=1', `https://github.com/${c.repo}.git`, sha], { env });
+  // A first fetch of a large repository can exceed the ordinary command budget on slow links.
+  await command('git', ['-C', mirror, 'fetch', '--no-tags', '--depth=1', `https://github.com/${c.repo}.git`, sha], { env, timeout: 15 * 60_000 });
   return mirror;
 }
 
@@ -92,7 +106,8 @@ export async function assertOrgAccess(c: Config, credential: string, repository 
   assert(info.private === true, 'Organization workers require private repositories');
   const group = await api<{ id: number; visibility: string; allows_public_repositories: boolean }>(`/orgs/${c.org}/actions/runner-groups/${c.runnerGroupId}`, credential);
   assert(group.id === c.runnerGroupId && group.visibility === 'selected' && !group.allows_public_repositories, 'Use a private, selected-repository runner group');
-  for (let page = 1; page <= 10; page++) {
+  // Page until the repository is found or the list ends; a truncated list must not read as a denial.
+  for (let page = 1; page <= 1000; page++) {
     const members = await api<{ repositories: { id: number }[] }>(`/orgs/${c.org}/actions/runner-groups/${c.runnerGroupId}/repositories?per_page=100&page=${page}`, credential);
     if (members.repositories.some(member => member.id === info.id)) return info.id;
     if (members.repositories.length < 100) break;

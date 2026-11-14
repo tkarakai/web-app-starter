@@ -1,10 +1,10 @@
 import { mkdtemp, readFile, readdir, rename, rm, rmdir, statfs, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { assignment } from './assignment.ts';
-import { api, assertOrgAccess, GitHubError, privateRepository, remoteSource, token } from './github.ts';
-import { prepare, rotateLogs } from './images.ts';
+import { api, assertOrgAccess, GitHubError, listPages, privateRepository, remoteSource, token } from './github.ts';
+import { prepare, rotateLogs, rotateManagerLog } from './images.ts';
 import { launch, reconcile } from './runtime.ts';
-import { assert, assertPrivateMode, catalog, config, configuredRepos, docker, exists, expiredEnvironments, hash, home, label, preparedScope, readJson, save, sourceRequest, type Config, type Job, type Run } from './core.ts';
+import { assert, assertPrivateMode, catalog, command, config, configuredRepos, docker, exists, expiredEnvironments, hash, home, label, preparedScope, readJson, save, sourceRequest, type Config, type Job, type Run } from './core.ts';
 
 export function runnerName(pool: string, jobId: number, now = Date.now()): string {
   // Keep the cleanup prefix intact; two base-36 safe integers fit the 64-character limit.
@@ -76,10 +76,115 @@ async function pause(milliseconds: number, stopped: () => boolean): Promise<void
   while (!stopped() && Date.now() < until) await new Promise(resolve => setTimeout(resolve, Math.min(1000, until - Date.now())));
 }
 
+/**
+ * JIT registrations owned by this installation. Failed deletions are retried on later polls, and a sweep removes
+ * owned registrations no running worker uses (for example after a lost generate-jitconfig response).
+ */
+export class Registrations {
+  readonly active = new Set<number>();
+  readonly #base: string;
+  readonly #pool: string;
+  readonly #pending = new Set<number>();
+  constructor(base: string, pool: string) { this.#base = base; this.#pool = pool; }
+  get pending(): number[] { return [...this.#pending]; }
+  async remove(id: number, credential: string): Promise<void> {
+    try { await api(`${this.#base}/actions/runners/${id}`, credential, undefined, 'DELETE'); }
+    catch (error) {
+      if (!(error instanceof GitHubError && error.status === 404)) {
+        if (!this.#pending.has(id)) process.stderr.write(`${new Date().toISOString()} Runner registration ${id} removal failed; retrying on later polls: ${String(error)}\n`);
+        this.#pending.add(id);
+        return;
+      }
+    }
+    this.#pending.delete(id);
+  }
+  async retry(credential: string): Promise<void> { for (const id of this.pending) await this.remove(id, credential); }
+  /** Remove this installation's idle registrations; never another installation's or anybody else's runners. */
+  async sweep(credential: string): Promise<void> {
+    const { items, complete } = await listPages<{ id: number; name: string }>(`${this.#base}/actions/runners`, 'runners', credential, 10);
+    assert(complete, 'Runner listing exceeds 1000; cannot complete owned-registration reconciliation');
+    for (const runner of items) if (runner.name.startsWith(`${this.#pool}-`) && !this.active.has(runner.id)) await this.remove(runner.id, credential);
+  }
+}
+/** Report a truncated listing once when it starts, not on every poll. */
+export function noticeTruncation(notices: Set<string>, key: string, complete: boolean, message: string): void {
+  if (complete) { notices.delete(key); return; }
+  if (notices.has(key)) return;
+  notices.add(key);
+  process.stderr.write(`${new Date().toISOString()} ${message}\n`);
+}
+/** Queued and in-progress runs, oldest first so a backlog drains in order (GitHub lists newest first). */
+export async function schedulableRuns(repo: string, credential: string, notices: Set<string>): Promise<Run[]> {
+  const runs = new Map<number, Run>();
+  let complete = true;
+  for (const status of ['queued', 'in_progress']) {
+    const listed = await listPages<Run>(`/repos/${repo}/actions/runs?status=${status}`, 'workflow_runs', credential, 5);
+    complete &&= listed.complete;
+    for (const run of listed.items) runs.set(run.id, run);
+  }
+  noticeTruncation(notices, `runs ${repo}`, complete, `${repo} has more than 500 queued or in-progress runs; newer runs wait until the backlog shrinks`);
+  return [...runs.values()].sort((a, b) => a.id - b.id);
+}
+export async function runJobs(repo: string, runId: number, credential: string, notices: Set<string>): Promise<Job[]> {
+  const listed = await listPages<Job>(`/repos/${repo}/actions/runs/${runId}/jobs`, 'jobs', credential, 10);
+  noticeTruncation(notices, `jobs ${repo} ${runId}`, listed.complete, `${repo} run ${runId} has more than 1000 jobs; only the first 1000 are scheduled`);
+  return listed.items;
+}
+/** Create a JIT registration; when the outcome is unknown, sweep so a lost response cannot leave one behind. */
+export async function register(registrations: Registrations, credential: string, endpoint: string, body: unknown): Promise<{ encoded_jit_config: string; runner: { id: number } }> {
+  try {
+    const jit = await api<{ encoded_jit_config: string; runner: { id: number } }>(endpoint, credential, body);
+    registrations.active.add(jit.runner.id);
+    return jit;
+  } catch (error) {
+    if (!(error instanceof GitHubError) || error.status >= 500) await registrations.sweep(credential).catch(() => undefined);
+    throw error;
+  }
+}
+function rotateLog(): void {
+  try { rotateManagerLog(); } catch (error) { process.stderr.write(`${new Date().toISOString()} Log rotation failed: ${String(error)}\n`); }
+}
+
+let bootIdentity: Promise<string> | undefined;
+/** Identifies the current boot, so a lock left before a reboot is stale even when its PID has been reused. */
+export function bootId(): Promise<string> {
+  bootIdentity ??= (async () => {
+    try {
+      const value = process.platform === 'linux' ? await readFile('/proc/sys/kernel/random/boot_id', 'utf8')
+        : /\bsec = (\d+)/.exec(await command('/usr/sbin/sysctl', ['-n', 'kern.boottime']))?.[1];
+      return value?.trim() ? hash(value.trim()).slice(0, 16) : '';
+    } catch { return ''; }
+  })();
+  return bootIdentity;
+}
+// Owner files hold the PID; the boot tag lives in the file name so older managers still read the PID.
+async function ownerAlive(directory: string, file: string, boot: string): Promise<boolean> {
+  const recorded = /\.boot-([a-f0-9]{16})$/.exec(file)?.[1];
+  if (recorded && boot && recorded !== boot) return false;
+  const pid = Number(await readFile(path.join(directory, file), 'utf8').catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return '0'; throw error; }));
+  if (!(pid > 0)) return false;
+  try { process.kill(pid, 0); return true; } catch (error) { return (error as NodeJS.ErrnoException).code !== 'ESRCH'; }
+}
+/** Whether a live process from this boot holds the named lock; an abandoned lock directory is not held. */
+export async function lockHeld(name: string, root = home): Promise<boolean> {
+  const directory = path.join(root, `${name}.lock`);
+  let owners: string[];
+  try { owners = await readdir(directory); }
+  catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT') return false;
+    if (code === 'ENOTDIR') return true; // Something else occupies the lock path; lock() cannot take it either.
+    throw error;
+  }
+  const boot = await bootId();
+  for (const file of owners) if (await ownerAlive(directory, file, boot)) return true;
+  return false;
+}
 export async function lock<T>(name: string, action: () => Promise<T>): Promise<T> {
   const directory = path.join(home, `${name}.lock`);
   const staging = await mkdtemp(path.join(home, `${name}.owner-`));
-  const owner = path.basename(staging);
+  const boot = await bootId();
+  const owner = path.basename(staging) + (boot ? `.boot-${boot}` : '');
   try {
     await writeFile(path.join(staging, owner), String(process.pid), { mode: 0o600 });
     for (;;) {
@@ -88,10 +193,7 @@ export async function lock<T>(name: string, action: () => Promise<T>): Promise<T
         if (!['EEXIST', 'ENOTEMPTY'].includes((error as { code: string }).code)) throw error;
         const owners = await readdir(directory).catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return []; throw error; });
         for (const file of owners) {
-          const pid = Number(await readFile(path.join(directory, file), 'utf8').catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return '0'; throw error; }));
-          let alive = false;
-          if (pid > 0) { try { process.kill(pid, 0); alive = true; } catch (error) { alive = (error as NodeJS.ErrnoException).code !== 'ESRCH'; } }
-          assert(!alive, `Another worker operation holds ${name}; wait for it to finish`);
+          assert(!await ownerAlive(directory, file, boot), `Another worker operation holds ${name}; wait for it to finish`);
           await rm(path.join(directory, file), { force: true });
         }
         await rmdir(directory).catch((error: NodeJS.ErrnoException) => { if (!['ENOENT', 'ENOTEMPTY', 'EEXIST'].includes(error.code!)) throw error; });
@@ -151,7 +253,8 @@ export async function cleanup(c: Config, dryRun: boolean): Promise<string[]> {
     await docker(c, ['buildx', 'prune', '--builder', `${c.pool}-build`, '--force', '--filter', 'until=168h', '--max-used-space', `${Math.max(2, Math.floor(c.diskGiB / 3))}gb`]);
     const layouts = path.join(home, 'tool-layouts');
     if (await exists(layouts)) for (const file of await readdir(layouts)) if (/^[a-f0-9]{64}$/.test(file) && !protectedTools.has(`sha256:${file}`)) await rm(path.join(layouts, file), { recursive: true, force: true });
-    for (const folder of ['candidates', 'builds', 'downloads']) await rm(path.join(home, folder), { recursive: true, force: true });
+    // The source mirror only caches shallow fetches of job revisions; the next job fetches its revision again.
+    for (const folder of ['candidates', 'builds', 'downloads', 'source.git']) await rm(path.join(home, folder), { recursive: true, force: true });
     await rotateLogs();
   }
   return [...deletions.map(e => e.image), ...orphaned];
@@ -170,7 +273,7 @@ export async function serve(): Promise<void> {
     assertPrivateMode(c);
     assert(!c.localOnly, 'Import a manager credential before starting the GitHub service');
     const active = new Map<number, Promise<void>>();
-    const activeRuns = new Map<number, number>();
+    const runIds = new Map<number, number>();
     let stop = false;
     for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, () => { stop = true; });
     let credential = await token();
@@ -178,16 +281,18 @@ export async function serve(): Promise<void> {
     let repo: Awaited<ReturnType<typeof privateRepository>>;
     await lock('mutation', async () => { await reconcile(c); });
     // Reconcile only registrations created by this installation, never somebody else's runners.
-    const registrations = await api<{ runners: { id: number; name: string }[] }>(`/repos/${c.repo}/actions/runners?per_page=100`, credential);
-    for (const runner of registrations.runners.filter(r => r.name.startsWith(`${c.pool}-`))) await api(`/repos/${c.repo}/actions/runners/${runner.id}`, credential, undefined, 'DELETE');
+    const registrations = new Registrations(`/repos/${c.repo}`, c.pool);
+    await registrations.sweep(credential);
     let failures = 0;
     const deferrals = new Deferrals();
+    const notices = new Set<string>();
     while (!stop) {
       let wait = pollInterval;
       try {
         c = await config(); credential = await token();
         repo = await privateRepository(c, credential);
-        for (const runId of new Set(activeRuns.values())) {
+        await registrations.retry(credential);
+        for (const runId of new Set(runIds.values())) {
           const current = await api<{ status: string }>(`/repos/${c.repo}/actions/runs/${runId}`, credential);
           if (current.status === 'completed') {
             const names = (await docker(c, ['ps', '-a', '--filter', `label=${label}=${c.pool}`, '--filter', `label=${label}.run=${runId}`, '--format', '{{.Names}}'])).split('\n').filter(n => n.endsWith('-worker'));
@@ -196,23 +301,10 @@ export async function serve(): Promise<void> {
         }
         if (!c.paused && active.size < c.concurrency) {
           await admissionCapacity(c, active.size === 0);
-          const runs: Run[] = [];
-          for (const status of ['queued', 'in_progress']) {
-            for (let page = 1; page <= 5; page++) {
-              const response = await api<{ workflow_runs: Run[] }>(`/repos/${c.repo}/actions/runs?status=${status}&per_page=100&page=${page}`, credential);
-              runs.push(...response.workflow_runs);
-              if (response.workflow_runs.length < 100) break;
-            }
-          }
-          for (const run of runs) {
+          for (const run of await schedulableRuns(c.repo, credential, notices)) {
             c = await config();
             if (stop || c.paused || active.size >= c.concurrency) break;
-            const jobs: Job[] = [];
-            for (let page = 1; page <= 5; page++) {
-              const response = await api<{ jobs: Job[] }>(`/repos/${c.repo}/actions/runs/${run.id}/jobs?per_page=100&page=${page}`, credential);
-              jobs.push(...response.jobs);
-              if (response.jobs.length < 100) break;
-            }
+            const jobs = await runJobs(c.repo, run.id, credential, notices);
             for (const job of jobs.filter(j => j.status === 'queued' && !active.has(j.id) && deferrals.ready(`job ${j.id}`))) {
               c = await config();
               if (stop || c.paused || active.size >= c.concurrency) break;
@@ -236,14 +328,14 @@ export async function serve(): Promise<void> {
                 assert(admitted.id === repo.id, 'Repository identity changed before registration');
                 const expected = assignment(c, run, request.sha, repo.id, request.job);
                 const name = runnerName(c.pool, job.id);
-                const jit = await api<{ encoded_jit_config: string; runner: { id: number } }>(`/repos/${c.repo}/actions/runners/generate-jitconfig`, credential, {
+                const jit = await register(registrations, credential, `/repos/${c.repo}/actions/runners/generate-jitconfig`, {
                   name, runner_group_id: 1, labels: ['self-hosted', 'Linux', c.pool, `starter-source-${request.sha}`, `starter-run-${run.id}`, ...(request.job ? [`starter-update-${request.job}`, `starter-attempt-${run.run_attempt}`] : [])], work_folder: '_work',
                 });
-                const runningConfig = c, runningToken = credential;
+                const runningToken = credential;
                 const task = launch(c, c.updateRole === 'deliver' ? environment.tools : environment.image, ['github'], jit.encoded_jit_config + '\n', undefined, expected)
                   .then(() => undefined).catch(error => { process.stderr.write(`Worker ${job.id}: ${String(error)}\n`); })
-                  .finally(async () => { await api(`/repos/${runningConfig.repo}/actions/runners/${jit.runner.id}`, runningToken, undefined, 'DELETE').catch(() => undefined); active.delete(job.id); activeRuns.delete(job.id); });
-                active.set(job.id, task); activeRuns.set(job.id, run.id);
+                  .finally(async () => { await registrations.remove(jit.runner.id, runningToken); registrations.active.delete(jit.runner.id); active.delete(job.id); runIds.delete(job.id); });
+                active.set(job.id, task); runIds.set(job.id, run.id);
                 deferrals.succeeded(`job ${job.id}`);
               } catch (error) { deferrals.failed(`job ${job.id}`, error); }
             }
@@ -251,6 +343,7 @@ export async function serve(): Promise<void> {
         }
         if (active.size === 0 && !c.paused) {
           await maintain(() => lock('mutation', async () => { await cleanup(c, false);
+            await registrations.sweep(credential);
             const state = await catalog();
             if (state.toolsCreated && Date.now() - Date.parse(state.toolsCreated) > maintenanceInterval) {
               const repository = await privateRepository(c, credential);
@@ -263,7 +356,7 @@ export async function serve(): Promise<void> {
         }
         c = await config();
         failures = 0;
-        await save(path.join(home, 'status.json'), { pauseRequest: c.pauseRequest, pid: process.pid, polled: new Date().toISOString(), active: [...active.keys()], paused: c.paused });
+        await save(path.join(home, 'status.json'), { pauseRequest: c.pauseRequest, pid: process.pid, polled: new Date().toISOString(), active: [...active.keys()], paused: c.paused, ...(registrations.pending.length ? { pendingRunnerRemovals: registrations.pending } : {}) });
       } catch (error) {
         failures++;
         wait = retryDelay(error, failureDelay(failures, pollInterval, 10 * 60_000), 3600_000);
@@ -271,6 +364,7 @@ export async function serve(): Promise<void> {
         process.stderr.write(`${new Date().toISOString()} ${String(error)} (failure ${failures}; next poll after ${retry})\n`);
         await save(path.join(home, 'status.json'), { pid: process.pid, error: String(error), failures, retry, active: [...active.keys()], polled: new Date().toISOString() });
       }
+      rotateLog();
       await pause(wait, () => stop);
     }
     await Promise.allSettled(active.values());
@@ -290,22 +384,27 @@ async function serveOrg(): Promise<void> {
     let credential = await token();
     for (const repo of configuredRepos(c)) await assertOrgAccess(c, credential, repo);
     await lock('mutation', () => reconcile(c));
-    const stale: number[] = [];
-    let listedAll = false;
-    for (let page = 1; page <= 10; page++) {
-      const registrations = await api<{ runners: { id: number; name: string }[] }>(`/orgs/${org}/actions/runners?per_page=100&page=${page}`, credential);
-      stale.push(...registrations.runners.filter(r => r.name.startsWith(`${c.pool}-`)).map(r => r.id));
-      if (registrations.runners.length < 100) { listedAll = true; break; }
-    }
-    assert(listedAll, 'Organization runner listing exceeds 1000; cannot complete owned-registration reconciliation');
-    for (const id of stale) await api(`/orgs/${org}/actions/runners/${id}`, credential, undefined, 'DELETE');
+    const registrations = new Registrations(`/orgs/${org}`, c.pool);
+    await registrations.sweep(credential);
     let failures = 0;
     const deferrals = new Deferrals();
+    const notices = new Set<string>();
+    // Listing a member's runs reuses a recent access check; preparation and registration always recheck.
+    const access = new Map<string, { id: number; until: number }>();
+    const memberAccess = async (repoName: string): Promise<number> => {
+      const cached = access.get(repoName.toLowerCase());
+      if (cached && cached.until > Date.now()) return cached.id;
+      access.delete(repoName.toLowerCase());
+      const id = await assertOrgAccess(c, credential, repoName);
+      access.set(repoName.toLowerCase(), { id, until: Date.now() + 5 * 60_000 });
+      return id;
+    };
     while (!stop) {
       let wait = pollInterval;
       try {
         c = await config(); credential = await token();
         assert(c.org === org && c.runnerGroupId, 'Organization configuration changed while running');
+        await registrations.retry(credential);
         for (const running of active.values()) {
           const run = await api<{ status: string }>(`/repos/${running.repo}/actions/runs/${running.runId}`, credential);
           if (run.status !== 'completed') continue;
@@ -320,23 +419,10 @@ async function serveOrg(): Promise<void> {
             if (stop || active.size >= c.concurrency) break;
             if (!deferrals.ready(`repository ${repoName}`)) continue;
             try {
-              const repoId = await assertOrgAccess(c, credential, repoName);
-              const runs: Run[] = [];
-              for (const status of ['queued', 'in_progress']) {
-                for (let page = 1; page <= 5; page++) {
-                  const response = await api<{ workflow_runs: Run[] }>(`/repos/${repoName}/actions/runs?status=${status}&per_page=100&page=${page}`, credential);
-                  runs.push(...response.workflow_runs);
-                  if (response.workflow_runs.length < 100) break;
-                }
-              }
-              for (const run of runs) {
+              const repoId = await memberAccess(repoName);
+              for (const run of await schedulableRuns(repoName, credential, notices)) {
                 if (stop || active.size >= c.concurrency) break;
-                const jobs: Job[] = [];
-                for (let page = 1; page <= 5; page++) {
-                  const response = await api<{ jobs: Job[] }>(`/repos/${repoName}/actions/runs/${run.id}/jobs?per_page=100&page=${page}`, credential);
-                  jobs.push(...response.jobs);
-                  if (response.jobs.length < 100) break;
-                }
+                const jobs = await runJobs(repoName, run.id, credential, notices);
                 for (const job of jobs.filter(j => j.status === 'queued' && !active.has(j.id) && deferrals.ready(`job ${j.id}`))) {
                   c = await config();
                   if (stop || c.paused || active.size >= c.concurrency || !configuredRepos(c).includes(repoName)) break;
@@ -349,6 +435,7 @@ async function serveOrg(): Promise<void> {
                       const pr = run.pull_requests[0];
                       if (commit.parents.length !== 2 || commit.parents[0].sha !== pr.base.sha || commit.parents[1].sha !== pr.head.sha) continue;
                     }
+                    assert(await assertOrgAccess(c, credential, repoName) === repoId, 'Repository identity changed before preparation');
                     const environment = await lock('mutation', async () => {
                       const git = await remoteSource(selected, request.sha, credential);
                       return prepare(selected, git, request.sha, preparedScope(selected, request.scope), false, credential);
@@ -356,9 +443,9 @@ async function serveOrg(): Promise<void> {
                     const current = await api<Job>(`/repos/${repoName}/actions/jobs/${job.id}`, credential);
                     c = await config();
                     if (stop || c.paused || current.status !== 'queued' || !configuredRepos(c).includes(repoName)) continue;
-                    await assertOrgAccess(c, credential, repoName);
+                    assert(await assertOrgAccess(c, credential, repoName) === repoId, 'Repository identity changed before registration');
                     const expected = assignment(selected, run, request.sha, repoId);
-                    const jit = await api<{ encoded_jit_config: string; runner: { id: number } }>(`/orgs/${org}/actions/runners/generate-jitconfig`, credential, {
+                    const jit = await register(registrations, credential, `/orgs/${org}/actions/runners/generate-jitconfig`, {
                       name: runnerName(c.pool, job.id), runner_group_id: c.runnerGroupId,
                       labels: ['self-hosted', 'Linux', c.pool, `starter-source-${request.sha}`, `starter-run-${run.id}`], work_folder: '_work',
                     });
@@ -366,7 +453,8 @@ async function serveOrg(): Promise<void> {
                     const task = launch(selected, environment.image, ['github'], jit.encoded_jit_config + '\n', undefined, expected)
                       .then(() => undefined).catch(error => { process.stderr.write(`Worker ${job.id}: ${String(error)}\n`); })
                       .finally(async () => {
-                        await api(`/orgs/${org}/actions/runners/${jit.runner.id}`, runningToken, undefined, 'DELETE').catch(() => undefined);
+                        await registrations.remove(jit.runner.id, runningToken);
+                        registrations.active.delete(jit.runner.id);
                         active.delete(job.id);
                       });
                     active.set(job.id, { repo: repoName, runId: run.id, task });
@@ -375,13 +463,14 @@ async function serveOrg(): Promise<void> {
                 }
               }
               deferrals.succeeded(`repository ${repoName}`);
-            } catch (error) { deferrals.failed(`repository ${repoName}`, error); }
+            } catch (error) { access.delete(repoName.toLowerCase()); deferrals.failed(`repository ${repoName}`, error); }
           }
           cursor = names.length ? (cursor + 1) % names.length : 0;
         }
         if (active.size === 0 && !c.paused) {
           await maintain(() => lock('mutation', async () => {
             await cleanup(c, false);
+            await registrations.sweep(credential);
             const state = await catalog();
             if (state.toolsCreated && Date.now() - Date.parse(state.toolsCreated) > maintenanceInterval) {
               const repoName = configuredRepos(c)[0];
@@ -396,7 +485,7 @@ async function serveOrg(): Promise<void> {
         }
         c = await config();
         failures = 0;
-        await save(path.join(home, 'status.json'), { pauseRequest: c.pauseRequest, pid: process.pid, polled: new Date().toISOString(), active: [...active.keys()], paused: c.paused });
+        await save(path.join(home, 'status.json'), { pauseRequest: c.pauseRequest, pid: process.pid, polled: new Date().toISOString(), active: [...active.keys()], paused: c.paused, ...(registrations.pending.length ? { pendingRunnerRemovals: registrations.pending } : {}) });
       } catch (error) {
         failures++;
         wait = retryDelay(error, failureDelay(failures, pollInterval, 10 * 60_000), 3600_000);
@@ -404,6 +493,7 @@ async function serveOrg(): Promise<void> {
         process.stderr.write(`${new Date().toISOString()} ${String(error)} (failure ${failures}; next poll after ${retry})\n`);
         await save(path.join(home, 'status.json'), { pid: process.pid, error: String(error), failures, retry, active: [...active.keys()], polled: new Date().toISOString() });
       }
+      rotateLog();
       await pause(wait, () => stop);
     }
     await Promise.allSettled([...active.values()].map(value => value.task));

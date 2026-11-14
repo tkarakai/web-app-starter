@@ -1,4 +1,6 @@
-import { cp, mkdtemp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { closeSync, createReadStream, fstatSync, openSync, readSync, truncateSync, writeFileSync } from 'node:fs';
+import { copyFile, cp, mkdtemp, mkdir, open, readFile, readdir, rename, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { api } from './github.ts';
@@ -16,14 +18,46 @@ async function asset(repository: string, tag: string, filename: string, destinat
   assert(a && /^sha256:[a-f0-9]{64}$/.test(a.digest), `No authenticated checksum for ${repository}/${filename}`);
   const url = new URL(a.browser_download_url);
   assert(url.protocol === 'https:' && url.hostname === 'github.com' && url.pathname.startsWith(`/${repository}/releases/download/`), 'Unexpected release asset URL');
-  const response = await fetch(url, { signal: AbortSignal.timeout(180_000) });
-  assert(response.ok && response.body, 'Release download failed');
-  const chunks: Buffer[] = []; let size = 0;
-  for await (const chunk of response.body) { size += chunk.byteLength; assert(size < 400 * 1024 * 1024, 'Release asset too large'); chunks.push(Buffer.from(chunk)); }
-  const bytes = Buffer.concat(chunks);
-  assert(hash(bytes) === a.digest.slice(7), 'Release asset checksum mismatch');
-  await writeFile(destination, bytes);
+  await copyFile(await cachedDownload(url, a.digest.slice(7)), destination);
   return release.tag_name;
+}
+export const releaseCache = (): string => path.join(home, 'release-cache');
+export const releaseAssetLimit = 400 * 1024 * 1024;
+async function fileDigest(file: string): Promise<string> {
+  const digest = createHash('sha256');
+  for await (const chunk of createReadStream(file)) digest.update(chunk as Buffer);
+  return digest.digest('hex');
+}
+/**
+ * Release assets are cached by their authenticated digest, so unchanged releases are not downloaded again on
+ * every toolchain refresh. Downloads stream to disk while hashing instead of buffering the asset in memory.
+ */
+async function cachedDownload(url: URL, digest: string): Promise<string> {
+  const directory = releaseCache();
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  const file = path.join(directory, digest);
+  if (await exists(file)) {
+    if (await fileDigest(file) === digest) { const now = new Date(); await utimes(file, now, now); return file; }
+    await rm(file, { force: true });
+  }
+  const response = await fetch(url, { signal: AbortSignal.timeout(15 * 60_000) });
+  assert(response.ok && response.body, 'Release download failed');
+  const temporary = await mkdtemp(path.join(directory, 'download-'));
+  try {
+    const partial = path.join(temporary, 'asset');
+    const handle = await open(partial, 'wx', 0o600);
+    const hasher = createHash('sha256'); let size = 0;
+    try {
+      for await (const chunk of response.body) {
+        size += chunk.byteLength;
+        assert(size < releaseAssetLimit, 'Release asset too large');
+        hasher.update(chunk); await handle.write(chunk);
+      }
+    } finally { await handle.close(); }
+    assert(hasher.digest('hex') === digest, 'Release asset checksum mismatch');
+    await rename(partial, file);
+    return file;
+  } finally { await rm(temporary, { recursive: true, force: true }); }
 }
 async function ensureBuilder(c: Config): Promise<void> {
   const name = `${c.pool}-build`;
@@ -150,9 +184,30 @@ export async function prepare(c: Config, git: string, sha: string, scope: string
   }
 }
 export async function rotateLogs(): Promise<void> {
-  for (const folder of ['logs', 'evidence']) {
+  for (const folder of ['logs', 'evidence', 'release-cache']) {
     const dir = path.join(home, folder);
     if (!await exists(dir)) continue;
-    for (const file of await readdir(dir)) if (!(folder === 'logs' && file === 'manager.log') && Date.now() - (await stat(path.join(dir, file))).mtimeMs > 7 * 86400_000) await rm(path.join(dir, file));
+    for (const file of await readdir(dir)) if (!(folder === 'logs' && file.startsWith('manager.log')) && Date.now() - (await stat(path.join(dir, file))).mtimeMs > 7 * 86400_000) await rm(path.join(dir, file), { recursive: true, force: true });
   }
+}
+export const managerLogLimit = 10 * 1024 * 1024;
+/**
+ * launchd appends service output to logs/manager.log (systemd uses the journal instead). Keep the most recent
+ * `limit` bytes in manager.log.1 and truncate the live file in place: the service holds it open in append
+ * mode, so later writes continue at the new end. Synchronous calls keep this process's own writes ordered.
+ */
+export function rotateManagerLog(limit = managerLogLimit): boolean {
+  const file = path.join(home, 'logs', 'manager.log');
+  let descriptor: number;
+  try { descriptor = openSync(file, 'r'); } catch { return false; }
+  try {
+    const size = fstatSync(descriptor).size;
+    if (size <= limit) return false;
+    const tail = Buffer.alloc(limit);
+    const read = readSync(descriptor, tail, 0, limit, size - limit);
+    const start = tail.indexOf(10) + 1;
+    writeFileSync(`${file}.1`, tail.subarray(start > 0 && start < read ? start : 0, read), { mode: 0o600 });
+  } finally { closeSync(descriptor); }
+  truncateSync(file, 0);
+  return true;
 }

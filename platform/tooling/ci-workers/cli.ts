@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assert, assertPrivateMode, catalog, command, config, configuredRepos, docker, exists, hash, home, installationPool, preparedScope, readJson, repository, save, selectedRepo, validateRepo, type Config } from './core.ts';
 import { api, assertOrgAccess, privateRepository, routingVariables, storeToken, token } from './github.ts';
 import { prepare } from './images.ts';
-import { cleanup, lock, serve, status, updateConfig } from './manager.ts';
+import { cleanup, lock, lockHeld, serve, status, updateConfig } from './manager.ts';
 import { launch, runtimePolicy } from './runtime.ts';
 import { localProof, proofId, proofPath, certify, type Proof } from './proof.ts';
 import { install, removeConvenienceCommand, service } from './service.ts';
@@ -61,7 +61,7 @@ async function setup(args: string[]): Promise<void> {
     const root = await command('git', ['rev-parse', '--show-toplevel']);
     const checkoutRepo = repository(await command('git', ['-C', root, 'remote', 'get-url', 'origin']));
     assert(checkoutRepo.toLowerCase() === existing.repo.toLowerCase(), 'This state directory belongs to another checkout; use a distinct STARTER_WORKERS_HOME or org add');
-    assert(!await exists(path.join(home, 'daemon.lock')), 'Manager is already running; use check or update');
+    assert(!await lockHeld('daemon'), 'Manager is already running; use check or update');
     if (!args.includes('--local-only')) await privateSetupRepository(existing.repo);
     if (existing.localOnly && !args.includes('--local-only')) existing = await authenticate(existing, option(args, 'token-expires'));
     if (args.includes('--no-convenience-command')) existing = await updateConfig(async () => ({ convenienceCommand: false }));
@@ -211,7 +211,7 @@ export async function main(args: string[]): Promise<void> {
       }
       assert(args[1] === 'remove', 'Use org add|remove --repo ORG/APP');
       selectedRepo(c, name);
-      assert(!await exists(path.join(home, 'daemon.lock')), 'Pause, drain and stop the manager before removing a repository');
+      assert(!await lockHeld('daemon'), 'Pause, drain and stop the manager before removing a repository');
       const routed = (await routingVariables({ repo: name })).get('PLATFORM_CI_WORKER_POOL');
       assert(routed !== c.pool, 'Return this repository to hosted routing before removing it');
       await updateConfig(async current => {
@@ -237,7 +237,7 @@ export async function main(args: string[]): Promise<void> {
       if (heartbeat.pid && heartbeat.pid > 0) { try { process.kill(heartbeat.pid, 0); alive = true; } catch { /* A stopped service is not ready. */ } }
       print({ ...proof, repository: c.repo, role: c.updateRole, workflow: c.updateWorkflow,
         localOnly: c.localOnly, publicBranch: c.publicBranch,
-        managerHealthy: alive && await exists(path.join(home, 'daemon.lock')) && !c.paused && !heartbeat.paused && !heartbeat.error && age >= 0 && age < 60_000 }); return;
+        managerHealthy: alive && await lockHeld('daemon') && !c.paused && !heartbeat.paused && !heartbeat.error && age >= 0 && age < 60_000 }); return;
     }
     case 'refresh': return localCheck(c, c.updateRole === 'deliver' ? [...args, '--refresh'] : [...args, '--refresh', '--install']);
     case 'status': do { print(await status()); if (!args.includes('--watch')) break; await new Promise(resolve => setTimeout(resolve, 5000)); } while (args.includes('--watch')); return;
@@ -251,7 +251,7 @@ export async function main(args: string[]): Promise<void> {
         for (;;) {
           const heartbeat = await readJson<{ pauseRequest?: string; paused?: boolean; active?: number[]; error?: string }>(path.join(home, 'status.json'), {});
           if (heartbeat.pauseRequest === c.pauseRequest && heartbeat.paused && !heartbeat.error && heartbeat.active?.length === 0) break;
-          assert(await exists(path.join(home, 'daemon.lock')), 'Start the manager to acknowledge and drain the pause');
+          assert(await lockHeld('daemon'), 'Start the manager to acknowledge and drain the pause');
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
@@ -310,7 +310,7 @@ export async function main(args: string[]): Promise<void> {
     }
     case 'update': {
       const root = path.resolve(option(args, 'from') ?? '.');
-      assert(!await exists(path.join(home, 'daemon.lock')), 'Pause --drain and service stop before updating');
+      assert(!await lockHeld('daemon'), 'Pause --drain and service stop before updating');
       await command(process.execPath, [path.join(root, 'platform/tooling/ci-workers/cli.ts'), 'install-update', '--from', root], { timeout: 2 * 3600_000 });
       print('Manager updated. Run check before service start; previous installation remains in ~/.local/share/starter-workers/previous.'); return;
     }
@@ -324,7 +324,7 @@ export async function main(args: string[]): Promise<void> {
       await install(c); return;
     }
     case 'uninstall':
-      assert(!(c.org ? Object.values(c.routing ?? {}).some(value => value.enabled) : c.enabled) && !await exists(path.join(home, 'daemon.lock')), 'Run hosted for every repository, pause --drain, then service stop first');
+      assert(!(c.org ? Object.values(c.routing ?? {}).some(value => value.enabled) : c.enabled) && !await lockHeld('daemon'), 'Run hosted for every repository, pause --drain, then service stop first');
       if (c.org) for (const name of configuredRepos(c)) assert((await routingVariables({ repo: name })).get('PLATFORM_CI_WORKER_POOL') !== c.pool, `Return ${name} to hosted routing before uninstall`);
       if (process.platform === 'darwin') {
         await command('/usr/bin/security', ['delete-generic-password', '-a', 'starter-workers', '-s', home]).catch(() => undefined);

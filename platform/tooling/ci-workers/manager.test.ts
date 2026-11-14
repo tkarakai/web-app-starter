@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { installationPool } from './core.ts';
-import { api, GitHubError, rateLimitRetryAt, responseCacheLimit, responseCacheSize } from './github.ts';
-import { Deferrals, failureDelay, retryDelay, runnerName } from './manager.ts';
+import { api, GitHubError, listPages, rateLimitRetryAt, responseCacheLimit, responseCacheSize } from './github.ts';
+import { Deferrals, failureDelay, noticeTruncation, register, Registrations, retryDelay, runJobs, runnerName, schedulableRuns } from './manager.ts';
 
 test('JIT runner names retain the installation prefix within GitHub limits', () => {
   const pool = installationPool();
@@ -92,4 +92,107 @@ test('per-item deferrals back off independently and leave shared failures to the
     assert.throws(() => deferrals.failed('job 3', new GitHubError('bad credentials', 401), now), /bad credentials/);
     assert.equal(deferrals.ready('job 3', now), true, 'shared failures are not attributed to one job');
   } finally { process.stderr.write = write; }
+});
+
+type Route = (endpoint: string, method: string) => Response | Promise<Response>;
+async function withGitHub<T>(route: Route, action: (calls: string[]) => Promise<T>): Promise<T> {
+  const original = globalThis.fetch, write = process.stderr.write;
+  const calls: string[] = [];
+  globalThis.fetch = (async (url: string, init?: Parameters<typeof fetch>[1]) => {
+    const endpoint = String(url).slice('https://api.github.com'.length), method = init?.method ?? 'GET';
+    calls.push(`${method} ${endpoint}`);
+    return route(endpoint, method);
+  }) as typeof fetch;
+  process.stderr.write = (() => true) as typeof process.stderr.write;
+  try { return await action(calls); } finally { globalThis.fetch = original; process.stderr.write = write; }
+}
+const page = (key: string, start: number, count: number): Response => Response.json({ [key]: Array.from({ length: count }, (_, n) => ({ id: start + n })) });
+
+test('list pagination reads until a short page and reports truncation', async () => {
+  await withGitHub(endpoint => {
+    const number = Number(new URL(endpoint, 'https://x').searchParams.get('page'));
+    return page('runners', number * 100, number < 3 ? 100 : 7);
+  }, async calls => {
+    const all = await listPages<{ id: number }>('/repos/o/r/actions/runners', 'runners', 'credential', 10);
+    assert.deepEqual([all.items.length, all.complete], [207, true]);
+    assert.equal(calls.length, 3);
+    const capped = await listPages<{ id: number }>('/repos/o/r/actions/runners?status=queued', 'runners', 'credential', 2);
+    assert.deepEqual([capped.items.length, capped.complete], [200, false]);
+    assert.match(calls.at(-1)!, /\?status=queued&per_page=100&page=2$/);
+  });
+});
+
+test('registration sweeps remove only idle registrations owned by this installation and retry failed removals', async () => {
+  const pool = 'starter-' + 'a'.repeat(32);
+  const removed: number[] = [];
+  let failing = true;
+  await withGitHub((endpoint, method) => {
+    if (method === 'GET') return Response.json({ runners: [
+      { id: 1, name: `${pool}-1-x` }, { id: 2, name: `${pool}-2-x` }, { id: 3, name: `starter-${'b'.repeat(32)}-3-x` }, { id: 4, name: 'someone-else' }, { id: 5, name: `${pool}-5-x` },
+    ] });
+    const id = Number(endpoint.split('/').at(-1));
+    if (id === 2 && failing) return new Response('unavailable', { status: 502 });
+    if (id === 5) return new Response('gone', { status: 404 });
+    removed.push(id);
+    return new Response(null, { status: 204 });
+  }, async () => {
+    const registrations = new Registrations('/repos/o/r', pool);
+    registrations.active.add(1);
+    await registrations.sweep('credential');
+    assert.deepEqual(removed, [], 'active, foreign and already-deleted registrations are kept or skipped');
+    assert.deepEqual(registrations.pending, [2]);
+    await registrations.retry('credential');
+    assert.deepEqual(registrations.pending, [2], 'a failing removal stays pending');
+    failing = false;
+    await registrations.retry('credential');
+    assert.deepEqual([removed, registrations.pending], [[2], []]);
+  });
+});
+
+test('a lost JIT registration response sweeps owned idle registrations; a definite rejection does not', async () => {
+  const pool = 'starter-' + 'c'.repeat(32);
+  for (const [failure, sweeps] of [[() => { throw new TypeError('fetch failed'); }, true], [() => new Response('server', { status: 500 }), true], [() => new Response('invalid', { status: 422 }), false]] as const) {
+    await withGitHub((endpoint, method) => {
+      if (endpoint.endsWith('/generate-jitconfig')) return failure();
+      if (method === 'GET') return Response.json({ runners: [{ id: 9, name: `${pool}-9-x` }] });
+      return new Response(null, { status: 204 });
+    }, async calls => {
+      const registrations = new Registrations('/orgs/o', pool);
+      await assert.rejects(register(registrations, 'credential', '/orgs/o/actions/runners/generate-jitconfig', { name: `${pool}-9-x` }));
+      assert.equal(calls.includes('DELETE /orgs/o/actions/runners/9'), sweeps);
+      assert.equal(registrations.active.size, 0);
+    });
+  }
+  await withGitHub(() => Response.json({ encoded_jit_config: 'config', runner: { id: 11 } }), async () => {
+    const registrations = new Registrations('/orgs/o', pool);
+    await register(registrations, 'credential', '/orgs/o/actions/runners/generate-jitconfig', {});
+    assert.deepEqual([...registrations.active], [11], 'a running worker\'s registration is protected from sweeps');
+  });
+});
+
+test('schedulable runs are deduplicated, oldest first, and a truncated backlog is reported once', async () => {
+  const run = (id: number) => ({ id, run_attempt: 1, head_sha: 'a'.repeat(40), head_branch: 'main', event: 'push', pull_requests: [] });
+  let queued = 2;
+  await withGitHub(endpoint => {
+    const url = new URL(endpoint, 'https://x');
+    if (url.searchParams.get('status') === 'queued') return Response.json({ workflow_runs: Array.from({ length: queued === 2 ? 2 : 100 }, (_, n) => run(queued === 2 ? [30, 10][n] : 1000 - n)) });
+    if (url.searchParams.get('status') === 'in_progress') return Response.json({ workflow_runs: [run(20), run(10)] });
+    return Response.json({ jobs: [{ id: 1, status: 'queued', labels: [] }] });
+  }, async () => {
+    const notices = new Set<string>();
+    assert.deepEqual((await schedulableRuns('o/r', 'credential', notices)).map(r => r.id), [10, 20, 30]);
+    assert.equal(notices.size, 0);
+    queued = 500;
+    await schedulableRuns('o/r', 'credential', notices);
+    assert.deepEqual([...notices], ['runs o/r']);
+    assert.equal((await runJobs('o/r', 1, 'credential', notices)).length, 1);
+  });
+  const notices = new Set<string>();
+  const lines: string[] = [];
+  const write = process.stderr.write;
+  process.stderr.write = ((line: string) => { lines.push(line); return true; }) as typeof process.stderr.write;
+  try {
+    for (const complete of [false, false, true, false]) noticeTruncation(notices, 'key', complete, 'truncated');
+  } finally { process.stderr.write = write; }
+  assert.equal(lines.length, 2, 'reported when truncation starts and again only after it cleared');
 });
