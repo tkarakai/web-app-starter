@@ -27,6 +27,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
   - Release assets stream to disk and are cached by digest instead of being downloaded into memory on every refresh.
   - Source fetches get 15 minutes instead of two.
 
+- `starter-workers service stop` returns only after the manager has exited. Before this, an `update` run straight after it could be refused because the manager still held its lock.
+
 - Local CI worker tool refreshes and manager updates work again. They downloaded the local Convex backend from `get-convex/convex-backend`, which was renamed to `convex/convex-backend`. The API client refuses redirects, so every preparation failed with `fetch failed`.
 
 - The organization switcher no longer snaps shut, and the dashboard no longer flashes Loading, when the Convex client refreshes its auth token. `useOrganizations()` keeps its last answer while the query reloads; any new answer, `null` included, still replaces it.
@@ -36,6 +38,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - Tenancy setup accepts the seeded Free plan alone; additional plans are optional. The default must still be active and free forever.
 
 ### Added
+
+- **`starter-workers upgrade [--all]`** upgrades installed CI worker managers from one reviewed checkout. For each installation in turn, it drains and stops the manager, runs `update`, runs the install check in that app's checkout (`--checkout OWNER/APP=PATH`) and restarts it. It keeps paused or stopped managers in that state, and rolls back to the previous installation if the check fails. It checks every target before pausing any. `starter-workers list` shows every installed manager, and `starter-workers rollback` restores the previous installation by hand.
 
 - **Tenancy modes, plans and billing organizations.** The platform admin chooses, once,
   **Plans for Individuals** (each user's organization is also their billing organization, shown

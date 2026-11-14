@@ -122,8 +122,10 @@ worker setup; adding an app here does not move them automatically.
   To move an app fully to hosted CI, remove its `PLATFORM_CI_AUX_RUNNER`,
   `PLATFORM_CI_LOCAL_ONLY` and any other local runner variables as well. Already queued jobs
   keep their old labels; cancel and re-run them in Actions after changing routes.
-- For a manager update, drain and stop the service, use `update --from .` from a reviewed
-  checkout containing the new manager, then check and certify apps before returning routing.
+- For a manager update, use [`upgrade`](ci-workers.md#upgrade-the-manager) from a reviewed
+  checkout containing the new manager, with `--checkout ORG/APP=PATH` for a member app's checkout.
+  It drains, stops, updates, runs the install check for that member and restarts the pool.
+  Certify the apps again before returning routing.
 - To remove one app, return it to hosted routing, drain and stop the service, run
   `org remove --repo ORG/APP`, then remove it from the runner group's selected repositories.
   Start the service for remaining apps. To uninstall the whole pool, return every app to

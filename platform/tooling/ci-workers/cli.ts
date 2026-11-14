@@ -10,7 +10,8 @@ import { prepare } from './images.ts';
 import { cleanup, lock, lockHeld, serve, status, updateConfig } from './manager.ts';
 import { launch, runtimePolicy } from './runtime.ts';
 import { localProof, proofId, proofPath, certify, type Proof } from './proof.ts';
-import { install, removeConvenienceCommand, service } from './service.ts';
+import { install, removeConvenienceCommand, rollback, service } from './service.ts';
+import { installations, upgrade } from './upgrade.ts';
 import { sourceCheck } from './check.ts';
 
 const print = (v: unknown): void => { process.stdout.write(typeof v === 'string' ? v + '\n' : JSON.stringify(v, null, 2) + '\n'); };
@@ -182,12 +183,31 @@ async function githubCheck(c: Config, args: string[]): Promise<void> {
   await command('gh', ['workflow', 'run', 'ci-verify.yml', '--repo', c.repo, '--ref', ref, '-f', 'worker_check=true', '-f', `worker_pool=${c.pool}`, ...Object.entries({ worker_sha: proof.sha, worker_image: proof.image, worker_runtime: proof.runtime, worker_proof: proof.id, worker_checked: proof.checked }).flatMap(([key, value]) => ['-f', `${key}=${value}`])]);
   print(`Dispatched CI Verify Commit worker check on ${ref}. Use gh run list --repo ${c.repo} --workflow ci-verify.yml, then gh run watch RUN_ID --repo ${c.repo} --exit-status. Routing is unchanged.`);
 }
+/** Upgrade this installation, or every installed manager with --all, from one reviewed checkout. */
+async function upgradeCommand(args: string[]): Promise<void> {
+  const checkouts = new Map<string, string>();
+  args.forEach((arg, i) => {
+    if (arg !== '--checkout') return;
+    const value = args[i + 1] ?? '';
+    const split = value.indexOf('=');
+    assert(split > 0 && split < value.length - 1, '--checkout requires OWNER/APP=PATH');
+    checkouts.set(validateRepo(value.slice(0, split)).toLowerCase(), path.resolve(value.slice(split + 1)));
+  });
+  const found = await installations();
+  const targets = args.includes('--all') ? found : found.filter(installation => installation.home && path.resolve(installation.home) === path.resolve(home));
+  assert(args.includes('--all') || targets.length, `No installed manager service uses ${home}; set STARTER_WORKERS_HOME, run its own starter-workers, or use --all (see list)`);
+  const done = await upgrade(targets, { from: path.resolve(option(args, 'from') ?? '.'), checkouts, dryRun: args.includes('--dry-run'), log: line => process.stderr.write(`==> ${line}\n`) });
+  if (args.includes('--dry-run')) { print('Dry run: nothing was changed.'); return; }
+  print(`Upgraded ${done.length} installation${done.length === 1 ? '' : 's'}: ${done.join(', ')}`);
+}
 export async function main(args: string[]): Promise<void> {
   const verb = args[0] ?? 'help';
   if (verb === 'help' || args.includes('--help')) {
-    print('starter-workers setup [--org ORG --runner-group-id ID] [--update-role verify|deliver --update-workflow .github/workflows/CALLER.yml] [--local-only] [--no-convenience-command] [--repo owner/name] [--token-expires YYYY-MM-DD]\norg add|remove --repo ORG/APP | check [--repo ORG/APP] [--ref revision] [--install|--quick|--ci] | check --github [--repo ORG/APP] [--ref branch]\nserve | service start|stop | status [--watch] | logs [--follow] | images\nauth replace | enable [--repo ORG/APP] | hosted [--repo ORG/APP] | pause [--drain] | resume | refresh\ncleanup [--dry-run] | config set concurrency|memoryGiB|cpus|diskGiB NUMBER\nupdate --from CHECKOUT | uninstall\nOrganization mode shares one global capacity; repository mode owns one repository.'); return;
+    print('starter-workers setup [--org ORG --runner-group-id ID] [--update-role verify|deliver --update-workflow .github/workflows/CALLER.yml] [--local-only] [--no-convenience-command] [--repo owner/name] [--token-expires YYYY-MM-DD]\norg add|remove --repo ORG/APP | check [--repo ORG/APP] [--ref revision] [--install|--quick|--ci] | check --github [--repo ORG/APP] [--ref branch]\nserve | service start|stop | status [--watch] | logs [--follow] | images\nauth replace | enable [--repo ORG/APP] | hosted [--repo ORG/APP] | pause [--drain] | resume | refresh\ncleanup [--dry-run] | config set concurrency|memoryGiB|cpus|diskGiB NUMBER\nlist | upgrade [--all] [--dry-run] [--from CHECKOUT] [--checkout OWNER/APP=PATH]... | update --from CHECKOUT | rollback | uninstall\nOrganization mode shares one global capacity; repository mode owns one repository.'); return;
   }
   if (verb === 'setup') return setup(args);
+  if (verb === 'list') { print(await installations()); return; }
+  if (verb === 'upgrade') return upgradeCommand(args);
   let c = await config();
   if (['check', 'proof', 'refresh', 'enable', 'hosted'].includes(verb)) c = member(c, args);
   switch (verb) {
@@ -312,8 +332,9 @@ export async function main(args: string[]): Promise<void> {
       const root = path.resolve(option(args, 'from') ?? '.');
       assert(!await lockHeld('daemon'), 'Pause --drain and service stop before updating');
       await command(process.execPath, [path.join(root, 'platform/tooling/ci-workers/cli.ts'), 'install-update', '--from', root], { timeout: 2 * 3600_000 });
-      print('Manager updated. Run check before service start; previous installation remains in ~/.local/share/starter-workers/previous.'); return;
+      print(`Manager updated. Run check before service start; the previous installation remains in ${path.join(home, 'previous')} (rollback restores it).`); return;
     }
+    case 'rollback': print(`Rolled back to ${await rollback()}. Run check before service start.`); return;
     case 'install-update': {
       const root = path.resolve(option(args, 'from') ?? '.');
       if (c.org) c = selectedRepo(c, repository(await command('git', ['-C', root, 'remote', 'get-url', 'origin'])));
