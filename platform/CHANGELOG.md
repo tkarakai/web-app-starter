@@ -112,7 +112,7 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 - Bun baseline 1.4.2 → 1.4.4 (`packageManager`, the `setup-bun` default and the AWS Dockerfiles), with
   the pending non-major dependency updates: React 19.3.1, Next.js 16.4.4, Convex 1.49.0,
-  better-auth 1.6.34, typescript-eslint 8.72.1, Radix primitives, lucide-react 1.69.0, Vitest 5.0.5, Playwright 1.64.1
+  typescript-eslint 8.72.1, Radix primitives, lucide-react 1.69.0, Vitest 5.0.5, Playwright 1.64.1
   and pinned GitHub Actions.
 
 - Public repositories always use standard GitHub-hosted runners, ignoring local routing overrides.

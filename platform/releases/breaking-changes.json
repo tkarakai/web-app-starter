@@ -991,6 +991,13 @@
           "touches": [
             ".github/workflows/"
           ]
+        },
+        {
+          "id": "v5-auth-audit-exceptions",
+          "path": "platform/tooling/codemods/v5-auth-audit-exceptions.ts",
+          "touches": [
+            "dependency-audit-exceptions.json"
+          ]
         }
       ],
       "migrations": [],
@@ -1050,6 +1057,27 @@
           "path": "apps/web/package.json",
           "name": "next",
           "minimum": "16.4.1",
+          "optionalApp": "apps/web"
+        },
+        {
+          "path": "package.json",
+          "name": "better-auth",
+          "minimum": "1.7.17"
+        },
+        {
+          "path": "packages/backend/package.json",
+          "name": "better-auth",
+          "minimum": "1.7.17"
+        },
+        {
+          "path": "packages/backend/package.json",
+          "name": "@convex-dev/better-auth",
+          "minimum": "0.13.0"
+        },
+        {
+          "path": "apps/web/package.json",
+          "name": "@convex-dev/better-auth",
+          "minimum": "0.13.0",
           "optionalApp": "apps/web"
         }
       ],
