@@ -148,13 +148,19 @@ version. Release-specific compatibility and deployment steps are listed explicit
 - **Every app:** install Bun 1.4.4 locally (`bun upgrade`, or your version manager). CI installs it
   through the `setup-bun` action; take the release, then run `bun install` and `bun run ci:quick`.
 
-- **Every app:** better-auth `<1.7.7` carries GHSA-965c-763c-88jm (critical), GHSA-r4xp-prcw-77qf
-  and GHSA-q84f-53jg-9ppm (high). The fix cannot be installed while `@convex-dev/better-auth`
-  requires `better-auth <1.7.0`, so the audit fails on them. Check each advisory against your auth
-  configuration. The starter enables no social or Generic OAuth provider, OAuth Proxy or device
-  authorization, so none of them apply to it. If none apply to yours either, copy the starter's
-  `dependency-audit-exceptions.json` with your own ticket and expiry. If one does apply, disable that
-  feature until the auth stack can move to 1.7.
+- **Apps that accepted the better-auth advisories GHSA-965c-763c-88jm, GHSA-r4xp-prcw-77qf or
+  GHSA-q84f-53jg-9ppm** in `dependency-audit-exceptions.json`: this release fixes them, and the audit
+  fails on an exception that no longer matches a finding. Run
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v5-auth-audit-exceptions.ts`, then the same
+  command with `--check`. It removes only those three `better-auth` entries.
+  **Done when:** `./platform/tooling/node-ts.sh platform/tooling/dependency-audit.ts` passes.
+
+- **Apps with their own code on the Better Auth API** (beyond the platform's): better-auth is now
+  1.7. `authClient.twoFactor.enable()` returns `{ method: "totp", totpURI, backupCodes }` or
+  `{ method: "otp" }`; narrow on `method` before reading `totpURI` or `backupCodes`. Apps that added
+  their own Better Auth plugins, providers, database hooks or a custom adapter: work through the
+  [Better Auth 1.7 upgrade guide](https://better-auth.com/docs/guides/1-7-upgrade-guide) for them.
+  **Done when:** `bun run typecheck` and your auth tests pass.
 
 - **Apps with local Actions routing or customized CI callers:** stop/drain and retire any public
   local installation using its old absolute command; remove only its registrations and revoke its
@@ -417,6 +423,29 @@ version. Release-specific compatibility and deployment steps are listed explicit
   for blocking rules, evidence limitations and the merge/release response.
 
 ### Security
+
+- **Auth stack: better-auth 1.7.17** (with `@better-auth/core` and `@better-auth/passkey` 1.7.17)
+  and **`@convex-dev/better-auth` 0.13.0**. This fixes GHSA-965c-763c-88jm (critical),
+  GHSA-r4xp-prcw-77qf and GHSA-q84f-53jg-9ppm (high), which the platform had accepted while the
+  Convex adapter held better-auth below 1.7, and the other better-auth advisories fixed up to
+  1.7.16. The audit exceptions for them are gone, and the audit passes with none. What changes:
+  - Two-factor enrollment stays TOTP-only: 1.7's email-OTP-only enrollment
+    (`/two-factor/enable` with `method: "otp"`) is refused with `AUTH_METHOD_DISABLED`. Replacing an
+    authenticator, including recovery after a backup-code sign-in, still works: the old factor and
+    its backup codes are removed and the replacement counts once a code from it verifies.
+  - A passkey assertion without user verification is now refused by the WebAuthn verifier itself:
+    `400 AUTHENTICATION_FAILED` instead of the platform's `403 PASSKEY_USER_VERIFICATION_REQUIRED`.
+  - Redeeming a magic link for an account whose email was never verified removes that account's
+    password and ends its sessions before signing in (Better Auth's protection against
+    pre-registered accounts). Such users set a new password through password reset. See
+    [session assurance](docs/authentication-and-onboarding.md#85-session-assurance-and-reauthentication).
+  - Magic links sent before the deploy stop working (1.7 stores them under a new key); users
+    request a new one.
+  - The Better Auth component gains the adapter's atomic `consumeOne`/`incrementOne` functions,
+    two indexes (`account` by account, provider and user; `rateLimit` by `lastRequest`) and two
+    optional `jwks` fields. Existing data needs no migration: users, sessions, passwords, TOTP
+    enrolments, backup codes, passkeys, organizations and pending invitations created before the
+    upgrade keep working.
 
 - Security updates: next 16.4.1, zod 4.6.6, @modelcontextprotocol/sdk 1.32.0, vite 8.3.4,
   happy-dom 21.0.4, hono 4.13.11, @hono/node-server 2.1.5 and ip-address 10.7.4, plus the

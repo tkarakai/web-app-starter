@@ -111,8 +111,8 @@
     "hono": "4.13.16",
     "sharp": "0.35.5",
     "undici": "8.12.3",
-    "better-auth": "1.6.34",
-    "@better-auth/core": "1.6.34",
+    "better-auth": "1.7.17",
+    "@better-auth/core": "1.7.17",
     "resend": "6.37.0",
     "@isaacs/nonrecursive-glob-match": "1.0.3"
   },

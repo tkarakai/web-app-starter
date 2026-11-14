@@ -1,13 +1,11 @@
 /**
  * Originally auto-generated, now partly hand-maintained.
  *
- * It was generated with:
- * `npx @better-auth/cli generate --output ./convex/platform/betterAuth/schema.ts -y`
- * but @better-auth/cli has no 1.6 release (latest is 1.5.0-beta), so tables
- * added or extended by better-auth >= 1.6 have to be reconciled by hand.
- * Look for comments marking hand-added fields before regenerating, or you will
- * drop them.
- * 
+ * Generate a reference copy from `auth.ts` with the adapter's own generator
+ * (better-auth 1.7's `npx auth generate`, or `createSchema` from the Convex
+ * adapter), then reconcile it here by hand: look for comments marking
+ * hand-added fields, indexes and tables, or you will drop them.
+ *
  * To customize the schema, generate to an alternate file and import
  * the table definitions to your schema file. See
  * https://labs.convex.dev/better-auth/features/local-install#adding-custom-indexes.
@@ -86,6 +84,8 @@ export const tables = {
   })
     .index("accountId", ["accountId"])
     .index("accountId_providerId", ["accountId","providerId"])
+    // Better Auth 1.7 finds the credential account by all three (adapter 0.13).
+    .index("accountId_providerId_userId", ["accountId","providerId","userId"])
     .index("providerId_userId", ["providerId","userId"])
     .index("userId", ["userId"]),
   verification: defineTable({
@@ -101,14 +101,9 @@ export const tables = {
     secret: v.string(),
     backupCodes: v.string(),
     userId: v.string(),
-    // Added by better-auth 1.6's twoFactor plugin
-    // (better-auth/dist/plugins/two-factor/schema.mjs). Convex validators reject
+    // Added by better-auth 1.6's twoFactor plugin. Convex validators reject
     // unknown fields, so without these `/two-factor/enable` fails with
     // ArgumentValidationError and returns a 500.
-    //
-    // Hand-written: the generator in the header has no 1.6 release, and adapter
-    // 0.12.5's own bundled schema carries `verified` but not
-    // `failedVerificationCount`, so regenerating would not supply them either.
     verified: v.optional(v.union(v.null(), v.boolean())),
     failedVerificationCount: v.optional(v.union(v.null(), v.number())),
     lockedUntil: v.optional(v.union(v.null(), v.number())),
@@ -126,8 +121,12 @@ export const tables = {
     createdAt: v.optional(v.union(v.null(), v.number())),
     aaguid: v.optional(v.union(v.null(), v.string())),
   })
+    // Hand-kept: better-auth 1.7 no longer marks credentialID as indexed, but passkey
+    // sign-in and session assurance look keys up by it (authAssurance.ts).
     .index("credentialID", ["credentialID"])
     .index("userId", ["userId"]),
+  // Hand-kept: the oidcProvider plugin's tables. Better Auth 1.7 removed the plugin and the
+  // platform never enabled it; they stay so an upgrade never drops a deployment's existing tables.
   oauthApplication: defineTable({
     name: v.optional(v.union(v.null(), v.string())),
     icon: v.optional(v.union(v.null(), v.string())),
@@ -217,13 +216,18 @@ export const tables = {
     privateKey: v.string(),
     createdAt: v.number(),
     expiresAt: v.optional(v.union(v.null(), v.number())),
+    // Added by better-auth 1.7's jwt plugin. Keys created before 1.7 lack them.
+    alg: v.optional(v.union(v.null(), v.string())),
+    crv: v.optional(v.union(v.null(), v.string())),
   }),
   rateLimit: defineTable({
     key: v.optional(v.union(v.null(), v.string())),
     count: v.optional(v.union(v.null(), v.number())),
     lastRequest: v.optional(v.union(v.null(), v.number())),
   })
-    .index("key", ["key"]),
+    .index("key", ["key"])
+    // Better Auth 1.7 prunes expired rows by it.
+    .index("lastRequest", ["lastRequest"]),
 };
 
 const schema = defineSchema(tables);

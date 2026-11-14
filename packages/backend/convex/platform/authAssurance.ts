@@ -88,10 +88,32 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
     return pair ? readSession(convexCtx, pair.user.id, pair.session.id) : null;
   }
 
+  /**
+   * An admitted `/two-factor/enable` replaces the user's authenticator, as it did before Better
+   * Auth 1.7. 1.7 refuses to replace a verified TOTP (`TOTP_ALREADY_ENABLED`) and rewrites an
+   * unverified one in place, keeping its id; sessions are bound to a factor id, so a reused id
+   * would let sessions that proved the lost authenticator count as strong again. Once the current
+   * password checks out, remove the old factor, so the endpoint creates a new one (with a new id
+   * and new backup codes) that stays unverified until a code from it verifies.
+   */
+  async function releaseReplacedTotp(endpoint: Endpoint, userId: string): Promise<void> {
+    const password: unknown = endpoint.body?.password;
+    if (typeof password !== "string") return;
+    const factor = await actionCtx().runQuery(components.betterAuth.adapter.findOne, { model: "twoFactor", where: [{ field: "userId", value: userId }] });
+    if (!factor) return;
+    const account = await actionCtx().runQuery(components.betterAuth.adapter.findOne, { model: "account", where: [{ field: "userId", value: userId }, { field: "providerId", value: "credential" }] });
+    // A wrong password leaves the factor alone; the endpoint then refuses with INVALID_PASSWORD.
+    if (!account?.password || !await endpoint.context.password.verify({ hash: account.password, password })) return;
+    await actionCtx().runMutation(internal.platform.sessionAssurance.releaseReplacedFactor, { userId, factorId: factor._id, factorSecret: factor.secret });
+  }
+
   const before = createAuthMiddleware(async endpoint => {
     const path = endpoint.path ?? "";
     const policy = authRoutePolicy(path);
     if (policy === "disabled") refuse("AUTH_METHOD_DISABLED");
+    // Better Auth 1.7 can also enable email-OTP-only two-factor. The platform has no such flow:
+    // its strong factors are TOTP and passkeys, so enabling stays TOTP-only, as before 1.7.
+    if (path === "/two-factor/enable" && endpoint.body?.method !== undefined && endpoint.body.method !== "totp") refuse("AUTH_METHOD_DISABLED");
     if ((path === "/sign-in/magic-link" || path === "/magic-link/verify") && !await emailLoginEnabled(convexCtx)) refuse("AUTH_METHOD_DISABLED");
     if ((path === "/email-otp/send-verification-otp" || path === "/email-otp/check-verification-otp") && endpoint.body?.type === "sign-in") refuse("AUTH_METHOD_DISABLED");
     if (path === "/sign-in/magic-link" && typeof endpoint.body?.email === "string") {
@@ -153,11 +175,13 @@ export function createAssuranceHooks(convexCtx: GenericCtx<DataModel>) {
       if (assurance.reason === "email_verification" || assurance.reason === "method_disabled" || assurance.reason === "reauthenticate") refuse("REAUTHENTICATION_REQUIRED");
       if (path.startsWith("/passkey/") && assurance.passkeyPolicy === "disabled") refuse("AUTH_METHOD_DISABLED");
       // Lost-factor recovery may replace TOTP only; the endpoint also verifies the current password.
-      if (assurance.reason === "recovery" && path === "/two-factor/enable") return;
-      if (assurance.reason === "recovery") refuse("RECOVERY_REQUIRED");
-      if (assurance.hasTotp || (assurance.hasPasskey && assurance.passkeyPolicy !== "disabled")) {
-        if (!assurance.strong || !assurance.recent) refuse("RECENT_AUTHENTICATION_REQUIRED");
-      } else if (!pair.session.primaryVerifiedAt || assurance.primaryRecentUntil <= Date.now()) refuse("RECENT_AUTHENTICATION_REQUIRED");
+      if (assurance.reason !== "recovery" || path !== "/two-factor/enable") {
+        if (assurance.reason === "recovery") refuse("RECOVERY_REQUIRED");
+        if (assurance.hasTotp || (assurance.hasPasskey && assurance.passkeyPolicy !== "disabled")) {
+          if (!assurance.strong || !assurance.recent) refuse("RECENT_AUTHENTICATION_REQUIRED");
+        } else if (!pair.session.primaryVerifiedAt || assurance.primaryRecentUntil <= Date.now()) refuse("RECENT_AUTHENTICATION_REQUIRED");
+      }
+      if (path === "/two-factor/enable") await releaseReplacedTotp(endpoint, pair.user._id);
       return;
     }
     if (!assurance.allowed) refuse("SECURITY_ENROLLMENT_REQUIRED");

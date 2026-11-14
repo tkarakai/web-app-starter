@@ -2,6 +2,8 @@
 // It mirrors the plugin configuration from @convex-dev/better-auth's
 // built-in auth-options.ts (for schema compatibility) plus our custom
 // plugins. Do NOT import this file at runtime.
+// Better Auth 1.7 removed the oidcProvider plugin (adapter 0.13 dropped it too);
+// its oauth* tables stay in schema.ts so an upgrade never drops existing tables.
 import { convexAdapter } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { betterAuth } from "better-auth";
@@ -14,7 +16,6 @@ import {
   genericOAuth,
   jwt,
   magicLink,
-  oidcProvider,
   oneTap,
   oneTimeToken,
   organization,
@@ -48,7 +49,6 @@ export const auth = betterAuth({
       config: [{ clientId: "", clientSecret: "", providerId: "" }],
     }),
     oneTap(),
-    oidcProvider({ loginPage: "/login" }),
     bearer(),
     oneTimeToken(),
     jwt(),
