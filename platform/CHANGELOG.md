@@ -27,6 +27,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
   - Release assets stream to disk and are cached by digest instead of being downloaded into memory on every refresh.
   - Source fetches get 15 minutes instead of two.
 
+- Local CI worker tool refreshes and manager updates work again. They downloaded the local Convex backend from `get-convex/convex-backend`, which was renamed to `convex/convex-backend`. The API client refuses redirects, so every preparation failed with `fetch failed`.
+
 - The organization switcher no longer snaps shut, and the dashboard no longer flashes Loading, when the Convex client refreshes its auth token. `useOrganizations()` keeps its last answer while the query reloads; any new answer, `null` included, still replaces it.
 
 - Admin bootstrap uses a mandatory tenancy dialog with explicit final confirmation. Normal navigation and pages stay hidden until setup completes; setup remains subscribed across navigation, with security, sign-out and failure recovery available.

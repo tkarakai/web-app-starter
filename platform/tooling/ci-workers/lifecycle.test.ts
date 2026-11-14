@@ -468,7 +468,7 @@ globalThis.fetch = async (url, init) => {
 const realFetch = async url => {`).replace("'branch-test', true);", "'branch-test', true, 'manager-credential');" + `
 const metadata = seen.filter(([url]) => url.startsWith('https://api.github.com/'));
 const downloads = seen.filter(([url]) => !url.startsWith('https://api.github.com/'));
-assert.deepEqual(metadata.map(([url]) => url.split('/').slice(4, 6).join('/')), ['actions/runner', 'oven-sh/bun', 'get-convex/convex-backend']);
+assert.deepEqual(metadata.map(([url]) => url.split('/').slice(4, 6).join('/')), ['actions/runner', 'oven-sh/bun', 'convex/convex-backend']);
 assert(metadata.every(([, authorization]) => authorization === 'Bearer manager-credential'), 'release metadata must not use the anonymous per-IP quota');
 assert.equal(downloads.length, 1, 'the fixture assets share one digest, so one cached download serves all three');
 assert(downloads.every(([url, authorization]) => url.startsWith('https://github.com/') && authorization === null), 'downloads must never carry the credential');
