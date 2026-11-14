@@ -993,23 +993,7 @@
           ]
         }
       ],
-      "migrations": [
-        {
-          "id": "v5-projects-to-organizations",
-          "changesRows": true,
-          "expansion": "Intermediate organizations revision b81d0a10 (#360, optional projects.organizationId with sampleMigrations.projectsToOrganizations), merged into a customized app and deployed to each target before taking 5.0.0; not a published release. Apps that removed the sample projects or have no existing projects skip this.",
-          "contract": "5.0.0",
-          "dependsOn": [],
-          "statusCommand": [
-            "bunx",
-            "convex",
-            "data",
-            "migrations"
-          ],
-          "completion": "In each target deployment, sampleMigrations:projectsToOrganizations has isDone true with no error, and no retained project lacks organizationId (projects logged PROJECT_WITHOUT_OWNER_ACCOUNT were reassigned to a verified organization or deleted). Then the required schema deploys.",
-          "instructions": "platform/docs/organizations.md"
-        }
-      ],
+      "migrations": [],
       "env": [
         {
           "name": "AGENT_MCP_ENABLED",
