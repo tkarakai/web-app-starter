@@ -47,8 +47,9 @@ export function AdminTotpSetup() {
       if (result.error) {
         setError(formatAuthError(result.error, "Failed to enable 2FA."));
       } else {
-        setTotpUri(result.data?.totpURI ?? "");
-        setBackupCodes(result.data?.backupCodes ?? []);
+        const data = result.data?.method === "totp" ? result.data : undefined;
+        setTotpUri(data?.totpURI ?? "");
+        setBackupCodes(data?.backupCodes ?? []);
         setStep("uri");
       }
     } catch {

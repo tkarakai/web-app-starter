@@ -12,10 +12,10 @@
     "./password-policy": "./src/password-policy.ts"
   },
   "dependencies": {
-    "@better-auth/passkey": "~1.6.34",
-    "@convex-dev/better-auth": "^0.12.6",
+    "@better-auth/passkey": "~1.7.17",
+    "@convex-dev/better-auth": "^0.13.0",
     "@web-app-starter/app-config": "workspace:*",
-    "better-auth": "~1.6.34",
+    "better-auth": "~1.7.17",
     "convex": "^1.49.0",
     "@web-app-starter/agentic": "workspace:*"
   },

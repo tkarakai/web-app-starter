@@ -12,8 +12,8 @@
     "typecheck": "tsc -p convex --noEmit"
   },
   "dependencies": {
-    "@better-auth/passkey": "1.6.34",
-    "@convex-dev/better-auth": "0.12.6",
+    "@better-auth/passkey": "1.7.17",
+    "@convex-dev/better-auth": "0.13.0",
     "@web-app-starter/app-config": "workspace:*",
     "@web-app-starter/auth": "workspace:*",
     "@web-app-starter/design-system": "workspace:*",
@@ -21,7 +21,7 @@
     "@zxcvbn-ts/core": "^3.0.4",
     "@zxcvbn-ts/language-common": "^3.0.4",
     "@zxcvbn-ts/language-en": "^3.0.2",
-    "better-auth": "1.6.34",
+    "better-auth": "1.7.17",
     "convex": "1.49.0",
     "convex-helpers": "^0.1.134",
     "resend": "^6.37.0",

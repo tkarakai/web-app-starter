@@ -32,6 +32,20 @@ export const bindRecoveryReplacement = internalMutation({
   },
 });
 
+/**
+ * Removes the TOTP factor an admitted `/two-factor/enable` is about to replace, after the hook has
+ * checked the current password (authAssurance.ts). Only the factor the hook read: a factor that
+ * changed since is left for the endpoint to refuse.
+ */
+export const releaseReplacedFactor = internalMutation({
+  args: { userId: v.string(), factorId: v.string(), factorSecret: v.string() },
+  handler: async (ctx, args) => {
+    const factor = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: "twoFactor", where: [{ field: "_id", value: args.factorId }] });
+    if (factor?.userId !== args.userId || factor.secret !== args.factorSecret) return;
+    await ctx.runMutation(components.betterAuth.adapter.deleteOne, { input: { model: "twoFactor", where: [{ field: "_id", value: factor._id }] } });
+  },
+});
+
 /** Successful authentication hooks call this after proof verification, never browsers. */
 export const recordProof = internalMutation({
   args: {

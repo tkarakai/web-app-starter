@@ -223,9 +223,9 @@ root:
 {
   "exceptions": [
     {
-      "advisory": "GHSA-965c-763c-88jm",
-      "package": "better-auth",
-      "expires": "2026-11-12",
+      "advisory": "GHSA-xxxx-xxxx-xxxx",
+      "package": "<package>",
+      "expires": "YYYY-MM-DD",
       "reason": "Why the vulnerable path is not reached, and why the fix cannot be installed yet.",
       "ticket": "https://github.com/<owner>/<repo>/issues/<n>"
     }
@@ -237,7 +237,8 @@ Each entry names one advisory in one package, and every field is required. An ex
 suppresses only that advisory in that package, in both the Bun audit and the Dependabot-alert
 gate. Lower severities never need one. The audit fails when an exception has expired, so it
 must be re-assessed rather than renewed silently. It also fails when an exception no longer
-matches a finding, so it is removed as soon as the fix lands. Keep expiries short, at two weeks
+matches a finding, so it is removed as soon as the fix lands; with none left the file is
+`{ "exceptions": [] }`. Keep expiries short, at two weeks
 or less. The ticket holds the assessment and the upgrade that ends the exception. Apply the
 advisory's documented workaround as well, when one exists.
 
@@ -415,14 +416,14 @@ elapsed"), and plans to update `bun.lock` and the root `overrides`.
 
 ## Auth peer resolution
 
-Keep the root `better-auth` and `@better-auth/core` overrides aligned on the supported
-1.6 patch line while the Convex adapter requires `<1.7.0`. A Renovate version cap
-controls proposed manifest updates, but does not constrain Bun's transitive peer
-resolution: passkey's caret core peer can otherwise install a 1.7 core alongside
-better-auth's exact 1.6 core. The two cores resolve different `better-call` copies,
-so an MFA hook's `APIError` fails the passkey handler's `instanceof` check and loses
-its 403 status and error code. Keep the real passkey session-assurance test passing;
-do not relax its expected response to accommodate a split auth stack.
+Keep the root `better-auth` and `@better-auth/core` overrides aligned on one exact patch
+of the line the Convex adapter accepts (today 1.7, `>=1.7.16 <1.8.0`). A Renovate version
+cap controls proposed manifest updates, but does not constrain Bun's transitive peer
+resolution: passkey's caret core peer can otherwise install a newer core alongside
+better-auth's exact core. The two cores resolve different `better-call` copies, so an
+MFA hook's `APIError` fails the passkey handler's `instanceof` check and loses its status
+and error code. Keep the real passkey session-assurance test passing; do not relax its
+expected responses to accommodate a split auth stack.
 
 The Resend override also protects the ten-day release age during Renovate lockfile
 regeneration. Check publication times of changed lock entries: an eligible direct
