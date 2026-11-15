@@ -185,6 +185,13 @@ version. Release-specific compatibility and deployment steps are listed explicit
   hosted. Cancel/restart already queued local jobs. Live-resource and inherited-setting retirement
   steps are in [the worker guide](docs/ci-workers.md#retire-public-local-runners).
 
+- **Every app with `apps/web`:** remove the proxy's prefetch exemption (security, #386). Run
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v5-proxy-prefetch-rate-limit.ts`, then the
+  same command with `--check`. It removes only the stock `missing: [...]` prefetch matcher from
+  `apps/web/src/proxy.ts` (pass another path if you moved it). If your matcher differs, delete any
+  exemption for `next-router-prefetch` or `purpose: prefetch` yourself.
+  **Done when:** `bun run test:contracts` passes, including `proxy-prefetch.test.ts`.
+
 ### Fixed
 
 - Local CI worker managers no longer use up the anonymous GitHub API quota for their public IP. Before this fix, a failed daily tool refresh retried every 15 seconds, and each retry made anonymous release lookups. The resulting 403 responses then blocked other GitHub clients behind the same IP, including other tools' update checks. Release lookups now use the manager credential. Failed maintenance backs off from 15 minutes to six hours, and the schedule persists across restarts. Failed polls back off up to ten minutes and honour GitHub rate-limit reset times. A failing job or organization member backs off on its own, without blocking other jobs. When the manager is idle and disk is low, it cleans up before refusing work. Its conditional-request cache is bounded. Installed managers pick this up through `starter-workers update`.
@@ -451,6 +458,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
   for blocking rules, evidence limitations and the merge/release response.
 
 ### Security
+
+- **Page rate limit no longer skippable with prefetch headers.** The web app's proxy skipped requests
+  carrying `next-router-prefetch` or `purpose: prefetch`; those headers are client-controlled, so any
+  client could bypass the page rate limit and security headers. Every page request now reaches the
+  proxy and shares one budget, and the `proxy-prefetch` contract (in `test:contracts`) enforces it
+  for the web and admin apps (#386).
 
 - **Auth stack: better-auth 1.7.17** (with `@better-auth/core` and `@better-auth/passkey` 1.7.17)
   and **`@convex-dev/better-auth` 0.13.0**. This fixes GHSA-965c-763c-88jm (critical),
