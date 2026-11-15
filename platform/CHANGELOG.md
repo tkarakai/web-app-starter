@@ -13,6 +13,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Fixed
+
+- `bun run adopt --remove-sample` now also removes `apps/web/qa/tests/app-sidebar.test.tsx` and the unused sample fixtures `apps/web/qa/tests/fixtures/data.ts`. 5.0.0 left the sidebar test behind; it imports the removed `src/components/projects/app-sidebar` and mocks `api.projects`, so `bun run test:unit` (and `bun run ci`) failed in `@repo/web` on a freshly adopted app ([#407](https://github.com/tkarakai/web-app-starter/issues/407)). The adoption tests now run the retained web unit suite after sample removal and fail on any remaining web or backend code that uses the sample. Taking this release does not change your app: these files are yours. If you adopted 5.0.0 with `--remove-sample` and still have them, delete both files (`apps/web/qa/tests/app-sidebar.test.tsx` and `apps/web/qa/tests/fixtures/data.ts`); `bun run test:unit` then passes. Apps that kept the sample need nothing.
+
 ## [5.0.0] - 2026-11-14
 
 ### Added

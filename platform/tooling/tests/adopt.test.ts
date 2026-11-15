@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -271,4 +271,42 @@ test("sample removal leaves the retained backend suite runnable", (t) => {
     assert.equal(existsSync(path.join(backend, "convex", file)), false);
   }
   execFileSync("bun", ["run", "test:convex", "--maxWorkers", "2"], { cwd: backend, stdio: "pipe", timeout: 120_000 });
+});
+
+/** Every file under `dir` (relative to `root`), skipping installed and generated output. */
+function filesUnder(root: string, dir: string): string[] {
+  const out: string[] = [];
+  const walk = (relative: string): void => {
+    for (const entry of readdirSync(path.join(root, relative), { withFileTypes: true })) {
+      if (["node_modules", ".next", ".turbo", "coverage", "_generated"].includes(entry.name)) continue;
+      const child = path.join(relative, entry.name);
+      if (entry.isDirectory()) walk(child);
+      else out.push(child);
+    }
+  };
+  walk(dir);
+  return out;
+}
+
+// The shipped web app, not an adopted one: an adopted app has already made its sample choice.
+test("sample removal leaves no web code or test that uses the sample, and the web unit suite runnable", {
+  skip: existsSync(path.join(REPO, ".platform-base.json")) || !existsSync(path.join(REPO, "apps/web/src/components/projects")),
+  timeout: 300_000,
+}, (t) => {
+  const root = mkdtempSync(path.join(tmpdir(), "adopt-web-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const skip = (file: string): boolean => ["node_modules", ".next", ".turbo", "coverage", "test-results"].includes(path.basename(file));
+  for (const dir of ["apps/web", "packages/backend", "packages/messages", "platform/config", "platform/templates/adopt"]) {
+    cpSync(path.join(REPO, dir), path.join(root, dir), { recursive: true, filter: (file) => !skip(file) });
+  }
+  // Reuse installed dependencies; the web sources and tests are fixture-local.
+  symlinkSync(path.join(REPO, "node_modules"), path.join(root, "node_modules"), "dir");
+  symlinkSync(path.join(REPO, "apps/web/node_modules"), path.join(root, "apps/web/node_modules"), "dir");
+
+  removeSample(root);
+  const sample = /components\/projects|lib\/projects|\bapi\.(projects|tasks|files)\b|\b(ProjectFixture|TaskFixture|UploadFixture)\b/;
+  const residue = [...filesUnder(root, "apps/web"), ...filesUnder(root, "packages/backend/convex")]
+    .filter((file) => /\.(ts|tsx)$/.test(file) && sample.test(readFileSync(path.join(root, file), "utf8")));
+  assert.deepEqual(residue, []);
+  execFileSync("bun", ["run", "test:unit"], { cwd: path.join(root, "apps/web"), stdio: "pipe", timeout: 240_000, env: { ...process.env, CI: "true" } });
 });

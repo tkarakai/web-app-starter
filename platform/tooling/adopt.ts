@@ -215,6 +215,7 @@ export function removeSample(root: string): void {
     rmSync(at(`${backend}${file}`), { force: true });
   }
   for (const file of ["apps/web/src/components/projects", "apps/web/src/lib/projects.ts", "apps/web/qa/tests/projects.test.ts",
+    "apps/web/qa/tests/app-sidebar.test.tsx", "apps/web/qa/tests/fixtures/data.ts",
     "apps/web/qa/e2e/private-files.spec.ts", "apps/web/qa/e2e/organizations.spec.ts"]) {
     rmSync(at(file), { recursive: true, force: true });
   }
