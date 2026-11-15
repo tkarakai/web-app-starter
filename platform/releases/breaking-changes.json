@@ -998,6 +998,13 @@
           "touches": [
             "dependency-audit-exceptions.json"
           ]
+        },
+        {
+          "id": "v5-bun-dockerfiles",
+          "path": "platform/tooling/codemods/v5-bun-dockerfiles.ts",
+          "touches": [
+            "infra/aws/docker/"
+          ]
         }
       ],
       "migrations": [],
