@@ -88,6 +88,13 @@ STARTER_WORKERS_HOME="$HOME/.local/share/my-private-ci-pool" \
 ```
 
 Use the actual expiry; do not change `HOME` to isolate a real login service or its Keychain.
+
+Every installation has its own `starter-workers` wrapper in its state directory, and every command
+acts on the installation whose wrapper runs it. In this guide, `starter-workers` means that wrapper.
+The copy in `~/.local/bin` is only a shortcut to the most recently installed pool. With several
+installations it can point at the wrong one, or at one that was removed. `starter-workers list`
+prints every installed manager service with its state directory, wrapper, repositories, whether it
+is running or paused, and its installed version.
 Use dedicated CI hosts when
 running code from people you do not trust; containers still share the Linux kernel.
 
@@ -247,8 +254,10 @@ and credential separation before enabling private package registries.
 
 ## Operate and maintain
 
+Run these with the wrapper of the installation you mean (see `starter-workers list`):
+
 ```sh
-starter-workers status              # Docker, last poll, active jobs, configuration, expiry warning
+starter-workers status              # Docker, last poll, failures, maintenance schedule, active jobs, expiry warning
 starter-workers status --watch
 starter-workers images             # image IDs, scopes, creation and last-use times
 starter-workers logs --follow       # manager log (Linux: also journalctl --user -u POOL -f)
@@ -258,25 +267,104 @@ starter-workers cleanup
 ```
 
 Keep Docker and the host available. The manager checks for compatible upstream tool refreshes daily
-when idle; it validates replacements before promoting them. It does not upgrade your application's
+when idle; it validates replacements before promoting them. A failed daily maintenance run is retried
+after 15 minutes, doubling to at most six hours, and the schedule in `maintenance.json` survives
+restarts. Status shows the last error and the next attempt. It does not upgrade your application's
 lockfile. `starter-workers refresh` prepares/validates a refreshed environment for the committed
 checkout immediately. If a refresh fails, inspect the error and fix it; an incompatible image is
 never silently substituted. Runner security updates may require prompt operator action.
+
+The manager polls every 15 seconds. After a failed poll it waits longer, doubling up to ten minutes,
+and a GitHub rate limit pauses polling until GitHub's reset time (at most an hour). A job or
+organization member that fails preparation or admission is retried with its own backoff, from one
+minute up to 30 minutes, while other jobs continue. The manager credential authenticates every
+GitHub API request, including the runner, Bun and Convex release lookups. Anonymous requests would
+share GitHub's 60-per-hour limit with every other client behind the same public IP. Release
+downloads never carry the credential. They stream to disk, are verified against the release's
+SHA-256 digest and are cached by that digest in `release-cache/`, so a refresh does not download an
+unchanged asset again. When admission is refused for disk space or the image budget while the
+manager is idle, it runs cleanup once before rechecking.
+
+Queued and in-progress runs are admitted oldest first. The manager reads up to 500 runs per status
+and logs once when a backlog exceeds that. In organization mode, listing a member's runs reuses an
+access check made within five minutes, but preparation and runner registration always recheck the
+repository's visibility, identity and runner-group membership. Conditional requests answered with
+`304 Not Modified` do not count against the credential's rate limit.
+
+The manager removes each JIT runner registration when its worker exits. If a removal fails, it is
+retried on later polls and listed as `pendingRunnerRemovals` in status. Startup, idle maintenance
+and any registration attempt whose response was lost remove this installation's registrations that
+no running worker uses; runners from other installations or other tools are never touched.
+
+On macOS the service writes to `logs/manager.log`. When the file exceeds 10 MiB the manager keeps the
+most recent 10 MiB in `logs/manager.log.1` and empties the live file. Linux services log to the user
+journal. Cleanup also removes the `source.git` fetch cache, release-cache entries unused for seven
+days and worker logs older than seven days. An update keeps only the current and previous
+installations under `versions/`.
+
+Lock files record the owner's PID and the boot it started in. A lock left behind by a crash or
+reboot does not block startup, updates or uninstall, even if another process later reuses its PID.
 
 `starter-workers auth replace --token-expires YYYY-MM-DD` prompts for and validates a new dedicated
 token before storing it and recording its expiry. Status warns within 14 days of
 known expiry. Tokens do not renew automatically. Revoke the superseded token after checking access.
 Keep Docker and the host OS patched too.
 
-For a reviewed manager update, first `starter-workers pause --drain`, then
-`starter-workers service stop`. From the reviewed checkout run `starter-workers update --from .`.
-It builds and smoke-tests the new recipe before switching the installed manager; the previous
-installation remains in `previous`. Run `starter-workers check --install`, then
-`starter-workers service start` and `starter-workers resume`.
-
 A failed/cancelled job loses its private overlay. On manager restart, abandoned containers/networks
 and owned GitHub registrations are reconciled. Job diagnostic logs and launch evidence stay outside
 workers and expire after seven days. Retention preserves the live service `manager.log`. Only this pool's labeled resources are touched.
+
+### Upgrade the manager
+
+Upgrade from a reviewed checkout that contains the new `platform/tooling/ci-workers`. That is
+usually the starter repository, or your app after a platform update. The install check prepares the
+repository a manager serves, so it needs a local checkout of that repository too:
+
+```sh
+cd /path/to/reviewed/checkout
+bun run ci:workers list
+bun run ci:workers upgrade --all --dry-run \
+  --checkout owner/app=/path/to/app \
+  --checkout owner/other-app=/path/to/other-app   # preflight and plan only
+bun run ci:workers upgrade --all \
+  --checkout owner/app=/path/to/app \
+  --checkout owner/other-app=/path/to/other-app
+```
+
+`upgrade --all` first finds every installed manager service and the checkout for each install
+check. It refuses before pausing anything if a checkout is missing, is not a checkout of that
+repository, or an installation is broken. Then it upgrades one installation at a time, running that
+installation's own wrapper for each step:
+
+1. `pause --drain`, then `service stop`, waiting until the manager has exited;
+2. `update --from CHECKOUT`, which builds and smoke-tests the new recipe before switching the
+   installed manager and keeps the replaced one in `previous`;
+3. `check --install` in the app's checkout, adding `--repo ORG/APP` for organization pools
+   (delivery installations run plain `check`, which never installs app dependencies);
+4. `service start`, then `resume`.
+
+A paused manager stays paused, and a stopped one is updated and checked but not started. If the
+install check fails, the installation is rolled back to `previous` and restarted, and later
+installations are not touched. `--checkout` is not needed for a repository whose checkout is the
+`--from` checkout. Without `--all`, `upgrade` acts only on the installation selected by
+`STARTER_WORKERS_HOME` (default `~/.local/share/starter-workers`).
+
+The same steps by hand, with `W` set to the wrapper path from `list`:
+
+```sh
+W="$HOME/.local/share/starter-workers/starter-workers"
+"$W" pause --drain
+"$W" service stop
+"$W" update --from /path/to/reviewed/checkout
+(cd /path/to/app && "$W" check --install)
+"$W" service start
+"$W" resume
+```
+
+Run the check from the served repository's checkout: it prepares that checkout's `HEAD`, not the
+manager's source. If it fails, `"$W" rollback` restores `previous`; check again before starting.
+Managers installed before `upgrade` existed return from `service stop` before the manager exits,
+and their `update` then refuses. Wait until `daemon.lock` is gone from the state directory first.
 
 ## Image and layer cleanup
 
@@ -308,7 +396,9 @@ not automatically move: cancel them in Actions and start fresh workflow runs. Th
 fallback while the only manager is offline. To return, check the machine and rerun the diagnostic,
 then `starter-workers enable`.
 
-For removal: `hosted`, `pause --drain`, `service stop`, then `starter-workers uninstall`. Revoke
+For removal, run the installation's own wrapper: `hosted`, `pause --drain`, `service stop`, then
+`uninstall`. A stopped manager cannot acknowledge `pause --drain`; skip it when `list` shows the
+manager is not running. Revoke
 the GitHub token. Prepared images and the dedicated BuildKit builder are retained; inspect them
 and remove only that pool's tags and builder if you want to reclaim everything. Other Docker
 resources are untouched.

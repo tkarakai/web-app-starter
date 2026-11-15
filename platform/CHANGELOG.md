@@ -17,6 +17,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- **`starter-workers upgrade [--all]`** upgrades installed CI worker managers from one reviewed checkout. For each installation in turn, it drains and stops the manager, runs `update`, runs the install check in that app's checkout (`--checkout OWNER/APP=PATH`) and restarts it. It keeps paused or stopped managers in that state, and rolls back to the previous installation if the check fails. It checks every target before pausing any. `starter-workers list` shows every installed manager, and `starter-workers rollback` restores the previous installation by hand.
+
 - **Tenancy modes, plans and billing organizations.** The platform admin chooses, once,
   **Plans for Individuals** (each user's organization is also their billing organization, shown
   as Billing details) or **Plans for Organizations** (billing organizations pay for shared
@@ -174,6 +176,22 @@ version. Release-specific compatibility and deployment steps are listed explicit
   steps are in [the worker guide](docs/ci-workers.md#retire-public-local-runners).
 
 ### Fixed
+
+- Local CI worker managers no longer use up the anonymous GitHub API quota for their public IP. Before this fix, a failed daily tool refresh retried every 15 seconds, and each retry made anonymous release lookups. The resulting 403 responses then blocked other GitHub clients behind the same IP, including other tools' update checks. Release lookups now use the manager credential. Failed maintenance backs off from 15 minutes to six hours, and the schedule persists across restarts. Failed polls back off up to ten minutes and honour GitHub rate-limit reset times. A failing job or organization member backs off on its own, without blocking other jobs. When the manager is idle and disk is low, it cleans up before refusing work. Its conditional-request cache is bounded. Installed managers pick this up through `starter-workers update`.
+
+- Local CI worker managers are more robust over long runs:
+  - On macOS, `logs/manager.log` is rotated at 10 MiB.
+  - Runner registrations whose removal failed, or whose creation response was lost, are retried and swept instead of leaking.
+  - Runner and run listings are paginated, and queued runs are admitted oldest first.
+  - Organization members are no longer reported as lacking runner-group access when the group lists more than 1,000 repositories.
+  - A lock left by a crash or reboot no longer blocks startup or updates when its PID has been reused.
+  - Cleanup prunes the source fetch cache, and updates keep only the current and previous installations.
+  - Release assets stream to disk and are cached by digest instead of being downloaded into memory on every refresh.
+  - Source fetches get 15 minutes instead of two.
+
+- `starter-workers service stop` returns only after the manager has exited. Before this, an `update` run straight after it could be refused because the manager still held its lock.
+
+- Local CI worker tool refreshes and manager updates work again. They downloaded the local Convex backend from `get-convex/convex-backend`, which was renamed to `convex/convex-backend`. The API client refuses redirects, so every preparation failed with `fetch failed`.
 
 - The organization switcher no longer snaps shut, and the dashboard no longer flashes Loading, when the Convex client refreshes its auth token. `useOrganizations()` keeps its last answer while the query reloads; any new answer, `null` included, still replaces it.
 

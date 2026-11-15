@@ -1,8 +1,9 @@
 import path from 'node:path';
 import os from 'node:os';
-import { cp, mkdir, readFile, readlink, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, readlink, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { assert, command, exists, hash, home, save, type Config } from './core.ts';
+import { assert, command, config, exists, hash, home, save, type Config } from './core.ts';
+import { lockHeld } from './manager.ts';
 
 const xml = (s: string): string => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;');
 const shell = (s: string): string => `'${s.replaceAll("'", "'\\''")}'`;
@@ -20,7 +21,7 @@ export async function installationComplete(pool: string, directory: string = hom
   } catch { return false; }
 }
 export async function install(c: Config): Promise<string> {
-  assert(!await exists(path.join(home, 'daemon.lock')), 'Stop the manager before installing');
+  assert(!await lockHeld('daemon'), 'Stop the manager before installing');
   await rm(path.join(home, 'installation.json'), { force: true });
   const source = path.dirname(fileURLToPath(import.meta.url));
   const target = path.join(home, 'versions', `${Date.now()}-${hash(source).slice(0, 8)}`);
@@ -28,7 +29,10 @@ export async function install(c: Config): Promise<string> {
   const current = path.join(home, 'current');
   if (await exists(current)) { const old = await readlink(current); await rm(path.join(home, 'previous'), { force: true }); await symlink(old, path.join(home, 'previous')); }
   const replacement = path.join(home, 'current.next'); await rm(replacement, { force: true }); await symlink(target, replacement);
-  const { rename } = await import('node:fs/promises'); await rename(replacement, current);
+  const { readdir } = await import('node:fs/promises'); await rename(replacement, current);
+  // Keep only the current and previous installations.
+  const kept = new Set([target, await readlink(path.join(home, 'previous')).catch(() => '')].map(entry => path.basename(entry)));
+  for (const entry of await readdir(path.join(home, 'versions'))) if (!kept.has(entry)) await rm(path.join(home, 'versions', entry), { recursive: true, force: true });
   const wrapper = path.join(home, 'starter-workers');
   await writeFile(wrapper, `#!/bin/sh\nexport STARTER_WORKERS_HOME=${shell(home)}\nexec ${shell(process.execPath)} ${shell(path.join(current, 'cli.ts'))} "$@"\n`, { mode: 0o755 });
   if (c.convenienceCommand !== false) {
@@ -59,6 +63,31 @@ export async function service(c: Config, start: boolean): Promise<void> {
     await command('systemctl', ['--user', 'daemon-reload']);
     await command('systemctl', ['--user', start ? 'enable' : 'disable', '--now', `${c.pool}.service`]);
   }
+  // launchctl bootout returns before the manager finishes shutting down; callers such as update
+  // need the daemon lock released, so stop returns only once the manager has exited.
+  if (!start) await stopped(stopTimeout);
+}
+const stopTimeout = 600_000;
+async function stopped(timeout: number): Promise<void> {
+  for (const deadline = Date.now() + timeout; await lockHeld('daemon');) {
+    assert(Date.now() < deadline, `The manager still holds ${path.join(home, 'daemon.lock')} ${timeout / 60_000} minutes after service stop; inspect its logs`);
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+}
+/** Switch back to the installation kept in previous/ (the replaced one becomes previous). */
+export async function rollback(): Promise<string> {
+  assert(!await lockHeld('daemon'), 'Stop the manager before rolling back');
+  const currentLink = path.join(home, 'current'), previousLink = path.join(home, 'previous');
+  const previous = await readlink(previousLink).catch(() => '');
+  assert(previous && await exists(path.join(previous, 'cli.ts')), 'No previous installation to roll back to');
+  const current = await readlink(currentLink);
+  const c = await config();
+  await rm(path.join(home, 'installation.json'), { force: true });
+  for (const [link, target] of [[currentLink, previous], [previousLink, current]]) {
+    await rm(`${link}.next`, { force: true }); await symlink(target, `${link}.next`); await rename(`${link}.next`, link);
+  }
+  await save(path.join(home, 'installation.json'), { pool: c.pool, digests: await installationDigests(c.pool, home) });
+  return previous;
 }
 
 export async function removeConvenienceCommand(): Promise<void> {

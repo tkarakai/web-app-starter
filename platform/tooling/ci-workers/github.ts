@@ -17,7 +17,25 @@ export async function storeToken(value: string): Promise<void> {
     await chmod(path.join(home, 'credential'), 0o600);
   }
 }
+export class GitHubError extends Error {
+  readonly status: number;
+  readonly retryAt?: number;
+  constructor(message: string, status: number, retryAt?: number) { super(message); this.name = 'GitHubError'; this.status = status; this.retryAt = retryAt; }
+}
+// GitHub signals primary limits with x-ratelimit-remaining: 0 and secondary limits with Retry-After.
+export function rateLimitRetryAt(status: number, headers: Headers, now = Date.now()): number | undefined {
+  if (status !== 403 && status !== 429) return;
+  const after = Number(headers.get('retry-after'));
+  if (headers.get('retry-after') !== null && Number.isFinite(after) && after >= 0) return now + after * 1000;
+  const reset = Number(headers.get('x-ratelimit-reset'));
+  if (headers.get('x-ratelimit-remaining') === '0' && Number.isFinite(reset) && reset > 0) return Math.max(now, reset * 1000);
+  return status === 429 ? now + 60_000 : undefined;
+}
+// Conditional-request cache for the long-running manager. Per-run and per-job endpoints change constantly,
+// so keep only the most recently used entries instead of every response body seen since start.
 const responses = new Map<string, { etag: string; data: unknown }>();
+export const responseCacheLimit = 256;
+export function responseCacheSize(): number { return responses.size; }
 export async function api<T>(endpoint: string, credential?: string, body?: unknown, method?: string): Promise<T> {
   assert(endpoint.startsWith('/') && !endpoint.startsWith('//'), 'Invalid API path');
   const cacheKey = endpoint + (credential ? ':authenticated' : ':public');
@@ -28,12 +46,32 @@ export async function api<T>(endpoint: string, credential?: string, body?: unkno
       ...(cached ? { 'If-None-Match': cached.etag } : {}), ...(credential ? { Authorization: `Bearer ${credential}` } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) },
     body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(30_000), redirect: 'error',
   });
-  if (response.status === 304 && cached) return cached.data as T;
-  if (!response.ok) throw new Error(`GitHub ${endpoint.split('?')[0]}: HTTP ${response.status}; check credential permissions, expiry and API limits`);
+  if (response.status === 304 && cached) { responses.delete(cacheKey); responses.set(cacheKey, cached); return cached.data as T; }
+  if (!response.ok) {
+    const retryAt = rateLimitRetryAt(response.status, response.headers);
+    const detail = retryAt === undefined ? 'check credential permissions, expiry and API limits' : `rate limited until ${new Date(retryAt).toISOString()}`;
+    throw new GitHubError(`GitHub ${endpoint.split('?')[0]}: HTTP ${response.status}; ${detail}`, response.status, retryAt);
+  }
   const data = response.status === 204 ? undefined : await response.json();
   const etag = response.headers.get('etag');
-  if (!body && !method && etag) responses.set(cacheKey, { etag, data });
+  if (!body && !method && etag) {
+    responses.delete(cacheKey); responses.set(cacheKey, { etag, data });
+    for (const key of responses.keys()) { if (responses.size <= responseCacheLimit) break; responses.delete(key); }
+  }
   return data as T;
+}
+/** Read up to `maxPages` pages of a list endpoint; `complete` is false when more items remain. */
+export async function listPages<T>(endpoint: string, key: string, credential: string | undefined, maxPages: number): Promise<{ items: T[]; complete: boolean }> {
+  const items: T[] = [];
+  const separator = endpoint.includes('?') ? '&' : '?';
+  for (let page = 1; page <= maxPages; page++) {
+    const response = await api<Record<string, T[]>>(`${endpoint}${separator}per_page=100&page=${page}`, credential);
+    const batch = response[key];
+    assert(Array.isArray(batch), `Invalid GitHub list response for ${endpoint.split('?')[0]}`);
+    items.push(...batch);
+    if (batch.length < 100) return { items, complete: true };
+  }
+  return { items, complete: false };
 }
 export async function privateRepository(c: Config, credential: string): Promise<{ id: number; private: boolean; default_branch: string }> {
   assertPrivateMode(c);
@@ -50,7 +88,8 @@ export async function remoteSource(c: Config, sha: string, credential: string): 
     GIT_CONFIG_COUNT: '3', GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader',
     GIT_CONFIG_VALUE_0: `Authorization: Basic ${Buffer.from(`x-access-token:${credential}`).toString('base64')}`,
     GIT_CONFIG_KEY_1: 'core.hooksPath', GIT_CONFIG_VALUE_1: '/dev/null', GIT_CONFIG_KEY_2: 'credential.helper', GIT_CONFIG_VALUE_2: '' };
-  await command('git', ['-C', mirror, 'fetch', '--no-tags', '--depth=1', `https://github.com/${c.repo}.git`, sha], { env });
+  // A first fetch of a large repository can exceed the ordinary command budget on slow links.
+  await command('git', ['-C', mirror, 'fetch', '--no-tags', '--depth=1', `https://github.com/${c.repo}.git`, sha], { env, timeout: 15 * 60_000 });
   return mirror;
 }
 
@@ -67,7 +106,8 @@ export async function assertOrgAccess(c: Config, credential: string, repository 
   assert(info.private === true, 'Organization workers require private repositories');
   const group = await api<{ id: number; visibility: string; allows_public_repositories: boolean }>(`/orgs/${c.org}/actions/runner-groups/${c.runnerGroupId}`, credential);
   assert(group.id === c.runnerGroupId && group.visibility === 'selected' && !group.allows_public_repositories, 'Use a private, selected-repository runner group');
-  for (let page = 1; page <= 10; page++) {
+  // Page until the repository is found or the list ends; a truncated list must not read as a denial.
+  for (let page = 1; page <= 1000; page++) {
     const members = await api<{ repositories: { id: number }[] }>(`/orgs/${c.org}/actions/runner-groups/${c.runnerGroupId}/repositories?per_page=100&page=${page}`, credential);
     if (members.repositories.some(member => member.id === info.id)) return info.id;
     if (members.repositories.length < 100) break;
