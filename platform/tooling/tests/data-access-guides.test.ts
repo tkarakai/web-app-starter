@@ -67,7 +67,9 @@ test("the four documented data models compile and enforce their audiences throug
     // The generated data-model types derive from schema.ts; no generated file is edited.
     execFileSync(process.execPath, [require.resolve("typescript/bin/tsc"), "-p", "convex"], options);
     const vitest = path.join(path.dirname(require.resolve("vitest/package.json")), "vitest.mjs");
-    const output = execFileSync(process.execPath, [vitest, "run", "--config", "vitest.config.ts", "convex/data-access-guides.contract.test.ts"], options);
+    // Nested inside the parallel tooling suite, so vitest's 5 s per-test default fails on a busy
+    // machine. This checks the documented rules, not speed; the 90 s spawn timeout still bounds it.
+    const output = execFileSync(process.execPath, [vitest, "run", "--config", "vitest.config.ts", "--testTimeout", "30000", "convex/data-access-guides.contract.test.ts"], options);
     t.diagnostic(output);
   } catch (error) {
     const failed = error as { message?: string; stdout?: string; stderr?: string };
