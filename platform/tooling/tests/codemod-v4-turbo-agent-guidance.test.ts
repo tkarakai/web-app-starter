@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { existsSync, lstatSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync, realpathSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test, { type TestContext } from "node:test";
 import { migrate, migrateContent } from "../codemods/v4-turbo-agent-guidance.ts";
@@ -7,7 +8,7 @@ import { migrate, migrateContent } from "../codemods/v4-turbo-agent-guidance.ts"
 const original = "# App instructions\n\nKeep this content.\n";
 
 function fixture(t: TestContext): string {
-  const root = mkdtempSync(join(process.cwd(), ".v4-turbo-guidance-"));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "v4-turbo-guidance-")));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   return root;
 }

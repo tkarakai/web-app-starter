@@ -125,11 +125,11 @@ fs.writeFileSync(process.env.MOCK_CAPTURE, JSON.stringify({args: args.slice(0, 3
 
 test("anonymous command selects project-local state before legacy, rejects mismatches and supports legacy identity", t => {
   const { directory, backend, home, capture, run } = localCommand(t);
-  fs.writeFileSync(path.join(backend, ".env.local"), "CONVEX_DEPLOYMENT=anonymous:test\nCONVEX_URL=http://127.0.0.1:3210\nCONVEX_SITE_URL=http://127.0.0.1:3211\n");
+  fs.writeFileSync(path.join(backend, ".env.local"), "CONVEX_DEPLOYMENT=anonymous:anonymous-test\nCONVEX_URL=http://127.0.0.1:3210\nCONVEX_SITE_URL=http://127.0.0.1:3211\n");
   const project = path.join(backend, ".convex/local/default");
-  const legacy = path.join(home, ".convex/anonymous-convex-backend-state/test");
+  const legacy = path.join(home, ".convex/anonymous-convex-backend-state/anonymous-test");
   fs.mkdirSync(project, { recursive: true });
-  const config = { deploymentName: "test", adminKey: "project-key", ports: { cloud: 3210, site: 3211 } };
+  const config = { deploymentName: "anonymous-test", adminKey: "project-key", ports: { cloud: 3210, site: 3211 } };
   fs.writeFileSync(path.join(project, "config.json"), JSON.stringify(config));
   const verify = (key: string) => {
     const result = run("anonymous", { CONVEX_AGENT_MODE: "anonymous" });

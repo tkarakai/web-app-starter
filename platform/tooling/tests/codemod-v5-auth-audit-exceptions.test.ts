@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, realpathSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { migrate, migrateContent } from "../codemods/v5-auth-audit-exceptions.ts";
@@ -27,7 +28,7 @@ test("keeps the app's other exceptions, including the same advisory on another p
 });
 
 test("check is read-only, migration is idempotent and a missing file is fine", t => {
-  const root = mkdtempSync(join(process.cwd(), ".v5-auth-audit-exceptions-"));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "v5-auth-audit-exceptions-")));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   assert.deepEqual(migrate(root), []);
   const file = join(root, "dependency-audit-exceptions.json");

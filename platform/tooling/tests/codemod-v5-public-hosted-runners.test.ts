@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { migrate, migrateContent } from "../codemods/v5-public-hosted-runners.ts";
@@ -43,7 +44,7 @@ test('diagnostic migration passes a duplicate-key-rejecting Actions consumer whe
 });
 
 test('CLI identifies customized diagnostic files for owner review without changing them', t => {
-  const root = mkdtempSync(path.join(process.cwd(), '.public-runner-migration-'));
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'public-runner-migration-')));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(path.join(root, '.github/workflows'), { recursive: true });
   const file = path.join(root, '.github/workflows/ci-verify.yml');
@@ -156,7 +157,7 @@ test("stock source-bound routes preserve CI and updater labels across guarded an
 });
 
 test("CLI check is read-only, reports each file/count and migration is idempotent at an explicit directory", t => {
-  const root = mkdtempSync(path.join(process.cwd(), ".public-runner-migration-"));
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), "public-runner-migration-")));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(path.join(root, "custom"));
   const file = path.join(root, "custom/ci.yaml");
@@ -174,7 +175,7 @@ test("CLI check is read-only, reports each file/count and migration is idempoten
 });
 
 test("migration refuses symlink targets and directories outside the app root without modifying them", t => {
-  const root = mkdtempSync(path.join(process.cwd(), ".public-runner-migration-"));
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), "public-runner-migration-")));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(path.join(root, "workflows"));
   writeFileSync(path.join(root, "outside.yml"), stock);
