@@ -218,8 +218,8 @@ export function removeSample(root: string): void {
   // Drop the removed modules from the committed Convex API, exactly as `convex dev` regenerates it,
   // so the adopted commit already matches what the first backend start writes.
   const generatedApi = at(`${backend}_generated/api.d.ts`);
-  if (existsSync(generatedApi)) {
-    let api = readFileSync(generatedApi, "utf8");
+  let api = readOptional(generatedApi);
+  if (api !== undefined) {
     for (const name of sampleModules) {
       api = api.replace(`import type * as ${name} from "../${name}.js";\n`, "").replace(`  ${name}: typeof ${name};\n`, "");
     }
@@ -260,8 +260,9 @@ export function removeSample(root: string): void {
   }
   // The sample's error codes map to the sampleErrors strings removed below.
   const errorKeys = at("apps/web/src/lib/app-error-keys.ts");
-  if (existsSync(errorKeys)) {
-    writeFileSync(errorKeys, readFileSync(errorKeys, "utf8").replace(/^ {2}[A-Z_]+: "sampleErrors\.[^"\n]+",\n/gm, ""));
+  const errorKeysText = readOptional(errorKeys);
+  if (errorKeysText !== undefined) {
+    writeFileSync(errorKeys, errorKeysText.replace(/^ {2}[A-Z_]+: "sampleErrors\.[^"\n]+",\n/gm, ""));
   }
   for (const file of readdirSync(at("packages/messages")).filter((name) => /^[a-z]{2}\.json$/.test(name))) {
     const messages = readJson<Record<string, unknown>>(at(`packages/messages/${file}`));
