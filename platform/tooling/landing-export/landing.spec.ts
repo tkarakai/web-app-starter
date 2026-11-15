@@ -50,8 +50,17 @@ test("built landing hydrates with working assets and the expected onboarding con
   if (configured && appConfig.features.waitlist) {
     const email = page.locator('input[type="email"]').first();
     await expect(email).toBeVisible(); await email.fill("Artifact@Example.test");
-    await email.locator("xpath=ancestor::form").locator('button[type="submit"]').click();
-    await expect.poll(() => payload?.email).toBe("artifact@example.test");
+    const submit = email.locator("xpath=ancestor::form").locator('button[type="submit"]');
+    await expect(submit).toBeVisible();
+    // An app's own form may require more than an email (selections, consent). The smoke cannot know
+    // those fields, so it submits only an email-only form; the app's own tests cover the rest.
+    if (await submit.isEnabled()) {
+      await submit.click();
+      await expect.poll(() => payload?.email).toBe("artifact@example.test");
+    } else {
+      test.info().annotations.push({ type: "waitlist", description: "submit needs app-specific fields; submission not exercised" });
+      expect(payload).toBeUndefined();
+    }
   } else {
     await expect(page.locator('a[href$="/en/sign-in"]')).not.toHaveCount(0);
     await page.waitForLoadState("networkidle");

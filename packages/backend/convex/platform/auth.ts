@@ -199,28 +199,31 @@ const passwordStrengthPlugin = (
     let email = (body.email as string | undefined) ?? "";
     if (!password) return;
 
-    // For /change-password: resolve email from the authenticated session
-    // (body does not include email, so we must derive it from the session cookie)
+    // For /change-password: resolve email from the authenticated session (the body has none).
+    // The session comes as a bearer token or as Better Auth's session cookie, whose value is signed
+    // (`token.signature`); try the value as sent and without its signature. A wrong guess finds no
+    // session, and the endpoint itself authenticates the request.
     if (path.endsWith("/change-password") && !email) {
       try {
-        const cookieHeader = request.headers.get("cookie");
-        if (cookieHeader) {
-          const cookieName = (ctx as { authCookies?: { sessionToken?: { name?: string } } })
-            .authCookies?.sessionToken?.name ?? SESSION_COOKIE_NAME;
-          const match = cookieHeader
-            .split(";")
-            .map((c) => c.trim())
-            .find((c) => c.startsWith(cookieName + "="));
-          if (match) {
-            const sessionToken = decodeURIComponent(match.slice(cookieName.length + 1));
-            const session = await ctx.internalAdapter.findSession(sessionToken);
-            if (session?.user?.email) {
-              email = session.user.email;
-            }
+        const cookieName = (ctx as { authCookies?: { sessionToken?: { name?: string } } })
+          .authCookies?.sessionToken?.name ?? SESSION_COOKIE_NAME;
+        const values: string[] = [];
+        const bearer = request.headers.get("authorization")?.match(/^Bearer\s+(\S+)$/i)?.[1];
+        if (bearer) values.push(bearer);
+        for (const cookie of (request.headers.get("cookie") ?? "").split(";").map((c) => c.trim())) {
+          if (cookie.startsWith(cookieName + "=")) values.push(cookie.slice(cookieName.length + 1));
+        }
+        for (const value of values) {
+          const decoded = decodeURIComponent(value);
+          const dot = decoded.lastIndexOf(".");
+          for (const token of dot > 0 ? [decoded, decoded.slice(0, dot)] : [decoded]) {
+            const session = await ctx.internalAdapter.findSession(token);
+            if (session?.user?.email) { email = session.user.email; break; }
           }
+          if (email) break;
         }
       } catch {
-        // If session resolution fails, fall through with empty email
+        // If session resolution fails, fall through with empty email (the administrator threshold).
       }
     }
 

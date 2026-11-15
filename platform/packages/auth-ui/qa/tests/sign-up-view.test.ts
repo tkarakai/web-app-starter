@@ -1,9 +1,10 @@
-import { afterEach, expect, mock, spyOn, test } from "bun:test";
+import { afterEach, beforeEach, expect, mock, spyOn, test } from "bun:test";
 import { createElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
 import { PublicConfigProvider } from "@web-app-starter/design-system";
 import messages from "@web-app-starter/i18n/messages/en.json";
+import { appConfig } from "@web-app-starter/app-config";
 import { WaitlistForm } from "../../src/components/waitlist-form";
 import { AuthForm } from "../../src/components/auth-form";
 
@@ -17,7 +18,13 @@ process.env.CONVEX_URL = "https://cloud.example.test";
 const { LandingSignUpView: SignUpView, SignUpView: WebSignUpView, createSignUpView } = await import("@web-app-starter/auth-ui/views");
 if (originalCloudUrl === undefined) delete process.env.CONVEX_URL;
 else process.env.CONVEX_URL = originalCloudUrl;
+// These tests cover the waitlist path, so they turn the app's waitlist switch on: an adopted app
+// may have it off (a supported choice), and this suite runs in adopted apps too.
+const features = appConfig.features as { waitlist: boolean };
+const originalWaitlist = features.waitlist;
+beforeEach(() => { features.waitlist = true; });
 afterEach(() => {
+  features.waitlist = originalWaitlist;
   if (originalUrl === undefined) delete process.env.CONVEX_SITE_URL;
   else process.env.CONVEX_SITE_URL = originalUrl;
 });
