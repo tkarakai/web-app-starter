@@ -130,14 +130,30 @@ test("project-local state and uniquely named legacy deployments start without wa
 
 test("launchers resolve this checkout's Convex state instead of a fixed machine-wide directory", t => {
   for (const script of ["dev-start.sh", "dev-status.sh"]) {
-    assert.doesNotMatch(fs.readFileSync(path.join(root, "platform/tooling", script), "utf8"), /anonymous-convex-backend-state/, script);
+    const source = fs.readFileSync(path.join(root, "platform/tooling", script), "utf8");
+    assert.doesNotMatch(source, /CONVEX_STATE_DIR=/, script);
+    const resolver = source.slice(source.indexOf("get_deployment_name() {"), source.indexOf("get_convex_ports() {"));
+    assert.match(resolver, /convex_state_dir\(\) \{/, script);
+    const cases: [string | undefined, string | undefined, boolean][] = [
+      ["anonymous-agent-1234", "CONVEX_DEPLOYMENT=anonymous:anonymous-agent-1234\n", false],
+      ["anonymous-agent", undefined, false],
+      ["anonymous-agent", "CONVEX_DEPLOYMENT=anonymous:unknown\n", false],
+      [undefined, undefined, false],
+      ["anonymous-agent", "CONVEX_DEPLOYMENT=anonymous:anonymous-agent\n", true],
+    ];
+    for (const [legacy, env, local] of cases) {
+      const { project, home } = checkout(t, legacy, env);
+      if (local) {
+        fs.mkdirSync(path.join(project, "packages/backend/.convex/local/default"), { recursive: true });
+        fs.writeFileSync(path.join(project, "packages/backend/.convex/local/default/config.json"), "{}");
+      }
+      const environment = { ...process.env, HOME: home };
+      const typescript = spawnSync(nodeTs, [path.join(root, "platform/tooling/local-fixtures.ts"), "state-dir"], { cwd: project, env: environment, encoding: "utf8" }).stdout.trim();
+      const shell = spawnSync("bash", ["-c", `PROJECT_DIR=${JSON.stringify(project)}\n${resolver}\nconvex_state_dir`], { env: environment, encoding: "utf8" }).stdout.trim();
+      assert.equal(shell, typescript, `${script}: ${legacy} / ${env} / local=${local}`);
+      assert.equal(typescript, local || !legacy ? path.join(project, "packages/backend/.convex/local/default") : path.join(home, ".convex/anonymous-convex-backend-state", legacy));
+    }
   }
-  const { project, home } = checkout(t, "anonymous-agent-1234", "CONVEX_DEPLOYMENT=anonymous:anonymous-agent-1234\n");
-  const stateDir = () => spawnSync(nodeTs, [path.join(root, "platform/tooling/local-fixtures.ts"), "state-dir"], { cwd: project, env: { ...process.env, HOME: home }, encoding: "utf8" }).stdout.trim();
-  assert.equal(stateDir(), path.join(home, ".convex/anonymous-convex-backend-state/anonymous-agent-1234"));
-  fs.mkdirSync(path.join(project, "packages/backend/.convex/local/default"), { recursive: true });
-  fs.writeFileSync(path.join(project, "packages/backend/.convex/local/default/config.json"), "{}");
-  assert.equal(stateDir(), path.join(project, "packages/backend/.convex/local/default"));
 });
 
 test("Convex startups from different checkouts take turns, and an exited holder never blocks", async t => {

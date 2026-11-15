@@ -301,10 +301,24 @@ print_convex_upgrade_fix() {
     echo -e "${GREEN}  Then re-run:${NC} ${GREEN}bun run dev${NC}"
 }
 
-# This checkout's Convex state directory, resolved the way the Convex CLI resolves it
-# (project-local first; see local-fixtures.ts). Never a fixed machine-wide path.
+# This checkout's Convex state directory, resolved the way the Convex CLI resolves it:
+# project-local first, then a legacy home directory for the named deployment, then the
+# agent default. Mirrors convexState() in local-fixtures.ts (kept in step by a test) without
+# a Node start on every status call. Never a fixed machine-wide path.
 convex_state_dir() {
-    (cd "$PROJECT_DIR" && "$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/local-fixtures.ts" state-dir)
+    local project_state="$PROJECT_DIR/packages/backend/.convex/local/default"
+    local legacy_root="$HOME/.convex/anonymous-convex-backend-state"
+    local name
+    name=$(get_deployment_name)
+    if [ -f "$project_state/config.json" ]; then
+        echo "$project_state"
+    elif [ -n "$name" ] && [ -d "$legacy_root/$name" ]; then
+        echo "$legacy_root/$name"
+    elif [ -d "$legacy_root/anonymous-agent" ]; then
+        echo "$legacy_root/anonymous-agent"
+    else
+        echo "$project_state"
+    fi
 }
 
 # Get ports from Convex config
