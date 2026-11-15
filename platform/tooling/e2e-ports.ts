@@ -85,8 +85,12 @@ export function restoreBackendPorts(directory: string, stateDirectory: string = 
   } catch {
     saved = undefined; // Unreadable record: drop it rather than fail every start.
   }
-  if (saved) rewritePorts(stateDirectory, () => saved);
-  rmSync(savedPortsFile(directory), { force: true });
+  try {
+    if (saved) rewritePorts(stateDirectory, () => saved);
+  } finally {
+    // Never keep a record that cannot be applied; it would be retried and fail on every start.
+    rmSync(savedPortsFile(directory), { force: true });
+  }
 }
 
 if (process.argv[1]?.endsWith("/e2e-ports.ts")) {

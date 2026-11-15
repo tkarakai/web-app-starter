@@ -95,7 +95,7 @@ const managed = { PLATFORM_E2E_PORTS: JSON.stringify({ cloud: 43210, site: 43211
 async function holdDatabase(t: TestContext, home: string): Promise<void> {
   const database = path.join(home, ".convex/anonymous-convex-backend-state/anonymous-agent/convex_local_backend.sqlite3");
   fs.writeFileSync(database, "");
-  const holder = spawn("bash", ["-c", 'exec 3<"$0"; sleep 60', database], { stdio: "ignore" });
+  const holder = spawn("sleep", ["60"], { stdio: ["ignore", "ignore", "ignore", fs.openSync(database, "r")] });
   t.after(() => holder.kill());
   for (let attempt = 0; attempt < 100; attempt++) {
     if (spawnSync("lsof", ["-t", "--", database], { encoding: "utf8" }).stdout.trim()) return;
@@ -127,12 +127,15 @@ test("long-time developers on unused shared legacy state keep running CI, with a
   assert.match(result.stderr, /^Warning: .*machine-wide/);
 });
 
-test("interactive startup keeps legacy shared state working and says so, even while it is in use", async t => {
+test("interactive startup keeps unused legacy shared state working, and refuses it while in use", async t => {
   const { preflight, home } = checkout(t, "anonymous-agent", undefined);
+  const alone = preflight();
+  assert.equal(alone.status, 0, alone.stderr);
+  assert.match(alone.stderr, /^Warning: .*machine-wide/);
   await holdDatabase(t, home);
-  const result = preflight();
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stderr, /machine-wide/);
+  const shared = preflight();
+  assert.notEqual(shared.status, 0, shared.stderr);
+  assert.match(shared.stderr, /using it right now/);
 });
 
 test("project-local state and uniquely named legacy deployments start without warnings", t => {
@@ -151,7 +154,7 @@ test("project-local state and uniquely named legacy deployments start without wa
 test("launchers resolve this checkout's Convex state instead of a fixed machine-wide directory", t => {
   for (const script of ["dev-start.sh", "dev-status.sh"]) {
     const source = fs.readFileSync(path.join(root, "platform/tooling", script), "utf8");
-    assert.doesNotMatch(source, /^CONVEX_STATE_DIR=/m, script);
+    assert.doesNotMatch(source, /(?<![A-Z_])CONVEX_STATE_DIR=/, script);
     const resolver = source.slice(source.indexOf("get_deployment_name() {"), source.indexOf("get_convex_ports() {"));
     assert.match(resolver, /convex_state_dir\(\) \{/, script);
     type Case = { legacy?: string; env?: string; local?: boolean; emptyLegacy?: string; rootEnv?: string; dotEnv?: string; processEnv?: string; expect: "local" | string };
@@ -170,6 +173,9 @@ test("launchers resolve this checkout's Convex state instead of a fixed machine-
       { legacy: "anonymous-agent-8", dotEnv: "CONVEX_DEPLOYMENT=anonymous:anonymous-agent-8\n", expect: "anonymous-agent-8" },
       // The agent default needs only its directory, even an interrupted one without config.json.
       { emptyLegacy: "anonymous-agent", expect: "anonymous-agent" },
+      // An exported empty value hides the files, as it does for the CLI; quotes and CRLF are parsed.
+      { legacy: "anonymous-agent-5", env: "CONVEX_DEPLOYMENT=anonymous:anonymous-agent-5\n", processEnv: "", expect: "local" },
+      { legacy: "anonymous-agent-6", env: "CONVEX_DEPLOYMENT=\"anonymous:anonymous-agent-6\"\r\n", expect: "anonymous-agent-6" },
     ];
     for (const { legacy, env, local, emptyLegacy, rootEnv, dotEnv, processEnv, expect } of cases) {
       const { project, home } = checkout(t, legacy, env);
@@ -214,9 +220,13 @@ test("the next ordinary start restores the backend ports a SIGKILLed managed run
   // Playwright SIGKILLs its webServer group, so dev-start's exit trap never restores them.
   const source = fs.readFileSync(path.join(root, "platform/tooling/dev-start.sh"), "utf8");
   const helpers = source.slice(source.indexOf("get_deployment_name() {"), source.indexOf("get_convex_ports() {"));
-  assert.match(source, /if \[ -z "\$\{PLATFORM_E2E_PORTS:-\}" \]; then\n\s+restore_saved_backend_ports\n\s+fi\n\n\s+"\$NODE_TS" "\$SCRIPT_DIR\/local-ports.ts" lock convex-start/);
-  // The shared-state check runs under the startup lock, never before it.
-  assert.ok(source.indexOf("local-fixtures.ts\" check-state") > source.indexOf("local-ports.ts\" lock convex-start"));
+  assert.match(source, /if \[ -z "\$\{PLATFORM_E2E_PORTS:-\}" \]; then\n\s+restore_saved_backend_ports\n\s+fi/);
+  // The shared-state check and the restore run under the startup lock, never before it.
+  const locked = source.indexOf("local-ports.ts\" lock convex-start");
+  assert.ok(source.indexOf("local-fixtures.ts\" check-state") > locked);
+  assert.ok(source.indexOf("        restore_saved_backend_ports\n") > source.indexOf("local-fixtures.ts\" check-state"));
+  // The state directory is fixed before anything can exit through the trap's restore.
+  assert.ok(source.indexOf("PLATFORM_CONVEX_STATE_DIR=$(convex_state_dir)") < source.indexOf("check_esbuild)"));
   const { project } = checkout(t, undefined, undefined);
   const state = path.join(project, "packages/backend/.convex");
   fs.mkdirSync(path.join(state, "local/default"), { recursive: true });

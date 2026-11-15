@@ -54,20 +54,20 @@ export function stateInUse(directory: string): "in-use" | "unused" | "unknown" {
 
 /**
  * Every checkout without project-local state attaches to a legacy `anonymous-agent` directory,
- * so stacks from different checkouts can share one database. Startup warns. A managed E2E run
- * (a Playwright port plan is present) refuses only while another process has that database
- * open, which is when sharing would corrupt it. The launcher checks while it holds the Convex
- * startup lock, so another startup on the same state has either finished (and holds the
- * database) or not begun.
+ * so stacks from different checkouts can share one database. Startup warns, and refuses while
+ * another process has that database open, which is when a second backend would corrupt it.
+ * The launcher checks while it holds the Convex startup lock, so another startup on the same
+ * state has either finished (and holds the database) or not begun. Its own earlier processes
+ * are stopped before this point.
  */
 export function assertCheckoutState(root: string, fileEnv: Env, managed: boolean, warn: (message: string) => void, home: string = homedir(), inUse: (directory: string) => "in-use" | "unused" | "unknown" = stateInUse): void {
   const state = convexState(root, fileEnv, home);
   if (!state.legacy || state.deploymentName !== SHARED_AGENT_DEPLOYMENT) return;
   const message = `This checkout's local Convex backend uses the machine-wide legacy state ${state.directory}, which every checkout without project-local state shares. ` +
     "Give each checkout its own state: see \"Local Convex state per checkout\" in platform/docs/development.md.";
-  const usage = managed ? inUse(state.directory) : "unused";
-  if (usage === "in-use") throw new Error(`${message} Another local backend is using it right now; managed E2E runs refuse to share it.`);
-  warn(`Warning: ${message}${usage === "unknown" ? " Could not check whether another backend is using it (lsof unavailable)." : ""}`);
+  const usage = inUse(state.directory);
+  if (usage === "in-use") throw new Error(`${message} Another local backend is using it right now; starting a second one on it would corrupt it.`);
+  warn(`Warning: ${message}${usage === "unknown" && managed ? " Could not check whether another backend is using it (lsof unavailable)." : ""}`);
 }
 
 export function anonymousTarget(fileEnv: Env, config: { ports?: { cloud?: number; site?: number }; adminKey?: string; deploymentName?: string }): Env {

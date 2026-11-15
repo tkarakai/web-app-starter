@@ -37,12 +37,15 @@ convex_state_dir() {
     local project_state="$PROJECT_DIR/packages/backend/.convex/local/default"
     local legacy_root="$HOME/.convex/anonymous-convex-backend-state"
     local name="${CONVEX_DEPLOYMENT:-}" env_file
-    # Like the Convex CLI: the environment, then the backend's .env.local, then its .env.
-    for env_file in "$PROJECT_DIR/packages/backend/.env.local" "$PROJECT_DIR/packages/backend/.env"; do
-        if [ -z "$name" ] && [ -f "$env_file" ]; then
-            name=$(grep "^CONVEX_DEPLOYMENT=" "$env_file" | tail -1 | sed 's/CONVEX_DEPLOYMENT=//; s/ #.*//')
-        fi
-    done
+    # Like the Convex CLI: the environment (even when empty), then the backend's .env.local,
+    # then its .env.
+    if [ -z "${CONVEX_DEPLOYMENT+set}" ]; then
+        for env_file in "$PROJECT_DIR/packages/backend/.env.local" "$PROJECT_DIR/packages/backend/.env"; do
+            if [ -z "$name" ] && [ -f "$env_file" ]; then
+                name=$(grep "^CONVEX_DEPLOYMENT=" "$env_file" | tail -1 | tr -d '\r' | sed 's/CONVEX_DEPLOYMENT=//; s/ #.*//; s/^"\(.*\)"$/\1/; s/^'"'"'\(.*\)'"'"'$/\1/')
+            fi
+        done
+    fi
     name="${name#anonymous:}"
     if [ -f "$project_state/config.json" ]; then
         echo "$project_state"

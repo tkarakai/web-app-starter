@@ -178,7 +178,7 @@ cleanup_on_exit() {
         # A managed run used leased backend ports; give interactive dev its saved ones back.
         # Playwright usually SIGKILLs this script, so the next ordinary start also restores them.
         if [ -n "${PLATFORM_E2E_PORTS:-}" ] && [ "$NEED_CONVEX" = true ]; then
-            (cd "$PROJECT_DIR/packages/backend" && "$NODE_TS" "$SCRIPT_DIR/e2e-ports.ts" restore-backend "${PLATFORM_CONVEX_STATE_DIR:-}") || true
+            (cd "$PROJECT_DIR/packages/backend" && "$NODE_TS" "$SCRIPT_DIR/e2e-ports.ts" restore-backend "${PLATFORM_CONVEX_STATE_DIR:-$(convex_state_dir)}") || true
         fi
     fi
     release_convex_start_lock
@@ -311,12 +311,15 @@ convex_state_dir() {
     local project_state="$PROJECT_DIR/packages/backend/.convex/local/default"
     local legacy_root="$HOME/.convex/anonymous-convex-backend-state"
     local name="${CONVEX_DEPLOYMENT:-}" env_file
-    # Like the Convex CLI: the environment, then the backend's .env.local, then its .env.
-    for env_file in "$PROJECT_DIR/packages/backend/.env.local" "$PROJECT_DIR/packages/backend/.env"; do
-        if [ -z "$name" ] && [ -f "$env_file" ]; then
-            name=$(grep "^CONVEX_DEPLOYMENT=" "$env_file" | tail -1 | sed 's/CONVEX_DEPLOYMENT=//; s/ #.*//')
-        fi
-    done
+    # Like the Convex CLI: the environment (even when empty), then the backend's .env.local,
+    # then its .env.
+    if [ -z "${CONVEX_DEPLOYMENT+set}" ]; then
+        for env_file in "$PROJECT_DIR/packages/backend/.env.local" "$PROJECT_DIR/packages/backend/.env"; do
+            if [ -z "$name" ] && [ -f "$env_file" ]; then
+                name=$(grep "^CONVEX_DEPLOYMENT=" "$env_file" | tail -1 | tr -d '\r' | sed 's/CONVEX_DEPLOYMENT=//; s/ #.*//; s/^"\(.*\)"$/\1/; s/^'"'"'\(.*\)'"'"'$/\1/')
+            fi
+        done
+    fi
     name="${name#anonymous:}"
     if [ -f "$project_state/config.json" ]; then
         echo "$project_state"
@@ -332,7 +335,7 @@ convex_state_dir() {
 # A managed E2E run leaves the checkout's own backend ports in .convex/; put them back.
 restore_saved_backend_ports() {
     if [ -f "$PROJECT_DIR/packages/backend/.convex/platform-e2e-saved-ports.json" ]; then
-        (cd "$PROJECT_DIR/packages/backend" && "$NODE_TS" "$SCRIPT_DIR/e2e-ports.ts" restore-backend "$(convex_state_dir)") || true
+        (cd "$PROJECT_DIR/packages/backend" && "$NODE_TS" "$SCRIPT_DIR/e2e-ports.ts" restore-backend "${PLATFORM_CONVEX_STATE_DIR:-$(convex_state_dir)}") || true
     fi
 }
 
@@ -574,6 +577,10 @@ SITE_PORT=""
 
 if [ "$NEED_CONVEX" = true ]; then
     "$NODE_TS" "$SCRIPT_DIR/local-fixtures.ts" check-launch
+    # The state directory Convex is about to use, resolved before it starts (it reads files
+    # only). Port staging, restore and the exit trap all act on this one directory.
+    export PLATFORM_CONVEX_STATE_DIR
+    PLATFORM_CONVEX_STATE_DIR=$(convex_state_dir)
 
     # Pre-flight: verify esbuild works (Convex hangs if it's corrupted)
     ESBUILD_STATUS=$(check_esbuild)
@@ -615,19 +622,17 @@ if [ "$NEED_CONVEX" = true ]; then
         TSCONFIG_WATCHER_PID=$!
     fi
 
-    # Playwright SIGKILLs its webServer group, so a managed run cannot restore the checkout's
-    # backend ports on exit. Restore them at the next ordinary start instead.
-    if [ -z "${PLATFORM_E2E_PORTS:-}" ]; then
-        restore_saved_backend_ports
-    fi
-
     "$NODE_TS" "$SCRIPT_DIR/local-ports.ts" lock convex-start "$$" || echo "Continuing without the Convex startup lock." >&2
     CONVEX_START_LOCKED=true
     # Checked under the lock: a concurrent startup on shared state has finished (and holds its
-    # database) or not begun. Managed runs refuse shared state that is in use.
+    # database) or not begun. Shared legacy state that is in use is refused.
     "$NODE_TS" "$SCRIPT_DIR/local-fixtures.ts" check-state
-    export PLATFORM_CONVEX_STATE_DIR
-    PLATFORM_CONVEX_STATE_DIR=$(convex_state_dir)
+
+    # Playwright SIGKILLs its webServer group, so a managed run cannot restore the checkout's
+    # backend ports on exit. Restore them at the next ordinary start, under the lock.
+    if [ -z "${PLATFORM_E2E_PORTS:-}" ]; then
+        restore_saved_backend_ports
+    fi
 
     if [ "$NON_INTERACTIVE" = true ]; then
         echo "[CI MODE] Convex state dir: $(convex_state_dir)"
