@@ -1114,6 +1114,18 @@
         "packages.backend.package.json",
         "turbo.json"
       ]
+    },
+    {
+      "version": "5.0.1",
+      "previous": "5.0.0",
+      "supportedBaseline": ">=2.0.0 <5.0.1",
+      "codemods": [],
+      "migrations": [],
+      "env": [],
+      "removedFiles": [],
+      "renamedExports": [],
+      "dependencyFloors": [],
+      "changedSeams": []
     }
   ]
 }
