@@ -50,8 +50,19 @@ function getEnvValue(name: string): string | undefined {
   return undefined;
 }
 
+/**
+ * A managed Playwright run's own backend, from the port plan its launcher used. An exported
+ * CONVEX_URL/CONVEX_SITE_URL can be left over from another run or a shell profile, so it must
+ * not win over the plan; .env.e2e.local pairs the secret with this same URL.
+ */
+function plannedBackendUrl(name: "CONVEX_URL" | "CONVEX_SITE_URL"): string | undefined {
+  if (!process.env.PLATFORM_E2E_PORTS) return undefined;
+  const port = (JSON.parse(process.env.PLATFORM_E2E_PORTS) as Record<string, unknown>)[name === "CONVEX_URL" ? "cloud" : "site"];
+  return Number.isInteger(port) ? `http://127.0.0.1:${port as number}` : undefined;
+}
+
 function localBackendUrl(name: "CONVEX_URL" | "CONVEX_SITE_URL"): string {
-  const url = getEnvValue(name);
+  const url = plannedBackendUrl(name) ?? getEnvValue(name);
   if (!url) {
     throw new Error(
       `${name} is not set. E2E fixtures require a local Convex backend; ` +
