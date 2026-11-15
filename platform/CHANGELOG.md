@@ -99,6 +99,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Changed
 
+- The upgrader never trusts a clean text merge of a generated seam (`convex/_generated/`) that both your
+  app and the release changed: it raises a review item asking you to regenerate it. See
+  [UPGRADING](UPGRADING.md).
+
 - Public Convex refusals now carry `ConvexError` data with a `code` field, preserving agent
   recovery hints and human error messages in production. Apps matching `error.message` should
   use `errorCode` from `@web-app-starter/agentic/errors`; messages are redacted in production.
