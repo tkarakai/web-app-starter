@@ -31,7 +31,6 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 - `bun run test:startup` takes free ports from the operating system for its fixture apps and Convex stand-in. It no longer competes for the configured app ports with other checkouts' dev and E2E stacks on the same machine ([#414](https://github.com/tkarakai/web-app-starter/issues/414)). No app action is required.
 
-
 ## [5.0.0] - 2026-11-14
 
 ### Added
