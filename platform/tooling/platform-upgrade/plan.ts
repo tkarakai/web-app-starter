@@ -54,6 +54,8 @@ function same(a?: TreeFile, b?: TreeFile): boolean { return a?.blob === b?.blob 
 function active(seam: { optionalApp?: string }, files: TreeFile[]): boolean { return !seam.optionalApp || files.some(file => file.path.startsWith(seam.optionalApp + "/")); }
 /** A release that drops an optional app keeps its seams for history; the app's files stay the app's. */
 function retired(seam: { optionalApp?: string }, target: TreeFile[]): boolean { return Boolean(seam.optionalApp) && !active(seam, target); }
+/** Files a tool writes from the app's source (Convex `_generated/`), never edited by hand. */
+export function generatedSeam(file: string): boolean { return /(^|\/)_generated\//.test(file); }
 function mergeText(directory: string, file: string, base?: Buffer, app?: Buffer, target?: Buffer): { content: Buffer; conflict: boolean } {
   demand(![base, app, target].some(value => value?.includes(0)), "Binary seam needs manual migration: " + file);
   const key = digest(file), names = ["app", "base", "target"].map(side => path.join(directory, key + "." + side));
@@ -139,8 +141,12 @@ export async function createPlan(options: { root: string; source: Source; to: st
     if (same(base, app)) change(file, "seam", app, { path: file, mode: next.mode, content: readBlob(cache.repo, next.blob) });
     else {
       const merged = mergeText(mergeDir, file, bytes(cache.repo, base), bytes(root, app), bytes(cache.repo, next));
+      // Generated declarations describe the app's own modules: a clean text merge of the app's and the
+      // target's copies can still list modules neither has. Regenerate them instead of trusting it.
+      const regenerate = generatedSeam(file) && !merged.conflict && Boolean(app);
       if (merged.conflict || !app) gate("seam:" + file, "seam-conflict", "Resolve the three-way seam conflict: " + file, [file], false);
-      change(file, "seam", app, { path: file, mode: app?.mode ?? next.mode, content: merged.content }, merged.conflict || !app);
+      else if (regenerate) gate("seam:" + file, "seam-conflict", "Regenerate this generated file against the upgraded app (for Convex: `bunx convex dev --once` or `bunx convex codegen`), then review it: " + file, [file], false);
+      change(file, "seam", app, { path: file, mode: app?.mode ?? next.mode, content: merged.content }, merged.conflict || !app || regenerate);
     }
   }
   const codemods: Plan["codemods"] = [], migrations: Migration[] = [];

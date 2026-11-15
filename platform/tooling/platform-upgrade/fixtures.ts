@@ -12,13 +12,15 @@ export function temp(): string { const root = fs.mkdtempSync(path.join(os.tmpdir
 export function write(root: string, file: string, content: string): void { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), content); }
 export function git(root: string, ...args: string[]): string { return execFileSync("git", ["-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "-c", "commit.gpgsign=false", ...args], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim(); }
 function release(version: string, previous: string | null): Release { return { version, previous, supportedBaseline: ">=2.0.0 <3.0.0", codemods: [], migrations: [], env: [], removedFiles: [], renamedExports: [], dependencyFloors: [], changedSeams: [] }; }
-export function fixture() {
+/** `extra` adds baseline files and seams (e.g. a generated declaration file) before the 2.0.0 commit. */
+export function fixture(extra: { files?: Record<string, string>; seams?: Manifest["seams"] } = {}) {
   const source = temp(); git(source, "init", "-q");
-  const manifest: Manifest = { schemaVersion: 1, runtime: { nodeMajor: 24, bun: "1.4.2" }, seams: [{ id: "config", path: "app.config.ts", hooks: ["export"] }, { id: "package", path: "package.json", hooks: [] }], releases: [release("2.0.0", null)] };
+  const manifest: Manifest = { schemaVersion: 1, runtime: { nodeMajor: 24, bun: "1.4.2" }, seams: [{ id: "config", path: "app.config.ts", hooks: ["export"] }, { id: "package", path: "package.json", hooks: [] }, ...(extra.seams ?? [])], releases: [release("2.0.0", null)] };
   write(source, MANIFEST, JSON.stringify(manifest)); write(source, ADVISORIES, '{"schemaVersion":1,"advisories":[]}'); write(source, ENTRY, "throw new Error('planner must not execute target code');\n");
   write(source, "platform/VERSION", "2.0.0\n"); write(source, "platform/feature.ts", "export const feature = 'old';\n"); write(source, "platform/obsolete.ts", "old\n");
   write(source, "app.config.ts", "export const brand = 'starter';\n\n// Keep this separator.\n\nexport const mode = 'old';\n");
   write(source, "package.json", '{"name":"app","dependencies":{"example":"^2.0.0"}}\n'); write(source, ".gitignore", ".env.local\n");
+  for (const [file, content] of Object.entries(extra.files ?? {})) write(source, file, content);
   git(source, "add", "-A"); git(source, "commit", "-qm", "baseline"); git(source, "tag", "v2.0.0"); const commit = git(source, "rev-parse", "HEAD");
   const app = temp(); git(app, "clone", "-q", source, ".");
   write(app, ".platform-base.json", JSON.stringify({ version: "2.0.0", commit, patches: [] }));
