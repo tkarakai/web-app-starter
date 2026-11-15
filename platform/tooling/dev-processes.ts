@@ -130,9 +130,24 @@ export function writeRecords(root: string, records: Records): void {
   }
 }
 
-export function track(root: string, name: string, pid: number): void {
-  // A background shell may still be entering its application's directory.
-  for (let attempt = 0; attempt < 20; attempt++) {
+/** How long a freshly launched service may take to become verifiable; generous for loaded machines. */
+const TRACK_TIMEOUT_MS = 15_000;
+
+function running(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as { code?: string }).code !== "ESRCH";
+  }
+}
+
+export function track(root: string, name: string, pid: number, timeoutMs = TRACK_TIMEOUT_MS): void {
+  // A background shell may still be entering its application's directory; on a loaded
+  // machine that can take seconds. Poll with backoff until the deadline, but give up at
+  // once if the process has already exited.
+  const deadline = Date.now() + timeoutMs;
+  for (let delay = 50; ; delay = Math.min(delay * 2, 250)) {
     const started = identity(pid);
     if (started && inside(root, cwd(pid))) {
       const record = { pid, started };
@@ -166,7 +181,8 @@ export function track(root: string, name: string, pid: number): void {
       }
       return;
     }
-    sleep(50);
+    if (!running(pid) || Date.now() >= deadline) break;
+    sleep(delay);
   }
   throw new Error(`Cannot verify ownership of ${name} (PID ${pid}); process was not registered.`);
 }

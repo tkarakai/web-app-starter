@@ -15,6 +15,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- `bun run dev` and the managed E2E and launcher tests no longer abort on a loaded machine with `Cannot verify ownership of next-… (PID …); process was not registered`. The launcher allowed about 1 s for a new service to enter its app directory. It now waits up to 15 s with backoff, and still fails at once if the process has exited ([#417](https://github.com/tkarakai/web-app-starter/issues/417)). No app action is required.
+
 - `bun run adopt --remove-sample` leaves nothing of the sample behind ([#407](https://github.com/tkarakai/web-app-starter/issues/407)). On 5.0.0 it missed:
   - `apps/web/qa/tests/app-sidebar.test.tsx`, which imports the removed `src/components/projects/app-sidebar` and mocks `api.projects`, so `bun run test:unit` (and `bun run ci`) failed in `@repo/web` on a freshly adopted app;
   - the committed `packages/backend/convex/_generated/api.d.ts`, which still declared the removed modules (`fileAccess`, `files`, `projectAccess`, `projects`, `sampleMigrations`, `sampleTables`, `tasks`), so the first `bun run dev` or E2E run regenerated it and left the tree dirty;
