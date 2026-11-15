@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -271,4 +271,57 @@ test("sample removal leaves the retained backend suite runnable", (t) => {
     assert.equal(existsSync(path.join(backend, "convex", file)), false);
   }
   execFileSync("bun", ["run", "test:convex", "--maxWorkers", "2"], { cwd: backend, stdio: "pipe", timeout: 120_000 });
+});
+
+/** Every file under `dir` (relative to `root`), skipping installed and generated output. */
+function filesUnder(root: string, dir: string): string[] {
+  const out: string[] = [];
+  const walk = (relative: string): void => {
+    for (const entry of readdirSync(path.join(root, relative), { withFileTypes: true })) {
+      if (["node_modules", ".next", ".turbo", "coverage", "_generated"].includes(entry.name)) continue;
+      const child = path.join(relative, entry.name);
+      if (entry.isDirectory()) walk(child);
+      else out.push(child);
+    }
+  };
+  walk(dir);
+  return out;
+}
+
+// The shipped web app, not an adopted one: an adopted app has already made its sample choice.
+test("sample removal leaves no web code or test that uses the sample, and the web unit suite runnable", {
+  skip: existsSync(path.join(REPO, ".platform-base.json")) || !existsSync(path.join(REPO, "apps/web/src/components/projects")),
+  timeout: 300_000,
+}, (t) => {
+  const root = mkdtempSync(path.join(tmpdir(), "adopt-web-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const skip = (file: string): boolean => ["node_modules", ".next", ".turbo", "coverage", "test-results"].includes(path.basename(file));
+  for (const dir of ["apps/web", "packages/backend", "packages/messages", "platform/config", "platform/templates/adopt"]) {
+    cpSync(path.join(REPO, dir), path.join(root, dir), { recursive: true, filter: (file) => !skip(file) });
+  }
+  // Reuse installed dependencies; the web sources and tests are fixture-local.
+  symlinkSync(path.join(REPO, "node_modules"), path.join(root, "node_modules"), "dir");
+  symlinkSync(path.join(REPO, "apps/web/node_modules"), path.join(root, "apps/web/node_modules"), "dir");
+
+  removeSample(root);
+  const sample = /components\/projects|lib\/projects|\bapi\.(projects|tasks|files)\b|\b(ProjectFixture|TaskFixture|UploadFixture)\b|sampleErrors/;
+  const residue = [...filesUnder(root, "apps/web"), ...filesUnder(root, "packages/backend/convex")]
+    .filter((file) => /\.(ts|tsx)$/.test(file) && sample.test(readFileSync(path.join(root, file), "utf8")));
+  assert.deepEqual(residue, []);
+  // The committed Convex API names only modules that still exist, as `convex dev` would regenerate it.
+  const convex = path.join(root, "packages/backend/convex");
+  const api = readFileSync(path.join(convex, "_generated/api.d.ts"), "utf8");
+  const missing = [...api.matchAll(/^import type \* as (\w+) from "\.\.\/(.+)\.js";$/gm)]
+    .filter(([, , module]) => !existsSync(path.join(convex, `${module}.ts`)))
+    .map(([, binding]) => binding);
+  assert.deepEqual(missing, []);
+  for (const binding of ["projects", "tasks", "files", "sampleTables"]) assert.doesNotMatch(api, new RegExp(`\\b${binding}: typeof`));
+  // No sample strings remain: their namespaces and the sample-only dashboard keys.
+  for (const file of readdirSync(path.join(root, "packages/messages")).filter((name) => /^[a-z]{2}\.json$/.test(name))) {
+    const messages = JSON.parse(readFileSync(path.join(root, "packages/messages", file), "utf8")) as Record<string, Record<string, unknown>>;
+    assert.deepEqual(["projects", "tasks", "uploads", "sampleErrors"].filter((key) => key in messages), [], file);
+    assert.deepEqual(["projects", "noProjects", "projectNotFound", "tabs"].filter((key) => key in (messages.dashboard ?? {})), [], file);
+    assert.equal(typeof messages.dashboard?.account, "string", file);
+  }
+  execFileSync("bun", ["run", "test:unit"], { cwd: path.join(root, "apps/web"), stdio: "pipe", timeout: 240_000, env: { ...process.env, CI: "true" } });
 });
