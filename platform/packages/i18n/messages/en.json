@@ -478,7 +478,7 @@
       "continue": "Continue"
     }
   },
-  "organization": {
+  "accountOrganization": {
     "label": "Organization",
     "roles": {
       "owner": "Owner",
@@ -623,7 +623,7 @@
       "createDescription": "Ask an organization's owner or admin to invite you."
     }
   },
-  "billing": {
+  "accountBilling": {
     "title": "Plan and billing",
     "description": "The plan {organization} uses and who pays for it.",
     "individualDescription": "Your plan and how you pay for it.",

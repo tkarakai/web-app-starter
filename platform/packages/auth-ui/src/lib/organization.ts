@@ -64,7 +64,7 @@ export function takeRememberedInvitation(): string | null {
 }
 
 /**
- * The `organization.errors.*` message key for a Better Auth organization error.
+ * The `accountOrganization.errors.*` message key for a Better Auth organization error.
  * Better Auth answers with `{ status, code }`; anything unrecognised is generic.
  */
 export function organizationErrorKey(error: { status?: number; code?: string } | null | undefined):

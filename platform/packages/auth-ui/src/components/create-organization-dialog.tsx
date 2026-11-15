@@ -42,7 +42,7 @@ export function CreateOrganizationDialog({
   billingName: string;
   plans: PlanOption[];
 }) {
-  const t = useTranslations("billing");
+  const t = useTranslations("accountBilling");
   const tc = useTranslations("common");
   const create = useMutation(api.platform.billing.createOrganization);
   const { planId, plan, setPlanId } = useSelectedPlan(plans);

@@ -478,7 +478,7 @@
       "continue": "Doorgaan"
     }
   },
-  "organization": {
+  "accountOrganization": {
     "label": "Organisatie",
     "roles": {
       "owner": "Eigenaar",
@@ -623,7 +623,7 @@
       "createDescription": "Vraag de eigenaar of een beheerder van een organisatie om je uit te nodigen."
     }
   },
-  "billing": {
+  "accountBilling": {
     "title": "Abonnement en facturering",
     "description": "Het abonnement van {organization} en wie ervoor betaalt.",
     "individualDescription": "Je abonnement en hoe je ervoor betaalt.",

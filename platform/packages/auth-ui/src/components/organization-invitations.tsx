@@ -16,7 +16,7 @@ import { organizationErrorKey, takeExpectedDeparture, useOrganizations } from ".
  * the top of the dashboard: an invited person who signs in or signs up lands there.
  */
 export function OrganizationInvitations({ onAccepted }: { onAccepted?: () => void }) {
-  const t = useTranslations("organization");
+  const t = useTranslations("accountOrganization");
   const locale = useLocale();
   const invitations = useQuery(api.platform.organizations.myInvitations);
   const [pending, setPending] = React.useState<string | null>(null);
@@ -129,7 +129,7 @@ export function SendVerificationButton({ email, callbackURL, size, className, ch
  * protected layout (`ProtectedLayout` does).
  */
 export function OrganizationAccessNotice() {
-  const t = useTranslations("organization");
+  const t = useTranslations("accountOrganization");
   const organizations = useOrganizations();
   const known = React.useRef<Map<string, string> | null>(null);
   const switching = React.useRef<string | null>(null);

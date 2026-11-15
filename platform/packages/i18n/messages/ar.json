@@ -478,7 +478,7 @@
       "continue": "متابعة"
     }
   },
-  "organization": {
+  "accountOrganization": {
     "label": "المؤسسة",
     "roles": {
       "owner": "المالك",
@@ -623,7 +623,7 @@
       "createDescription": "اطلب من مالك مؤسسة أو أحد مسؤوليها دعوتك."
     }
   },
-  "billing": {
+  "accountBilling": {
     "title": "الخطة والفوترة",
     "description": "الخطة التي تستخدمها {organization} ومن يدفع ثمنها.",
     "individualDescription": "خطتك وطريقة دفعك.",

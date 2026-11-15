@@ -19,14 +19,14 @@ test.each(["resolved-error", "rejected"])("creation survives %s activation and r
   render(<NextIntlClientProvider locale="en" messages={messages} timeZone="UTC">
     <CreateOrganizationDialog open onOpenChange={mocks.close} onCreated={mocks.created} billingOrganizationId="payer" billingName="Payer" plans={[{ id: "free", name: "Free", isFreeForever: true, isDefault: true, priceMonthlyUsdCents: 0 }]} />
   </NextIntlClientProvider>);
-  fireEvent.change(screen.getByLabelText(messages.billing.createNameLabel), { target: { value: "New workspace" } });
-  fireEvent.click(screen.getByRole("button", { name: messages.billing.createAction }));
+  fireEvent.change(screen.getByLabelText(messages.accountBilling.createNameLabel), { target: { value: "New workspace" } });
+  fireEvent.click(screen.getByRole("button", { name: messages.accountBilling.createAction }));
   await waitFor(() => expect(mocks.error).toHaveBeenCalledTimes(1));
   expect(mocks.success).not.toHaveBeenCalled();
   expect(mocks.close).not.toHaveBeenCalled();
-  expect(screen.getByLabelText(messages.billing.createNameLabel)).toHaveValue("New workspace");
+  expect(screen.getByLabelText(messages.accountBilling.createNameLabel)).toHaveValue("New workspace");
   expect(screen.getByRole("status")).toHaveTextContent("New workspace was created");
-  fireEvent.click(screen.getByRole("button", { name: messages.billing.retryActivation }));
+  fireEvent.click(screen.getByRole("button", { name: messages.accountBilling.retryActivation }));
   await waitFor(() => expect(mocks.close).toHaveBeenCalledWith(false));
   expect(mocks.create).toHaveBeenCalledTimes(1);
   expect(mocks.created).toHaveBeenCalledTimes(1);

@@ -478,7 +478,7 @@
       "continue": "Folytatás"
     }
   },
-  "organization": {
+  "accountOrganization": {
     "label": "Szervezet",
     "roles": {
       "owner": "Tulajdonos",
@@ -623,7 +623,7 @@
       "createDescription": "Kérd meg egy szervezet tulajdonosát vagy adminját, hogy hívjon meg."
     }
   },
-  "billing": {
+  "accountBilling": {
     "title": "Csomag és számlázás",
     "description": "A(z) {organization} csomagja, és hogy ki fizet érte.",
     "individualDescription": "Az Ön csomagja és fizetési módja.",

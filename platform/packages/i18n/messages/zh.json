@@ -478,7 +478,7 @@
       "continue": "继续"
     }
   },
-  "organization": {
+  "accountOrganization": {
     "label": "组织",
     "roles": {
       "owner": "所有者",
@@ -623,7 +623,7 @@
       "createDescription": "请组织的所有者或管理员邀请你。"
     }
   },
-  "billing": {
+  "accountBilling": {
     "title": "套餐与账单",
     "description": "{organization} 使用的套餐以及付款方。",
     "individualDescription": "你的套餐和付款方式。",

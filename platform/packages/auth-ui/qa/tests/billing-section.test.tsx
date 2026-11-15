@@ -21,7 +21,7 @@ vi.mock("../../src/components/create-organization-dialog", () => ({ CreateOrgani
 test("a billing-only organization shows its payment method and create action without a current plan", () => {
   render(<NextIntlClientProvider locale="en" messages={messages} timeZone="UTC"><BillingSection /></NextIntlClientProvider>);
   expect(screen.getByTestId("billing-organization")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: messages.billing.createAction })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: messages.accountBilling.createAction })).toBeInTheDocument();
   expect(screen.queryByTestId("current-plan")).not.toBeInTheDocument();
 });
 
@@ -29,10 +29,10 @@ test("a billing-only organization shows its payment method and create action wit
 test("a payer manager changes a sponsored plan without belonging to that workspace", async () => {
   mocks.canManage = true;
   render(<NextIntlClientProvider locale="en" messages={messages} timeZone="UTC"><BillingSection /></NextIntlClientProvider>);
-  const selector = screen.getByLabelText(messages.billing.changePlan);
+  const selector = screen.getByLabelText(messages.accountBilling.changePlan);
   fireEvent.click(selector);
   fireEvent.click(await screen.findByRole("option", { name: /Free/ }));
-  fireEvent.click(screen.getByRole("button", { name: messages.billing.changePlan }));
+  fireEvent.click(screen.getByRole("button", { name: messages.accountBilling.changePlan }));
   await waitFor(() => expect(mocks.change).toHaveBeenCalledWith({ organizationId: "sponsored-org", planId: "free" }));
 });
 
@@ -40,7 +40,7 @@ test("ordinary payer members see sponsored plans without change controls", () =>
   mocks.canManage = false;
   render(<NextIntlClientProvider locale="en" messages={messages} timeZone="UTC"><BillingSection /></NextIntlClientProvider>);
   expect(screen.getByText("Sponsored workspace")).toBeInTheDocument();
-  expect(screen.queryByLabelText(messages.billing.changePlan)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(messages.accountBilling.changePlan)).not.toBeInTheDocument();
 });
 
 test("the organizations a billing organization pays for load a page at a time", () => {

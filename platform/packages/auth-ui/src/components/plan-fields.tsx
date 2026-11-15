@@ -9,7 +9,7 @@ import { formatPrice, type PaymentMethod, type PlanOption } from "../lib/billing
 
 /** A plan's price as shown to users: "Free" for free-forever plans, else "$19.00 per month". */
 export function usePlanPrice(): (plan: Pick<PlanOption, "isFreeForever" | "priceMonthlyUsdCents">) => string {
-  const t = useTranslations("billing");
+  const t = useTranslations("accountBilling");
   const locale = useLocale();
   return (plan) => plan.isFreeForever ? t("free") : t("perMonth", { price: formatPrice(plan.priceMonthlyUsdCents, locale) });
 }
@@ -21,7 +21,7 @@ export function PlanChoice({ plans, value, onChange, idPrefix }: {
   onChange: (planId: string) => void;
   idPrefix: string;
 }) {
-  const t = useTranslations("billing");
+  const t = useTranslations("accountBilling");
   const price = usePlanPrice();
   return (
     <div className="grid gap-2">
@@ -41,7 +41,7 @@ export function PlanChoice({ plans, value, onChange, idPrefix }: {
 
 /** Cash or check: a stand-in until a payment provider is integrated. */
 export function PaymentMethodField({ value, onChange, id }: { value: PaymentMethod | ""; onChange: (method: PaymentMethod) => void; id: string }) {
-  const t = useTranslations("billing");
+  const t = useTranslations("accountBilling");
   return (
     <div className="grid gap-2">
       <Label htmlFor={id}>{t("paymentMethod")}</Label>

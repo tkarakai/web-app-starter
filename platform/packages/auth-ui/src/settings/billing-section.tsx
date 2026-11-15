@@ -33,7 +33,7 @@ const NEW_PAYER = "new";
 const PAID_PAGE_SIZE = 20;
 
 function useRun() {
-  const t = useTranslations("billing");
+  const t = useTranslations("accountBilling");
   const [busy, setBusy] = React.useState(false);
   const run = async (action: () => Promise<unknown>, success: string) => {
     setBusy(true);
@@ -58,7 +58,7 @@ function useRun() {
  * pays for. Individuals see their own plan and payment method.
  */
 export function BillingSection() {
-  const t = useTranslations("billing");
+  const t = useTranslations("accountBilling");
   const overview = useQuery(api.platform.billing.overview);
   const price = usePlanPrice();
   if (!overview?.organization) return null;
@@ -119,7 +119,7 @@ export function BillingSection() {
 }
 
 function PaymentMethodEditor({ billingOrganizationId, current }: { billingOrganizationId: string; current: PaymentMethod | null }) {
-  const t = useTranslations("billing");
+  const t = useTranslations("accountBilling");
   const save = useMutation(api.platform.billing.setPaymentMethod);
   const [method, setMethod] = React.useState<PaymentMethod | "">(current ?? "");
   const { busy, run } = useRun();
@@ -139,7 +139,7 @@ function PaymentMethodEditor({ billingOrganizationId, current }: { billingOrgani
 }
 
 function ChangePlan({ organizationId, currentPlanId, plans }: { organizationId: string; currentPlanId: string; plans: PlanOption[] }) {
-  const t = useTranslations("billing");
+  const t = useTranslations("accountBilling");
   const price = usePlanPrice();
   const change = useMutation(api.platform.billing.changePlan);
   const [planId, setPlanId] = React.useState(currentPlanId);
@@ -177,7 +177,7 @@ function Upgrade({ organizationId, organizationName, plans, payers, individuals 
   payers: { id: string; name: string; paymentMethod: PaymentMethod | null }[];
   individuals: boolean;
 }) {
-  const t = useTranslations("billing");
+  const t = useTranslations("accountBilling");
   const upgrade = useMutation(api.platform.billing.upgrade);
   const { planId, plan, setPlanId } = useSelectedPlan(plans);
   const [payer, setPayer] = React.useState<string>(payers[0]?.id ?? NEW_PAYER);
@@ -242,7 +242,7 @@ function BillingOrganizationCard({ billing, name, plans, canCreate }: {
   plans: PlanOption[];
   canCreate: boolean;
 }) {
-  const t = useTranslations("billing");
+  const t = useTranslations("accountBilling");
   const tCommon = useTranslations("common");
   const price = usePlanPrice();
   const paid = usePaginatedQuery(api.platform.billing.paidOrganizations, {}, { initialNumItems: PAID_PAGE_SIZE });

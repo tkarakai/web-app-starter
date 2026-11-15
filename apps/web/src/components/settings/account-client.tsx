@@ -33,7 +33,7 @@ export function AccountClient() {
   const authUser = useAuthUser();
   const tc = useTranslations("common");
   const td = useTranslations("dashboard");
-  const tb = useTranslations("billing");
+  const tb = useTranslations("accountBilling");
   const individuals = useTenancyMode() === "individuals";
   const tabFrom = (value: string | null): AccountTab => value === "security" || value === "billing" ? value : "profile";
   const [tab, setTab] = React.useState<AccountTab>(tabFrom(searchParams.get("tab")));

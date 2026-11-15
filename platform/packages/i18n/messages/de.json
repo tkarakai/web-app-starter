@@ -478,7 +478,7 @@
       "continue": "Weiter"
     }
   },
-  "organization": {
+  "accountOrganization": {
     "label": "Organisation",
     "roles": {
       "owner": "Inhaber",
@@ -623,7 +623,7 @@
       "createDescription": "Bitte den Inhaber oder einen Admin einer Organisation, dich einzuladen."
     }
   },
-  "billing": {
+  "accountBilling": {
     "title": "Tarif und Abrechnung",
     "description": "Der Tarif von {organization} und wer dafür bezahlt.",
     "individualDescription": "Ihr Tarif und wie Sie dafür bezahlen.",

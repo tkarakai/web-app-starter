@@ -2,7 +2,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { api, components, internal } from "../_generated/api";
-import { createTestEnv } from "../test.modules";
+import { convexTest } from "convex-test";
+import { registerPlatform } from "@web-app-starter/convex-platform/test";
+import schema from "../schema";
+import { modules } from "../test.modules";
 import authSchema from "./betterAuth/schema";
 import { organizationFixture } from "./organizations.test-helpers";
 import { createOrganizationWithOwner } from "./organizationAccess";
@@ -15,17 +18,24 @@ vi.mock("./sendAuthEmail", async (original) => ({
 }));
 
 const cleanupMock = vi.hoisted(() => ({ failures: 0, owners: [] as string[] }));
-vi.mock("../userData", async () => {
+/** The app's optional `userData:deleteUserData` hook, injected so this platform test never depends
+ * on whether the app has `convex/userData.ts` (most adopted apps don't). */
+const userDataHook = async () => {
   const { internalMutation } = await import("../_generated/server");
   const { v } = await import("convex/values");
   return { deleteUserData: internalMutation({
     args: { userId: v.string(), ownerId: v.string() },
-    handler: async (_ctx, args) => {
+    handler: async (_ctx: unknown, args: { userId: string; ownerId: string }) => {
       cleanupMock.owners.push(args.ownerId);
       if (args.ownerId === "legacy-cleanup-owner" && cleanupMock.failures > 0) { cleanupMock.failures--; throw new Error("App cleanup unavailable"); }
     },
   }) };
-});
+};
+function createEnvWithUserDataHook() {
+  const t = convexTest(schema, { ...modules, "./userData.ts": userDataHook });
+  registerPlatform(t);
+  return t;
+}
 
 beforeEach(() => {
   cleanupMock.failures = 0;
@@ -42,7 +52,7 @@ afterEach(() => {
 });
 
 async function fixture(mode?: "individuals" | "organizations") {
-  const t = createTestEnv();
+  const t = createEnvWithUserDataHook();
   t.registerComponent("betterAuth", authSchema, import.meta.glob("./betterAuth/**/*.*s"));
   const f = await organizationFixture(t);
   const boss = await f.user("boss", { role: "admin" });
