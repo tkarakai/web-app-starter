@@ -15,6 +15,14 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Fixed
 
+- `bun run adopt --remove-sample` leaves nothing of the sample behind ([#407](https://github.com/tkarakai/web-app-starter/issues/407)). On 5.0.0 it missed:
+  - `apps/web/qa/tests/app-sidebar.test.tsx`, which imports the removed `src/components/projects/app-sidebar` and mocks `api.projects`, so `bun run test:unit` (and `bun run ci`) failed in `@repo/web` on a freshly adopted app;
+  - the committed `packages/backend/convex/_generated/api.d.ts`, which still declared the removed modules (`fileAccess`, `files`, `projectAccess`, `projects`, `sampleMigrations`, `sampleTables`, `tasks`), so the first `bun run dev` or E2E run regenerated it and left the tree dirty;
+  - the sample's strings and error codes: the `sampleErrors` namespace with its entries in `apps/web/src/lib/app-error-keys.ts`, and the `dashboard` keys `projects`, `noProjects`, `noProjectsDescription`, `projectNotFound`, `projectNotFoundDescription` and `tabs`;
+  - the unused sample fixtures `apps/web/qa/tests/fixtures/data.ts`.
+
+  The adoption tests now run the retained web unit suite after sample removal, and fail on any remaining code, string or generated-API entry that uses the sample. Taking this release does not change your app, because these files are yours. If you adopted 5.0.0 with `--remove-sample`, you can clean up: delete `apps/web/qa/tests/app-sidebar.test.tsx` and `apps/web/qa/tests/fixtures/data.ts` (`bun run test:unit` then passes), commit the `_generated/api.d.ts` that `bun run dev` writes, and remove the `sampleErrors` strings and their `app-error-keys.ts` entries if your app doesn't use them. Apps that kept the sample need nothing.
+
 - The `@web-app-starter/app-config` tests (config validation, ports, cookie prefix, locales, token overrides) now run in CI. No check reached them: the package had no `test:coverage` script, so `bun run test:shared-packages` skipped it, and it had no root runner ([#409](https://github.com/tkarakai/web-app-starter/issues/409)). A contract test now fails when any platform package with tests is run by no CI check. No app action is required. `bun run test:shared-packages`, which `bun run ci`, GitHub CI and `platform:upgrade` already run, now includes these tests and checks your `app.config.ts`.
 
 ## [5.0.0] - 2026-11-14
