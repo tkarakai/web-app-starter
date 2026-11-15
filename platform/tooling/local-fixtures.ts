@@ -20,6 +20,39 @@ export function assertAnonymousLaunch(...sources: Env[]): void {
   }
 }
 
+/** The name the Convex CLI gives an agent-mode anonymous deployment that has no state of its own. */
+export const SHARED_AGENT_DEPLOYMENT = "anonymous-agent";
+const LEGACY_STATE = ".convex/anonymous-convex-backend-state";
+
+/**
+ * Where the Convex CLI keeps this checkout's anonymous backend, by the CLI's own rule:
+ * project-local `packages/backend/.convex/local/default` when it has a config, otherwise a
+ * legacy directory under `~/.convex` if one exists for the deployment, otherwise project-local.
+ * An unknown or missing deployment name falls back to the agent default, `anonymous-agent`.
+ */
+export function convexState(root: string, fileEnv: Env, home: string = homedir()): { directory: string; deploymentName: string; legacy: boolean } {
+  const local = path.join(root, "packages/backend/.convex/local/default");
+  const named = fileEnv.CONVEX_DEPLOYMENT?.replace(/^anonymous:/, "");
+  if (fs.existsSync(path.join(local, "config.json"))) return { directory: local, deploymentName: named ?? SHARED_AGENT_DEPLOYMENT, legacy: false };
+  const isLegacy = (name: string) => fs.statSync(path.join(home, LEGACY_STATE, name), { throwIfNoEntry: false })?.isDirectory() === true;
+  const deploymentName = named && isLegacy(named) ? named : SHARED_AGENT_DEPLOYMENT;
+  return isLegacy(deploymentName) ? { directory: path.join(home, LEGACY_STATE, deploymentName), deploymentName, legacy: true } : { directory: local, deploymentName, legacy: false };
+}
+
+/**
+ * Every checkout without project-local state attaches to a legacy `anonymous-agent` directory,
+ * so concurrent stacks from different checkouts would share one database. Managed E2E runs
+ * (a Playwright port plan is present) refuse it; interactive startup keeps working and warns.
+ */
+export function assertCheckoutState(root: string, fileEnv: Env, managed: boolean, warn: (message: string) => void, home: string = homedir()): void {
+  const state = convexState(root, fileEnv, home);
+  if (!state.legacy || state.deploymentName !== SHARED_AGENT_DEPLOYMENT) return;
+  const message = `This checkout's local Convex backend would use the machine-wide legacy state ${state.directory}, which every checkout without project-local state shares. ` +
+    "Give each checkout its own state: see \"Local Convex state per checkout\" in platform/docs/development.md.";
+  if (managed) throw new Error(`${message} Managed E2E runs refuse shared state.`);
+  warn(`Warning: ${message}`);
+}
+
 export function anonymousTarget(fileEnv: Env, config: { ports?: { cloud?: number; site?: number }; adminKey?: string; deploymentName?: string }): Env {
   const name = fileEnv.CONVEX_DEPLOYMENT?.replace(/^anonymous:/, "");
   assertAnonymousLaunch({}, fileEnv);
@@ -48,14 +81,16 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     const sources = [process.env, readEnv(path.join(root, ".env.local")), fileEnv, readEnv(path.join(root, "packages/backend/.env"))];
     if (mode === "check-launch") {
       assertAnonymousLaunch(...sources);
+      assertCheckoutState(root, fileEnv, Boolean(process.env.PLATFORM_E2E_PORTS), message => console.error(message));
+    } else if (mode === "state-dir") {
+      console.log(convexState(root, fileEnv).directory);
     } else if (mode === "anonymous") {
       assertAnonymousLaunch(...sources);
       const name = fileEnv.CONVEX_DEPLOYMENT?.replace(/^anonymous:/, "");
       if (!name) throw new Error("No anonymous backend is configured.");
-      const projectConfig = path.join(root, "packages/backend/.convex/local/default/config.json");
-      const projectLocal = fs.existsSync(projectConfig);
-      const config = JSON.parse(fs.readFileSync(projectLocal ? projectConfig : path.join(homedir(), ".convex/anonymous-convex-backend-state", name, "config.json"), "utf8"));
-      if (!projectLocal && config.deploymentName === undefined) config.deploymentName = name;
+      const state = convexState(root, fileEnv);
+      const config = JSON.parse(fs.readFileSync(path.join(state.directory, "config.json"), "utf8"));
+      if (state.legacy && config.deploymentName === undefined && state.deploymentName === name) config.deploymentName = name;
       const target = anonymousTarget(fileEnv, config);
       withTarget(root, target, command => provisionFixtures(command, "anonymous", path.join(root, ".env.e2e.local"), fileEnv.CONVEX_SITE_URL!));
     } else if (mode === "local-aws") {
@@ -69,6 +104,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     } else if (mode === "check-hosted") {
       checkHostedFixtures(root);
       console.log("Hosted fixture preflight passed.");
-    } else throw new Error("Usage: local-fixtures.ts check-launch|anonymous|local-aws|check-hosted");
+    } else throw new Error("Usage: local-fixtures.ts check-launch|state-dir|anonymous|local-aws|check-hosted");
   } catch (error) { console.error(error instanceof Error ? error.message : "Local fixture configuration failed."); process.exitCode = 1; }
 }

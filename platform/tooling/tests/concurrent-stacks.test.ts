@@ -127,3 +127,35 @@ test("project-local state and uniquely named legacy deployments start without wa
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stderr, "");
 });
+
+test("launchers resolve this checkout's Convex state instead of a fixed machine-wide directory", t => {
+  for (const script of ["dev-start.sh", "dev-status.sh"]) {
+    assert.doesNotMatch(fs.readFileSync(path.join(root, "platform/tooling", script), "utf8"), /anonymous-convex-backend-state/, script);
+  }
+  const { project, home } = checkout(t, "anonymous-agent-1234", "CONVEX_DEPLOYMENT=anonymous:anonymous-agent-1234\n");
+  const stateDir = () => spawnSync(nodeTs, [path.join(root, "platform/tooling/local-fixtures.ts"), "state-dir"], { cwd: project, env: { ...process.env, HOME: home }, encoding: "utf8" }).stdout.trim();
+  assert.equal(stateDir(), path.join(home, ".convex/anonymous-convex-backend-state/anonymous-agent-1234"));
+  fs.mkdirSync(path.join(project, "packages/backend/.convex/local/default"), { recursive: true });
+  fs.writeFileSync(path.join(project, "packages/backend/.convex/local/default/config.json"), "{}");
+  assert.equal(stateDir(), path.join(project, "packages/backend/.convex/local/default"));
+});
+
+test("Convex startups from different checkouts take turns, and an exited holder never blocks", async t => {
+  const leases = leaseDirectory(t);
+  const environment = { ...process.env, PLATFORM_PORT_LEASE_DIR: leases };
+  const lock = (owner: number, timeout = "1") => spawnSync(nodeTs, [path.join(root, "platform/tooling/local-ports.ts"), "lock", "convex-start", String(owner), timeout], { env: environment, encoding: "utf8" });
+  const holder = spawn("sleep", ["30"]);
+  t.after(() => holder.kill());
+  const contender = spawn("sleep", ["30"]);
+  t.after(() => contender.kill());
+  assert.equal(lock(holder.pid!).stderr, "");
+  const blocked = lock(contender.pid!);
+  assert.match(blocked.stderr, /Waiting for another checkout/);
+  assert.match(blocked.stderr, /continuing without the lock/);
+  spawnSync(nodeTs, [path.join(root, "platform/tooling/local-ports.ts"), "unlock", "convex-start", String(holder.pid)], { env: environment });
+  assert.equal(lock(contender.pid!).stderr, "");
+  contender.kill();
+  await once(contender, "exit");
+  // The contender exited while holding the lock: the next startup reclaims it at once.
+  assert.equal(lock(holder.pid!).stderr, "");
+});

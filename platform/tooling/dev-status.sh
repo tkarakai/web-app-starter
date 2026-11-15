@@ -11,7 +11,6 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PID_FILE="$PROJECT_DIR/.dev-pids"
-CONVEX_STATE_DIR="$HOME/.convex/anonymous-convex-backend-state"
 source "$SCRIPT_DIR/dev-dashboard.sh"
 
 # ============================================================
@@ -30,12 +29,18 @@ get_deployment_name() {
     done
 }
 
+# This checkout's Convex state directory, resolved the way the Convex CLI resolves it
+# (project-local first; see local-fixtures.ts). Never a fixed machine-wide path.
+convex_state_dir() {
+    (cd "$PROJECT_DIR" && "$SCRIPT_DIR/node-ts.sh" "$SCRIPT_DIR/local-fixtures.ts" state-dir)
+}
+
 get_convex_ports() {
-    local deployment_name="$1"
-    local config_file="$CONVEX_STATE_DIR/$deployment_name/config.json"
+    local config_file
+    config_file="$(convex_state_dir)/config.json"
     if [ -f "$config_file" ]; then
-        local cloud_port=$(grep -o '"cloud":[0-9]*' "$config_file" | grep -o '[0-9]*')
-        local site_port=$(grep -o '"site":[0-9]*' "$config_file" | grep -o '[0-9]*')
+        local cloud_port=$(grep -o '"cloud": *[0-9]*' "$config_file" | grep -o '[0-9]*')
+        local site_port=$(grep -o '"site": *[0-9]*' "$config_file" | grep -o '[0-9]*')
         echo "$cloud_port $site_port"
     fi
 }
