@@ -13,6 +13,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Fixed
+
+- The `@web-app-starter/app-config` tests (config validation, ports, cookie prefix, locales, token overrides) now run in CI. No check reached them: the package had no `test:coverage` script, so `bun run test:shared-packages` skipped it, and it had no root runner ([#409](https://github.com/tkarakai/web-app-starter/issues/409)). A contract test now fails when any platform package with tests is run by no CI check. No app action is required. `bun run test:shared-packages`, which `bun run ci`, GitHub CI and `platform:upgrade` already run, now includes these tests and checks your `app.config.ts`.
+
 ## [5.0.0] - 2026-11-14
 
 ### Added
