@@ -25,6 +25,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 - The `@web-app-starter/app-config` tests (config validation, ports, cookie prefix, locales, token overrides) now run in CI. No check reached them: the package had no `test:coverage` script, so `bun run test:shared-packages` skipped it, and it had no root runner ([#409](https://github.com/tkarakai/web-app-starter/issues/409)). A contract test now fails when any platform package with tests is run by no CI check. No app action is required. `bun run test:shared-packages`, which `bun run ci`, GitHub CI and `platform:upgrade` already run, now includes these tests and checks your `app.config.ts`.
 
+- The platform backend test `organizations-http.test.ts` no longer hard-codes the locale `de`. An app that ships a subset of locales without `de` (for example `i18n.locales: ["en"]`) got `INVALID_LOCALE` in `bun run test:convex` and in `test:dev-scripts`, both required `platform:upgrade` checks ([#412](https://github.com/tkarakai/web-app-starter/issues/412)). The test now uses a locale your app ships, and a tooling test keeps platform backend tests from passing a literal non-English locale. No app action is required.
+
 ## [5.0.0] - 2026-11-14
 
 ### Added
