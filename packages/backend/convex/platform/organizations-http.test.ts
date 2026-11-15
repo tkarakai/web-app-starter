@@ -1,6 +1,7 @@
 // Organization routes through the real Better Auth HTTP handlers: the role, budget and
 // verification rules the session-assurance plugin and auth hooks add to the organization plugin.
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { appConfig } from "@web-app-starter/app-config";
 
 import { api, components, internal } from "../_generated/api";
 import { createTestEnv } from "../test.modules";
@@ -179,8 +180,10 @@ describe("deleting an organization", () => {
     expect(await bob.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: null, organizations: [] });
     expect(await alice.caller.query(api.platform.organizations.mine, {})).toMatchObject({ activeOrganizationId: null, organizations: [] });
     await expect(bob.caller.mutation(api.platform.organizations.deleteInvitation, { invitationId: "unknown" })).rejects.toThrow("NO_ORGANIZATION");
-    await bob.caller.mutation(api.platform.userProfiles.setLocale, { locale: "de" });
-    expect(await bob.caller.query(api.platform.userProfiles.get, {})).toMatchObject({ locale: "de" });
+    // Any shipped locale: an app may ship only a subset of the platform's locales.
+    const locale = appConfig.i18n.locales.find((shipped) => shipped !== appConfig.i18n.defaultLocale) ?? appConfig.i18n.defaultLocale;
+    await bob.caller.mutation(api.platform.userProfiles.setLocale, { locale });
+    expect(await bob.caller.query(api.platform.userProfiles.get, {})).toMatchObject({ locale });
     expect(await bob.caller.query(api.platform.organizations.active, {})).toBeNull();
     expect((await bob.caller.query(api.platform.organizations.mine, {}))!.organizations).toEqual([]);
 

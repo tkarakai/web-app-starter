@@ -9,10 +9,22 @@ import { resolve, join, dirname, delimiter } from "node:path";
 import { createRequire } from "node:module";
 import { spawn, execFileSync, type ChildProcess } from "node:child_process";
 import { once } from "node:events";
+import { createServer, type AddressInfo } from "node:net";
 import { stop, readRecords } from "./dev-processes.ts";
 import appConfig from "../../app.config.ts";
 
 const source = resolve(import.meta.dirname, "../..");
+/** Distinct free loopback ports, so this smoke never collides with another checkout's dev or E2E stack. */
+async function freePorts(count: number): Promise<number[]> {
+  const servers = Array.from({ length: count }, () => createServer().listen(0, "127.0.0.1"));
+  await Promise.all(servers.map(server => once(server, "listening")));
+  const ports = servers.map(server => (server.address() as AddressInfo).port);
+  await Promise.all(servers.map(server => new Promise(done => server.close(done))));
+  return ports;
+}
+const [cloudPort, sitePort, ...appPorts] = await freePorts(2 + Object.keys(appConfig.runtime.ports).length);
+const ports = Object.fromEntries(Object.keys(appConfig.runtime.ports).map((app, index) => [app, appPorts[index]])) as typeof appConfig.runtime.ports;
+const fixtureConfig = { ...appConfig, runtime: { ...appConfig.runtime, ports } };
 const fixture = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), "starter-real-next-")));
 const write = (file: string, content: string) => { const path = join(fixture, file); fs.mkdirSync(dirname(path), { recursive: true }); fs.writeFileSync(path, content, { mode: 0o755 }); };
 const json = (file: string, value: unknown) => write(file, JSON.stringify(value, null, 2));
@@ -51,7 +63,7 @@ try {
   for (const icon of Object.values(appConfig.brand.icons)) {
     const target = join(fixture, icon); fs.mkdirSync(dirname(target), { recursive: true }); fs.copyFileSync(join(source, icon), target);
   }
-  write("app.config.ts", "export default " + JSON.stringify(appConfig));
+  write("app.config.ts", "export default " + JSON.stringify(fixtureConfig));
   const root = JSON.parse(fs.readFileSync(join(source, "package.json"), "utf8"));
   const scripts: Record<string, string> = Object.fromEntries(Object.entries(root.scripts).filter(([name]) => ["dev", "predev", "dev:web", "dev:landing"].includes(name))) as Record<string, string>;
   scripts.postinstall = "node -e \"require('fs').appendFileSync('installs.log','install\\n')\"";
@@ -63,9 +75,9 @@ try {
   write("packages/convex/bin.cjs", `#!/usr/bin/env node
 if(process.argv[2]!=='dev'){console.log('fixture');process.exit(0);}
 const fs=require('node:fs');
-fs.writeFileSync('.env.local','CONVEX_DEPLOYMENT=anonymous:startup-smoke\\nCONVEX_URL=http://127.0.0.1:43210\\nCONVEX_SITE_URL=http://127.0.0.1:43211\\n');
+fs.writeFileSync('.env.local','CONVEX_DEPLOYMENT=anonymous:startup-smoke\\nCONVEX_URL=http://127.0.0.1:${cloudPort}\\nCONVEX_SITE_URL=http://127.0.0.1:${sitePort}\\n');
 fs.mkdirSync('.convex/local/default',{recursive:true});
-fs.writeFileSync('.convex/local/default/config.json',JSON.stringify({deploymentName:'startup-smoke',adminKey:'local-fixture',ports:{cloud:43210,site:43211}}));
+fs.writeFileSync('.convex/local/default/config.json',JSON.stringify({deploymentName:'startup-smoke',adminKey:'local-fixture',ports:{cloud:${cloudPort},site:${sitePort}}}));
 console.log('Convex functions ready');setInterval(()=>{},1000);
 `);
   const deps = Object.fromEntries(["next", "react", "react-dom", "tailwindcss", "@tailwindcss/postcss"].map(name => [name, JSON.parse(fs.readFileSync(join(source, "apps/landing/node_modules", name, "package.json"), "utf8")).version]));
@@ -124,7 +136,7 @@ export default {turbopack:{root:${JSON.stringify(fixture)}}};`);
     launch(["run", "dev:web"]);
     await until(() => { if (child!.exitCode !== null) throw new Error(logs); return logs.includes("[CI MODE] Staying in foreground"); });
     const config = boot("apps/web");
-    assert.equal(config.LANDING_URL, configured ?? `http://localhost:${appConfig.runtime.ports.landing}`);
+    assert.equal(config.LANDING_URL, configured ?? `http://localhost:${ports.landing}`);
     assert.equal((await fetch(config.APP_ORIGIN + "/sign-in")).status, 200);
     await shutdown();
   }
