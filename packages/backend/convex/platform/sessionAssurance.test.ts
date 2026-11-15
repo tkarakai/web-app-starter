@@ -12,6 +12,7 @@ import { assuranceApi, createSessionAssuranceTestEnv } from "./sessionAssurance.
 import { modules } from "../test.modules";
 import authSchema from "./betterAuth/schema";
 import { sendAuthEmail } from "./sendAuthEmail";
+import { platformRunner } from "../../test/platform-component";
 
 vi.mock("./sendAuthEmail", () => ({ sendAuthEmail: vi.fn() }));
 const authModules = import.meta.glob("./betterAuth/**/*.*s");
@@ -473,6 +474,24 @@ describe("backend session assurance through authentication endpoints", () => {
     await f.t.mutation(components.betterAuth.adapter.updateOne, { input: { model: "session", where: [{ field: "_id", value: session._id }], update: { recoveryOnly: true } } });
     expect((await f.request("/verify-password", { password }, token)).status).toBe(200);
     expect(await client.query(api.platform.sessionAssurance.status, {})).toMatchObject({ reason: "recovery", allowed: false });
+  });
+
+  test.each(["cookie", "bearer"] as const)("change-password checks a user's new password against the user threshold (%s session)", async via => {
+    // The plugin resolves the account from the session; Better Auth signs its session cookie, and an
+    // unresolved account falls back to the administrator threshold (40 characters).
+    for (const role of ["user", "admin"] as const) {
+      const f = await fixture(role);
+      // The stricter threshold follows the enrolled administrator emails.
+      if (role === "admin") await platformRunner(f.t)(async ctx => { await ctx.db.insert("adminEmails", { email: f.email }); });
+      const { response, body } = await f.signIn();
+      const cookie = response.headers.getSetCookie().map(value => value.split(";")[0]).join("; ");
+      expect((await f.request("/verify-password", { password }, body.token)).status).toBe(200);
+      const newPassword = "orchid quartz lantern tide";
+      const changed = await f.request("/change-password", { currentPassword: password, newPassword }, via === "bearer" ? body.token : undefined, via === "cookie" ? cookie : undefined);
+      const result = await changed.json();
+      if (role === "user") expect(changed.status, JSON.stringify(result)).toBe(200);
+      else expect(result).toMatchObject({ code: "PASSWORD_TOO_WEAK" });
+    }
   });
 
   test("administrator password rotation and password step-up preserve the absolute deadline", async () => {

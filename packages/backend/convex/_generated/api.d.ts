@@ -54,6 +54,7 @@ import type * as platform_localFixtures from "../platform/localFixtures.js";
 import type * as platform_meta from "../platform/meta.js";
 import type * as platform_nativeCapabilities from "../platform/nativeCapabilities.js";
 import type * as platform_onboardingType from "../platform/onboardingType.js";
+import type * as platform_optionalAppFunction from "../platform/optionalAppFunction.js";
 import type * as platform_organizationAccess from "../platform/organizationAccess.js";
 import type * as platform_organizationCleanup from "../platform/organizationCleanup.js";
 import type * as platform_organizationOwnership from "../platform/organizationOwnership.js";
@@ -137,6 +138,7 @@ declare const fullApi: ApiFromModules<{
   "platform/meta": typeof platform_meta;
   "platform/nativeCapabilities": typeof platform_nativeCapabilities;
   "platform/onboardingType": typeof platform_onboardingType;
+  "platform/optionalAppFunction": typeof platform_optionalAppFunction;
   "platform/organizationAccess": typeof platform_organizationAccess;
   "platform/organizationCleanup": typeof platform_organizationCleanup;
   "platform/organizationOwnership": typeof platform_organizationOwnership;
