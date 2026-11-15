@@ -145,6 +145,8 @@ Each checkout keeps its own local Convex backend: its database, file storage and
 `packages/backend/.env.local`. Several checkouts and worktrees can run `bun run dev` or
 `CI=true bun run ci` at the same time. Managed E2E runs take OS-assigned ports that are leased
 to their Playwright runner, so they never compete with each other or with your dev servers.
+`bun run dev` leases each app port it selects until the launcher exits, so two checkouts
+starting at the same moment never pick the same port.
 Convex startups take turns: the launcher holds a machine-wide lock from starting Convex until
 its functions are ready, so two checkouts never pick the same local dashboard or backend port.
 

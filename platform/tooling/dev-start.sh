@@ -181,6 +181,7 @@ cleanup_on_exit() {
         fi
     fi
     release_convex_start_lock
+    "$NODE_TS" "$SCRIPT_DIR/local-ports.ts" release "$$" || true
     if [ -n "${TSCONFIG_WATCHER_PID:-}" ]; then
         kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
         wait "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
@@ -868,7 +869,10 @@ find_available_port() {
         case " ${SELECTED_PORTS:-} " in
             *" $port "*) port=$((port + 1)); continue ;;
         esac
-        if ! lsof -nP -iTCP:"$port" -sTCP:LISTEN > /dev/null 2>&1; then
+        # Lease the port until this launcher exits, so a launcher in another checkout
+        # starting at the same moment cannot select it before Next binds.
+        if ! lsof -nP -iTCP:"$port" -sTCP:LISTEN > /dev/null 2>&1 \
+            && "$NODE_TS" "$SCRIPT_DIR/local-ports.ts" claim "port-$port" "$$"; then
             echo "$port"
             return
         fi

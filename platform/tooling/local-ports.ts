@@ -65,10 +65,13 @@ export function releaseClaim(claim: string): void {
   fs.rmSync(join(leaseDirectory(), claim), { force: true });
 }
 
-/** Release every claim on `key` held by `owner` (a launcher that exits or gives up). */
-export function releaseOwned(key: string, owner: number): void {
+/** Release every claim held by `owner` (on `key` only, when given): a launcher that exits or gives up. */
+export function releaseOwned(key: string | undefined, owner: number): void {
   const directory = leaseDirectory();
-  for (const entry of fs.readdirSync(directory)) if (ownerOf(entry, key) === owner) fs.rmSync(join(directory, entry), { force: true });
+  for (const entry of fs.readdirSync(directory)) {
+    const pid = key === undefined ? Number(entry.split(".")[1]) : ownerOf(entry, key);
+    if (pid === owner) fs.rmSync(join(directory, entry), { force: true });
+  }
 }
 
 /** Ports the OS reports free right now, from a child process because binding is asynchronous. */
@@ -124,13 +127,19 @@ export function acquireLock(key: string, owner: number, timeoutMs: number, onWai
 }
 
 if (process.argv[1]?.endsWith("/local-ports.ts")) {
-  const [command, key, ownerArgument, timeoutArgument] = process.argv.slice(2);
+  const [command, ...rest] = process.argv.slice(2);
+  const [key, ownerArgument, timeoutArgument] = command === "release" ? [undefined, rest[0]] : rest;
   const owner = Number(ownerArgument);
-  if (!key || !Number.isInteger(owner) || owner <= 0 || (command !== "lock" && command !== "unlock")) {
-    process.stderr.write("Usage: local-ports.ts lock|unlock KEY OWNER_PID [TIMEOUT_SECONDS]\n");
+  if ((command !== "release" && !key) || !Number.isInteger(owner) || owner <= 0 || !["lock", "unlock", "claim", "release"].includes(command ?? "")) {
+    process.stderr.write("Usage: local-ports.ts lock|unlock|claim KEY OWNER_PID [TIMEOUT_SECONDS] | release OWNER_PID\n");
     process.exit(2);
   }
-  if (command === "unlock") {
+  if (command === "release") {
+    releaseOwned(undefined, owner);
+  } else if (command === "claim") {
+    // Exit 1 while another live owner holds the key; the caller tries another.
+    if (tryClaim(key!, owner) === undefined) process.exit(1);
+  } else if (command === "unlock") {
     releaseOwned(`lock-${key}`, owner);
   } else {
     const seconds = Number(timeoutArgument ?? "120");

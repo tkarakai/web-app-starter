@@ -101,6 +101,8 @@ export default {turbopack:{root:${JSON.stringify(fixture)}}};`);
   command(["install", "--lockfile-only", "--ignore-scripts"]); // Incoming revision's lockfile, without installing it.
   assert.throws(() => createRequire(join(fixture, "apps/web/package.json")).resolve("@repo/onboarding/styles.css"));
   fs.writeFileSync(join(fixture, "installs.log"), "");
+  // The fixture launcher leases these ports itself; a held lease would make it skip them.
+  for (const claim of reserved.claims) releaseClaim(claim);
   launch(["dev", "--app=web,landing"]);
   await until(() => { if (child!.exitCode !== null) throw new Error(logs); return logs.includes("[CI MODE] Staying in foreground"); });
   for (const app of ["web", "landing"]) {
