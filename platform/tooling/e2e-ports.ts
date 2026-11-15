@@ -1,4 +1,4 @@
-import { closeSync, existsSync, ftruncateSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync, writeSync } from "node:fs";
+import { closeSync, existsSync, ftruncateSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { join } from "node:path";
 import { APP_IDS, type AppId } from "../packages/app-config/src/schema.ts";
 import { releaseClaim, reservePorts } from "./local-ports.ts";
@@ -25,8 +25,8 @@ export function plannedPort(name: string): number {
   return port;
 }
 
-function rewritePorts(directory: string, ports: (previous: unknown) => unknown): boolean {
-  const file = join(directory, ".convex/local/default/config.json");
+function rewritePorts(stateDirectory: string, ports: (previous: unknown) => unknown): boolean {
+  const file = join(stateDirectory, "config.json");
   let descriptor: number;
   try {
     descriptor = openSync(file, "r+");
@@ -49,37 +49,51 @@ function rewritePorts(directory: string, ports: (previous: unknown) => unknown):
 /** The checkout's own saved ports, kept while a managed run uses its leased ones. */
 const savedPortsFile = (directory: string) => join(directory, ".convex/platform-e2e-saved-ports.json");
 
-/** Convex probes saved ports before applying CLI overrides. Stage only our
- * project-local config so another checkout's anonymous-agent is never probed. */
-export function prepareBackendPorts(directory: string): void {
+const projectState = (directory: string) => join(directory, ".convex/local/default");
+
+/** Convex probes saved ports before applying CLI overrides. Stage the checkout's state config
+ * (project-local, or the legacy directory it resolves to) so another checkout's backend is
+ * never probed. `directory` is packages/backend. */
+export function prepareBackendPorts(directory: string, stateDirectory: string = projectState(directory)): void {
+  // The record lives in packages/backend/.convex/, which Convex ignores wholesale.
+  mkdirSync(join(directory, ".convex"), { recursive: true });
+  if (!existsSync(join(directory, ".convex/.gitignore"))) writeFileSync(join(directory, ".convex/.gitignore"), "/*\n");
   // An interrupted run leaves the original record in place; never replace it with leased ports.
-  const keep = (ports: unknown) => { if (ports && !existsSync(savedPortsFile(directory))) writeFileSync(savedPortsFile(directory), JSON.stringify(ports) + "\n", { flag: "wx" }); };
-  const staged = rewritePorts(directory, (previous) => {
+  const keep = (ports: unknown) => {
+    if (!ports || existsSync(savedPortsFile(directory))) return;
+    const temporary = `${savedPortsFile(directory)}.${process.pid}`;
+    writeFileSync(temporary, JSON.stringify(ports) + "\n");
+    renameSync(temporary, savedPortsFile(directory));
+  };
+  const staged = rewritePorts(stateDirectory, (previous) => {
     keep(previous);
     return { cloud: plannedPort("cloud"), site: plannedPort("site") };
   });
   if (!staged) {
     // A fresh checkout: Convex creates its state during this run. Afterwards, give it the ports
-    // a first interactive start would have used. Convex ignores everything in .convex/.
-    mkdirSync(join(directory, ".convex"), { recursive: true });
-    if (!existsSync(join(directory, ".convex/.gitignore"))) writeFileSync(join(directory, ".convex/.gitignore"), "/*\n");
+    // a first interactive start would have used.
     keep({ cloud: 3210, site: 3211 });
   }
 }
 
 /** After a managed run, give interactive `bun run dev` its usual backend ports back. */
-export function restoreBackendPorts(directory: string): void {
+export function restoreBackendPorts(directory: string, stateDirectory: string = projectState(directory)): void {
   if (!existsSync(savedPortsFile(directory))) return;
-  const saved = JSON.parse(readFileSync(savedPortsFile(directory), "utf8")) as unknown;
-  rewritePorts(directory, () => saved);
+  let saved: unknown;
+  try {
+    saved = JSON.parse(readFileSync(savedPortsFile(directory), "utf8"));
+  } catch {
+    saved = undefined; // Unreadable record: drop it rather than fail every start.
+  }
+  if (saved) rewritePorts(stateDirectory, () => saved);
   rmSync(savedPortsFile(directory), { force: true });
 }
 
 if (process.argv[1]?.endsWith("/e2e-ports.ts")) {
   if (process.argv[2] === "prepare-backend") {
-    prepareBackendPorts(process.cwd());
+    prepareBackendPorts(process.cwd(), process.argv[3] || undefined);
   } else if (process.argv[2] === "restore-backend") {
-    restoreBackendPorts(process.cwd());
+    restoreBackendPorts(process.cwd(), process.argv[3] || undefined);
   } else if (process.argv[2] === "shell") {
     for (const app of APP_IDS) {
       const port = plannedPort(app);

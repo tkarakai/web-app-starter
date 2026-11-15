@@ -147,8 +147,9 @@ if (process.argv[1]?.endsWith("/local-ports.ts")) {
     if (command === "release") {
       releaseOwned(undefined, owner);
     } else if (command === "claim") {
-      // Exit 1 while another live owner holds the key; the caller tries another.
-      if (tryClaim(key!, owner) === undefined) process.exit(1);
+      // Exit 3 while another live owner holds the key; the caller tries another. Any other
+      // failure (including Node's own exit 1) means "leases unavailable".
+      if (tryClaim(key!, owner) === undefined) process.exit(3);
     } else if (command === "unlock") {
       releaseOwned(`lock-${key}`, owner);
     } else {
@@ -157,7 +158,7 @@ if (process.argv[1]?.endsWith("/local-ports.ts")) {
       if (!acquired) process.stderr.write(`Still waiting after ${seconds}s for another checkout's ${key}; continuing without the lock.\n`);
     }
   } catch (error) {
-    // Exit 2, never 1 (held): callers continue without coordination rather than fail.
+    // Exit 2, never 3 (held): callers continue without coordination rather than fail.
     process.stderr.write(`Local leases unavailable: ${(error as Error).message}\n`);
     process.exit(2);
   }

@@ -156,8 +156,9 @@ when a checkout has no project-local state. A uniquely named one, such as
 `anonymous-agent-1a2b3c4d`, belongs to the checkout whose `packages/backend/.env.local` names
 it, and keeps working. The directory named `anonymous-agent` is different: every checkout
 without project-local state attaches to it, so they all share one database. Startup prints a
-warning, and a managed E2E run refuses to start while another local backend has that database
-open. A checkout using it alone keeps working. To give each
+warning. A managed E2E run refuses to start while another process has that database open,
+checked with `lsof` under the Convex startup lock; without a usable `lsof` it warns instead. A
+checkout using it alone keeps working. To give each
 checkout its own state, stop dev in every checkout (`bun run dev:stop`) and choose one of these:
 
 - **Start fresh.** Move the shared directory aside. Each checkout creates its own state on its

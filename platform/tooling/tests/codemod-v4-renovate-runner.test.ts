@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, realpathSync } from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { evaluator, localSignals, parseWorkflow } from "./workflow-runners.ts";
@@ -33,7 +34,7 @@ test("custom Renovate runner remains app-owned", () => {
 });
 
 test("check is read-only and migration is idempotent", t => {
-  const root = mkdtempSync(join(process.cwd(), ".v4-renovate-runner-"));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "v4-renovate-runner-")));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const workflow = join(root, ".github/workflows/renovate.yml");
   mkdirSync(join(root, ".github/workflows"), { recursive: true });
@@ -46,7 +47,7 @@ test("check is read-only and migration is idempotent", t => {
 });
 
 test("migration writes to the opened workflow when its path is replaced after reading", t => {
-  const root = mkdtempSync(join(process.cwd(), ".v4-renovate-runner-"));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "v4-renovate-runner-")));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const workflow = join(root, ".github/workflows/renovate.yml");
   const original = join(root, "original.yml");

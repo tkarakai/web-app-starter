@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, realpathSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { migrate, migrateContent } from "../codemods/v5-proxy-prefetch-rate-limit.ts";
@@ -22,7 +23,7 @@ test("keeps a customized matcher for review", () => {
 });
 
 test("check is read-only, migration is idempotent and a missing file is fine", t => {
-  const root = mkdtempSync(join(process.cwd(), ".v5-proxy-prefetch-"));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "v5-proxy-prefetch-")));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   assert.deepEqual(migrate(root), []);
   mkdirSync(join(root, "apps/web/src"), { recursive: true });

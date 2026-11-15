@@ -85,7 +85,7 @@ function checkout(t: TestContext, legacy: string | undefined, backendEnv: string
   if (backendEnv !== undefined) fs.writeFileSync(path.join(project, "packages/backend/.env.local"), backendEnv);
   const environment: Record<string, string | undefined> = { ...process.env, HOME: home };
   for (const key of ["CONVEX_DEPLOYMENT", "CONVEX_DEPLOY_KEY", "CONVEX_DEPLOYMENT_TOKEN", "CONVEX_SELF_HOSTED_URL", "CONVEX_SELF_HOSTED_ADMIN_KEY", "PLATFORM_E2E_PORTS"]) delete environment[key];
-  const preflight = (extra: Record<string, string> = {}) => spawnSync(nodeTs, [path.join(root, "platform/tooling/local-fixtures.ts"), "check-launch"], { cwd: project, env: { ...environment, ...extra }, encoding: "utf8" });
+  const preflight = (extra: Record<string, string> = {}) => spawnSync(nodeTs, [path.join(root, "platform/tooling/local-fixtures.ts"), "check-state"], { cwd: project, env: { ...environment, ...extra }, encoding: "utf8" });
   return { home, project, preflight };
 }
 
@@ -151,10 +151,10 @@ test("project-local state and uniquely named legacy deployments start without wa
 test("launchers resolve this checkout's Convex state instead of a fixed machine-wide directory", t => {
   for (const script of ["dev-start.sh", "dev-status.sh"]) {
     const source = fs.readFileSync(path.join(root, "platform/tooling", script), "utf8");
-    assert.doesNotMatch(source, /CONVEX_STATE_DIR=/, script);
+    assert.doesNotMatch(source, /^CONVEX_STATE_DIR=/m, script);
     const resolver = source.slice(source.indexOf("get_deployment_name() {"), source.indexOf("get_convex_ports() {"));
     assert.match(resolver, /convex_state_dir\(\) \{/, script);
-    type Case = { legacy?: string; env?: string; local?: boolean; emptyLegacy?: string; rootEnv?: string; expect: "local" | string };
+    type Case = { legacy?: string; env?: string; local?: boolean; emptyLegacy?: string; rootEnv?: string; dotEnv?: string; processEnv?: string; expect: "local" | string };
     const cases: Case[] = [
       { legacy: "anonymous-agent-1234", env: "CONVEX_DEPLOYMENT=anonymous:anonymous-agent-1234\n", expect: "anonymous-agent-1234" },
       { legacy: "anonymous-agent", expect: "anonymous-agent" },
@@ -165,8 +165,13 @@ test("launchers resolve this checkout's Convex state instead of a fixed machine-
       { legacy: "anonymous-agent", env: "CONVEX_DEPLOYMENT=anonymous:anonymous-old\n", emptyLegacy: "anonymous-old", expect: "anonymous-agent" },
       // ...and reads only the backend's .env.local.
       { legacy: "anonymous-agent-9", rootEnv: "CONVEX_DEPLOYMENT=anonymous:anonymous-agent-9\n", expect: "local" },
+      // ...but takes the environment first and the backend's .env last.
+      { legacy: "anonymous-agent-7", processEnv: "anonymous:anonymous-agent-7", env: "CONVEX_DEPLOYMENT=anonymous:unknown\n", expect: "anonymous-agent-7" },
+      { legacy: "anonymous-agent-8", dotEnv: "CONVEX_DEPLOYMENT=anonymous:anonymous-agent-8\n", expect: "anonymous-agent-8" },
+      // The agent default needs only its directory, even an interrupted one without config.json.
+      { emptyLegacy: "anonymous-agent", expect: "anonymous-agent" },
     ];
-    for (const { legacy, env, local, emptyLegacy, rootEnv, expect } of cases) {
+    for (const { legacy, env, local, emptyLegacy, rootEnv, dotEnv, processEnv, expect } of cases) {
       const { project, home } = checkout(t, legacy, env);
       if (local) {
         fs.mkdirSync(path.join(project, "packages/backend/.convex/local/default"), { recursive: true });
@@ -174,10 +179,12 @@ test("launchers resolve this checkout's Convex state instead of a fixed machine-
       }
       if (emptyLegacy) fs.mkdirSync(path.join(home, ".convex/anonymous-convex-backend-state", emptyLegacy), { recursive: true });
       if (rootEnv) fs.writeFileSync(path.join(project, ".env.local"), rootEnv);
-      const environment = { ...process.env, HOME: home };
+      if (dotEnv) fs.writeFileSync(path.join(project, "packages/backend/.env"), dotEnv);
+      const environment: Record<string, string | undefined> = { ...process.env, HOME: home, CONVEX_DEPLOYMENT: processEnv };
+      if (processEnv === undefined) delete environment.CONVEX_DEPLOYMENT;
       const typescript = spawnSync(nodeTs, [path.join(root, "platform/tooling/local-fixtures.ts"), "state-dir"], { cwd: project, env: environment, encoding: "utf8" }).stdout.trim();
       const shell = spawnSync("bash", ["-c", `PROJECT_DIR=${JSON.stringify(project)}\n${resolver}\nconvex_state_dir`], { env: environment, encoding: "utf8" }).stdout.trim();
-      assert.equal(shell, typescript, `${script}: ${JSON.stringify({ legacy, env, local, emptyLegacy, rootEnv })}`);
+      assert.equal(shell, typescript, `${script}: ${JSON.stringify({ legacy, env, local, emptyLegacy, rootEnv, dotEnv, processEnv })}`);
       assert.equal(typescript, expect === "local" ? path.join(project, "packages/backend/.convex/local/default") : path.join(home, ".convex/anonymous-convex-backend-state", expect));
     }
   }
@@ -208,13 +215,15 @@ test("the next ordinary start restores the backend ports a SIGKILLed managed run
   const source = fs.readFileSync(path.join(root, "platform/tooling/dev-start.sh"), "utf8");
   const helpers = source.slice(source.indexOf("get_deployment_name() {"), source.indexOf("get_convex_ports() {"));
   assert.match(source, /if \[ -z "\$\{PLATFORM_E2E_PORTS:-\}" \]; then\n\s+restore_saved_backend_ports\n\s+fi\n\n\s+"\$NODE_TS" "\$SCRIPT_DIR\/local-ports.ts" lock convex-start/);
+  // The shared-state check runs under the startup lock, never before it.
+  assert.ok(source.indexOf("local-fixtures.ts\" check-state") > source.indexOf("local-ports.ts\" lock convex-start"));
   const { project } = checkout(t, undefined, undefined);
   const state = path.join(project, "packages/backend/.convex");
   fs.mkdirSync(path.join(state, "local/default"), { recursive: true });
   fs.writeFileSync(path.join(state, "local/default/config.json"), JSON.stringify({ deploymentName: "anonymous-agent", adminKey: "local", ports: { cloud: 58001, site: 58002 } }));
   fs.writeFileSync(path.join(state, "platform-e2e-saved-ports.json"), JSON.stringify({ cloud: 3210, site: 3211 }));
   const tooling = path.join(root, "platform/tooling");
-  const result = spawnSync("bash", ["-c", `PROJECT_DIR=${JSON.stringify(project)}; SCRIPT_DIR=${JSON.stringify(tooling)}; NODE_TS="$SCRIPT_DIR/node-ts.sh"\n${helpers}\nrestore_saved_backend_ports`], { encoding: "utf8" });
+  const result = spawnSync("bash", ["-c", `PROJECT_DIR=${JSON.stringify(project)}; SCRIPT_DIR=${JSON.stringify(tooling)}; NODE_TS="$SCRIPT_DIR/node-ts.sh"\n${helpers}\nrestore_saved_backend_ports`], { encoding: "utf8", env: { ...process.env, HOME: path.join(path.dirname(project), "home") } });
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(state, "local/default/config.json"), "utf8")).ports, { cloud: 3210, site: 3211 });
   assert.equal(fs.existsSync(path.join(state, "platform-e2e-saved-ports.json")), false);
@@ -232,4 +241,37 @@ process.stdout.write(JSON.stringify(reservePorts(["web", "cloud"]).ports));`;
   const reserved = spawnSync(nodeTs, ["--input-type=module", "-e", script], { env: environment, encoding: "utf8" });
   assert.equal(reserved.status, 0, reserved.stderr);
   assert.equal(Object.keys(JSON.parse(reserved.stdout) as object).length, 2);
+});
+
+test("a managed run on legacy state stages and restores that legacy config, not a project-local one", async t => {
+  const { prepareBackendPorts, restoreBackendPorts } = await import("../e2e-ports.ts");
+  const { project, home } = checkout(t, "anonymous-agent", undefined);
+  const backend = path.join(project, "packages/backend");
+  const legacyConfig = path.join(home, ".convex/anonymous-convex-backend-state/anonymous-agent/config.json");
+  const previous = process.env.PLATFORM_E2E_PORTS;
+  process.env.PLATFORM_E2E_PORTS = JSON.stringify({ cloud: 58101, site: 58102 });
+  try {
+    prepareBackendPorts(backend, path.dirname(legacyConfig));
+    assert.deepEqual(JSON.parse(fs.readFileSync(legacyConfig, "utf8")).ports, { cloud: 58101, site: 58102 });
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(backend, ".convex/platform-e2e-saved-ports.json"), "utf8")), { cloud: 3210, site: 3211 });
+    restoreBackendPorts(backend, path.dirname(legacyConfig));
+    assert.deepEqual(JSON.parse(fs.readFileSync(legacyConfig, "utf8")).ports, { cloud: 3210, site: 3211 });
+    // An unreadable record is dropped instead of failing every later start.
+    fs.writeFileSync(path.join(backend, ".convex/platform-e2e-saved-ports.json"), "");
+    restoreBackendPorts(backend, path.dirname(legacyConfig));
+    assert.equal(fs.existsSync(path.join(backend, ".convex/platform-e2e-saved-ports.json")), false);
+  } finally {
+    if (previous === undefined) delete process.env.PLATFORM_E2E_PORTS;
+    else process.env.PLATFORM_E2E_PORTS = previous;
+  }
+});
+
+test("a held port has its own exit status, distinct from a crash", t => {
+  const leases = leaseDirectory(t);
+  const environment = { ...process.env, PLATFORM_PORT_LEASE_DIR: leases };
+  const holder = spawn("sleep", ["30"]);
+  t.after(() => holder.kill());
+  const claim = (owner: number) => spawnSync(nodeTs, [path.join(root, "platform/tooling/local-ports.ts"), "claim", "port-43002", String(owner)], { env: environment, encoding: "utf8" });
+  assert.equal(claim(holder.pid!).status, 0);
+  assert.equal(claim(process.pid).status, 3);
 });

@@ -176,8 +176,9 @@ cleanup_on_exit() {
         set +m
         [ -z "${TAIL_PID:-}" ] || kill "$TAIL_PID" 2>/dev/null || true
         # A managed run used leased backend ports; give interactive dev its saved ones back.
+        # Playwright usually SIGKILLs this script, so the next ordinary start also restores them.
         if [ -n "${PLATFORM_E2E_PORTS:-}" ] && [ "$NEED_CONVEX" = true ]; then
-            (cd "$PROJECT_DIR/packages/backend" && "$NODE_TS" "$SCRIPT_DIR/e2e-ports.ts" restore-backend) || true
+            (cd "$PROJECT_DIR/packages/backend" && "$NODE_TS" "$SCRIPT_DIR/e2e-ports.ts" restore-backend "${PLATFORM_CONVEX_STATE_DIR:-}") || true
         fi
     fi
     release_convex_start_lock
@@ -309,16 +310,19 @@ print_convex_upgrade_fix() {
 convex_state_dir() {
     local project_state="$PROJECT_DIR/packages/backend/.convex/local/default"
     local legacy_root="$HOME/.convex/anonymous-convex-backend-state"
-    local name=""
-    # The Convex CLI reads only the backend's .env.local, never the root one.
-    if [ -f "$PROJECT_DIR/packages/backend/.env.local" ]; then
-        name=$(grep "^CONVEX_DEPLOYMENT=" "$PROJECT_DIR/packages/backend/.env.local" | tail -1 | sed 's/CONVEX_DEPLOYMENT=//; s/ #.*//; s/anonymous://')
-    fi
+    local name="${CONVEX_DEPLOYMENT:-}" env_file
+    # Like the Convex CLI: the environment, then the backend's .env.local, then its .env.
+    for env_file in "$PROJECT_DIR/packages/backend/.env.local" "$PROJECT_DIR/packages/backend/.env"; do
+        if [ -z "$name" ] && [ -f "$env_file" ]; then
+            name=$(grep "^CONVEX_DEPLOYMENT=" "$env_file" | tail -1 | sed 's/CONVEX_DEPLOYMENT=//; s/ #.*//')
+        fi
+    done
+    name="${name#anonymous:}"
     if [ -f "$project_state/config.json" ]; then
         echo "$project_state"
-    elif [[ "$name" == anonymous-* ]] && [ -f "$legacy_root/$name/config.json" ]; then
+    elif [[ "$name" == anonymous-* ]] && [ "$name" != anonymous-agent ] && [ -f "$legacy_root/$name/config.json" ]; then
         echo "$legacy_root/$name"
-    elif [ -f "$legacy_root/anonymous-agent/config.json" ]; then
+    elif [ -d "$legacy_root/anonymous-agent" ]; then
         echo "$legacy_root/anonymous-agent"
     else
         echo "$project_state"
@@ -328,7 +332,7 @@ convex_state_dir() {
 # A managed E2E run leaves the checkout's own backend ports in .convex/; put them back.
 restore_saved_backend_ports() {
     if [ -f "$PROJECT_DIR/packages/backend/.convex/platform-e2e-saved-ports.json" ]; then
-        (cd "$PROJECT_DIR/packages/backend" && "$NODE_TS" "$SCRIPT_DIR/e2e-ports.ts" restore-backend) || true
+        (cd "$PROJECT_DIR/packages/backend" && "$NODE_TS" "$SCRIPT_DIR/e2e-ports.ts" restore-backend "$(convex_state_dir)") || true
     fi
 }
 
@@ -619,6 +623,11 @@ if [ "$NEED_CONVEX" = true ]; then
 
     "$NODE_TS" "$SCRIPT_DIR/local-ports.ts" lock convex-start "$$" || echo "Continuing without the Convex startup lock." >&2
     CONVEX_START_LOCKED=true
+    # Checked under the lock: a concurrent startup on shared state has finished (and holds its
+    # database) or not begun. Managed runs refuse shared state that is in use.
+    "$NODE_TS" "$SCRIPT_DIR/local-fixtures.ts" check-state
+    export PLATFORM_CONVEX_STATE_DIR
+    PLATFORM_CONVEX_STATE_DIR=$(convex_state_dir)
 
     if [ "$NON_INTERACTIVE" = true ]; then
         echo "[CI MODE] Convex state dir: $(convex_state_dir)"
@@ -888,11 +897,11 @@ find_available_port() {
         # Lease the port until this launcher exits, so a launcher in another checkout
         # starting at the same moment cannot select it before Next binds.
         if ! lsof -nP -iTCP:"$port" -sTCP:LISTEN > /dev/null 2>&1; then
-            # 1: another live launcher holds it. Any other failure: leases are unavailable,
+            # 3: another live launcher holds it. Any other failure: leases are unavailable,
             # so keep the old unleased behaviour rather than report no free port.
             local claim_status=0
             "$NODE_TS" "$SCRIPT_DIR/local-ports.ts" claim "port-$port" "$$" || claim_status=$?
-            if [ "$claim_status" -ne 1 ]; then
+            if [ "$claim_status" -ne 3 ]; then
                 echo "$port"
                 return
             fi

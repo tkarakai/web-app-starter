@@ -1,4 +1,4 @@
-import { constants, cpSync, readdirSync } from "node:fs";
+import { constants, cpSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import type { AppConfig } from "../../../../platform/packages/app-config/src/schema.ts";
 
@@ -15,7 +15,14 @@ export function copyConfigurationFixture(source: string, root: string): void {
   };
   for (const entry of readdirSync(source)) {
     const file = path.join(source, entry);
-    if (options.filter(file)) cpSync(file, path.join(root, entry), options);
+    if (!options.filter(file)) continue;
+    try {
+      cpSync(file, path.join(root, entry), options);
+    } catch (error) {
+      // Parallel tooling tests create and delete their own temporary entries in the root;
+      // one that vanished after listing is not part of the app.
+      if ((error as Error & { code?: string }).code !== "ENOENT" || existsSync(file)) throw error;
+    }
   }
 }
 

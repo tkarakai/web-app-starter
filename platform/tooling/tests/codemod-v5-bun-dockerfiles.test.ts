@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, realpathSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { migrate, migrateContent } from "../codemods/v5-bun-dockerfiles.ts";
@@ -13,7 +14,7 @@ test("bumps only the exact stock Bun argument", () => {
 });
 
 test("check is read-only, migration is idempotent, other files and a missing directory are fine", t => {
-  const root = mkdtempSync(join(process.cwd(), ".v5-bun-dockerfiles-"));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "v5-bun-dockerfiles-")));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   assert.deepEqual(migrate(root), []);
   const dir = join(root, "infra/aws/docker");
