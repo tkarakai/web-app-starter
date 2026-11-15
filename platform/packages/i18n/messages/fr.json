@@ -478,7 +478,7 @@
       "continue": "Continuer"
     }
   },
-  "organization": {
+  "accountOrganization": {
     "label": "Organisation",
     "roles": {
       "owner": "Propriétaire",
@@ -623,7 +623,7 @@
       "createDescription": "Demandez au propriétaire ou à un admin d’une organisation de vous inviter."
     }
   },
-  "billing": {
+  "accountBilling": {
     "title": "Offre et facturation",
     "description": "L’offre utilisée par {organization} et qui la paie.",
     "individualDescription": "Votre offre et votre moyen de paiement.",

@@ -38,7 +38,7 @@ vi.mock("@web-app-starter/design-system", async (importOriginal) => ({
   toast: { success: mocks.success, error: mocks.error },
 }));
 
-const t = messages.organization.invitation;
+const t = messages.accountOrganization.invitation;
 const details = { organizationName: "Acme", inviterName: "Ada", role: "member", email: "bob@example.test" };
 const stored = () => window.localStorage.getItem("organization-invitation");
 

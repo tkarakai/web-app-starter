@@ -478,7 +478,7 @@
       "continue": "Продолжить"
     }
   },
-  "organization": {
+  "accountOrganization": {
     "label": "Организация",
     "roles": {
       "owner": "Владелец",
@@ -623,7 +623,7 @@
       "createDescription": "Попросите владельца или администратора организации пригласить вас."
     }
   },
-  "billing": {
+  "accountBilling": {
     "title": "Тариф и оплата",
     "description": "Тариф организации {organization} и кто за него платит.",
     "individualDescription": "Ваш тариф и способ оплаты.",

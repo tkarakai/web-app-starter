@@ -81,7 +81,7 @@ export function AppSidebar({
   const tp = useTranslations("projects");
   const td = useTranslations("dashboard");
   const tt = useTranslations("theme");
-  const to = useTranslations("organization");
+  const to = useTranslations("accountOrganization");
   const organizations = useOrganizations();
   const hasOrganization = Boolean(organizations?.activeOrganizationId);
   // Individuals have one organization, shown as billing details in Settings.

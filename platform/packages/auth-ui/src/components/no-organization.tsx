@@ -11,7 +11,7 @@ import { api } from "@repo/backend";
  * (platform/docs/tenancy-and-billing.md).
  */
 export function NoOrganization() {
-  const t = useTranslations("organization");
+  const t = useTranslations("accountOrganization");
   const invitations = useQuery(api.platform.organizations.myInvitations);
 
   return (

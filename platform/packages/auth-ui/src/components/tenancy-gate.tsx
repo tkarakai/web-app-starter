@@ -66,7 +66,7 @@ function DeletionScheduled({ deleteAt, blockedReason }: { deleteAt: number; bloc
 }
 
 function PlanPicker({ plans, mode }: { plans: PlanOption[]; mode: TenancyMode | null }) {
-  const t = useTranslations("billing");
+  const t = useTranslations("accountBilling");
   const choose = useMutation(api.platform.billing.choosePlan);
   const { planId, plan, setPlanId } = useSelectedPlan(plans);
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod | "">("");

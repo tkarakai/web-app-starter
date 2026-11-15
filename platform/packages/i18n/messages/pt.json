@@ -478,7 +478,7 @@
       "continue": "Continuar"
     }
   },
-  "organization": {
+  "accountOrganization": {
     "label": "Organização",
     "roles": {
       "owner": "Proprietário",
@@ -623,7 +623,7 @@
       "createDescription": "Peça ao proprietário ou a um administrador de uma organização que o convide."
     }
   },
-  "billing": {
+  "accountBilling": {
     "title": "Plano e faturação",
     "description": "O plano usado por {organization} e quem o paga.",
     "individualDescription": "O seu plano e como o paga.",

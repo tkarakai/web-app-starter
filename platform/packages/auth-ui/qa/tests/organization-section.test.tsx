@@ -51,7 +51,7 @@ vi.mock("@web-app-starter/design-system", async (importOriginal) => ({
   toast: { success: mocks.success, error: mocks.error, info: mocks.info },
 }));
 
-const t = messages.organization;
+const t = messages.accountOrganization;
 const you = { memberId: "m-1", name: "Ada", email: "ada@example.test", role: "owner", joinedAt: 1, isYou: true };
 const bob = { memberId: "m-2", name: "Bob", email: "bob@example.test", role: "member", joinedAt: 2, isYou: false };
 const DAY = 86_400_000;

@@ -20,7 +20,7 @@ export function formatPrice(cents: number, locale: string): string {
   return new Intl.NumberFormat(locale, { style: "currency", currency: "USD" }).format(cents / 100);
 }
 
-/** The `billing.errors.*` key for a Convex error thrown by `api.platform.billing.*`. */
+/** The `accountBilling.errors.*` key for a Convex error thrown by `api.platform.billing.*`. */
 export function billingErrorKey(error: unknown): "paymentMethodRequired" | "nameRequired" | "notAllowed" | "inUse" | "generic" {
   const code = errorCode(error);
   if (code === "PAYMENT_METHOD_REQUIRED") return "paymentMethodRequired";

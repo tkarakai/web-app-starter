@@ -35,7 +35,7 @@ interface OrganizationSwitcherProps {
  * page (`BillingSection`); individuals have one organization, so there is nothing to switch.
  */
 export function OrganizationSwitcher({ logo, productName, onSwitch }: OrganizationSwitcherProps) {
-  const t = useTranslations("organization");
+  const t = useTranslations("accountOrganization");
   // Keep the interaction state outside the authenticated-data branch. A token
   // transition can temporarily remove that branch; no stale memberships render,
   // but a restored session should not silently discard an open menu.

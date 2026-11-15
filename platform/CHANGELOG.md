@@ -17,6 +17,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ### Added
 
+- The platform's new UI strings use the message namespaces `accountBilling`, `accountOrganization` and
+  `userDeletion` (named so they don't collide with an app's own `billing` or `organization`
+  namespace). Override them in `packages/messages/overrides.json` like any platform string.
+
 - **`starter-workers upgrade [--all]`** upgrades installed CI worker managers from one reviewed checkout. For each installation in turn, it drains and stops the manager, runs `update`, runs the install check in that app's checkout (`--checkout OWNER/APP=PATH`) and restarts it. It keeps paused or stopped managers in that state, and rolls back to the previous installation if the check fails. It checks every target before pausing any. `starter-workers list` shows every installed manager, and `starter-workers rollback` restores the previous installation by hand.
 
 - **Tenancy modes, plans and billing organizations.** The platform admin chooses, once,

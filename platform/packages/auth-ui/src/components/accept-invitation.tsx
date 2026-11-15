@@ -46,9 +46,9 @@ function Panel({ title, description, state, children }: {
  * setup, already a member, meant for another account, or no longer valid.
  */
 export function AcceptInvitation({ invitationId }: { invitationId: string }) {
-  const t = useTranslations("organization.invitation");
-  const te = useTranslations("organization.errors");
-  const tr = useTranslations("organization.roles");
+  const t = useTranslations("accountOrganization.invitation");
+  const te = useTranslations("accountOrganization.errors");
+  const tr = useTranslations("accountOrganization.roles");
   const router = useRouter();
   const locale = useLocale();
   const here = `/${locale}/accept-invitation/${encodeURIComponent(invitationId)}`;

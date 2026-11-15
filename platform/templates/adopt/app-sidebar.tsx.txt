@@ -17,7 +17,7 @@ export function AppSidebar({ displayName, displayEmail, onNavigateHome }: {
 }) {
   const tc = useTranslations("common");
   const td = useTranslations("dashboard");
-  const to = useTranslations("organization");
+  const to = useTranslations("accountOrganization");
   const organizations = useOrganizations();
   const accountNavigation = useAccountNavigation();
   const router = useRouter();

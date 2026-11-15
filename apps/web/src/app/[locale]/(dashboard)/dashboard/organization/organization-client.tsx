@@ -23,7 +23,7 @@ export function OrganizationClient() {
   const router = useRouter();
   const authUser = useAuthUser();
   const tc = useTranslations("common");
-  const to = useTranslations("organization");
+  const to = useTranslations("accountOrganization");
   const mode = useTenancyMode();
 
   return (

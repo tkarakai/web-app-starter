@@ -20,6 +20,7 @@ import { scheduleAuditEvent } from "./auditTrailHelpers";
 import { authedQuery, orgMutation, orgQuery } from "./functions";
 import { actorOf, provisionOrganizationPlan, readTenancyMode } from "./billingAccess";
 import { successorNeeded } from "./organizationOwnership";
+import { isMissingAppFunction } from "./optionalAppFunction";
 import {
   deleteInvitationBatch,
   ensurePersonalOrganization,
@@ -360,9 +361,7 @@ const CLEANUP_RETRY_BASE_MS = 60_000;
 
 /** Convex can't resolve the app's cleanup at all: the app has no `organizationData.ts`. */
 export function isMissingCleanup(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  const message = error.message;
-  return message.includes(DELETE_ORGANIZATION_DATA) && /Couldn't resolve|Could not find/i.test(message);
+  return isMissingAppFunction(error, DELETE_ORGANIZATION_DATA);
 }
 
 /** `startOrganizationCleanup` for Better Auth's organization-delete hook, which runs in an action. */

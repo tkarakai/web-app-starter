@@ -478,7 +478,7 @@
       "continue": "続行"
     }
   },
-  "organization": {
+  "accountOrganization": {
     "label": "組織",
     "roles": {
       "owner": "オーナー",
@@ -623,7 +623,7 @@
       "createDescription": "組織のオーナーまたは管理者に招待を依頼してください。"
     }
   },
-  "billing": {
+  "accountBilling": {
     "title": "プランと請求",
     "description": "{organization} のプランと支払い担当。",
     "individualDescription": "あなたのプランと支払い方法。",

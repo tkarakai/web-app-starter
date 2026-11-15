@@ -478,7 +478,7 @@
       "continue": "Pokračovat"
     }
   },
-  "organization": {
+  "accountOrganization": {
     "label": "Organizace",
     "roles": {
       "owner": "Vlastník",
@@ -623,7 +623,7 @@
       "createDescription": "Požádejte vlastníka nebo správce některé organizace o pozvánku."
     }
   },
-  "billing": {
+  "accountBilling": {
     "title": "Tarif a fakturace",
     "description": "Tarif organizace {organization} a kdo ho platí.",
     "individualDescription": "Váš tarif a způsob platby.",

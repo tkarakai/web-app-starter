@@ -122,7 +122,7 @@ async function renderSignUpView(
 ) {
   const ts = await getTranslations("auth.signIn");
   const ti = await getTranslations("auth.invitation");
-  const to = await getTranslations("organization.invitation");
+  const to = await getTranslations("accountOrganization.invitation");
   const onboardingType = await fetchOnboardingType();
   const locale = await getLocale();
   const invited = Boolean((await searchParams)?.invitation);
@@ -213,7 +213,7 @@ interface AcceptInvitationViewProps {
 export async function AcceptInvitationView({ params }: AcceptInvitationViewProps) {
   const { id } = await params;
   return (
-    <AuthPageShell namespace="organization.invitation" background="var(--glow-cool)" alignTop>
+    <AuthPageShell namespace="accountOrganization.invitation" background="var(--glow-cool)" alignTop>
       <AcceptInvitation invitationId={id} />
     </AuthPageShell>
   );

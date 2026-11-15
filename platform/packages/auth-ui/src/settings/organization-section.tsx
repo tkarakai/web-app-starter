@@ -53,7 +53,7 @@ type Result = { error?: { status?: number; code?: string } | null };
  * checks every change server-side, whatever this UI shows.
  */
 export function OrganizationSection() {
-  const t = useTranslations("organization");
+  const t = useTranslations("accountOrganization");
   const organization = useQuery(api.platform.organizations.active);
   const mine = useOrganizations();
 
@@ -107,7 +107,7 @@ type CardProps = {
 };
 
 function NameCard({ organization, canManage, run, roleLabel }: CardProps & { canManage: boolean }) {
-  const t = useTranslations("organization");
+  const t = useTranslations("accountOrganization");
   const tc = useTranslations("common");
   const [name, setName] = React.useState(organization.name);
   const [saving, setSaving] = React.useState(false);
@@ -159,7 +159,7 @@ function NameCard({ organization, canManage, run, roleLabel }: CardProps & { can
 }
 
 function MembersCard({ organization, run, roleLabel }: CardProps) {
-  const t = useTranslations("organization");
+  const t = useTranslations("accountOrganization");
   const tc = useTranslations("common");
   const format = useFormatter();
   const youAreOwner = organization.role === "owner";
@@ -252,7 +252,7 @@ function MembersCard({ organization, run, roleLabel }: CardProps) {
 }
 
 function InvitationsCard({ organization, run, roleLabel }: CardProps) {
-  const t = useTranslations("organization");
+  const t = useTranslations("accountOrganization");
   const format = useFormatter();
   const [email, setEmail] = React.useState("");
   const [role, setRole] = React.useState<OrganizationRole>("member");
@@ -363,7 +363,7 @@ function InvitationsCard({ organization, run, roleLabel }: CardProps) {
 
 /** Delete an invitation in any state, after confirming. A pending one's link stops working. */
 function DeleteInvitationButton({ email, invitationId }: { email: string; invitationId: string }) {
-  const t = useTranslations("organization");
+  const t = useTranslations("accountOrganization");
   const tc = useTranslations("common");
   const deleteInvitation = useMutation(api.platform.organizations.deleteInvitation);
   const confirm = async () => {
@@ -396,7 +396,7 @@ function DeleteInvitationButton({ email, invitationId }: { email: string; invita
 }
 
 function LeaveButton({ organization, run }: { organization: ActiveOrganization; run: Run }) {
-  const t = useTranslations("organization");
+  const t = useTranslations("accountOrganization");
   const tc = useTranslations("common");
   return (
     <AlertDialog>
@@ -432,7 +432,7 @@ function LeaveButton({ organization, run }: { organization: ActiveOrganization; 
 
 /** Owners only: delete the organization, after typing its name and confirming who they are. */
 function DangerZoneCard({ organization, run, onlyOne }: { organization: ActiveOrganization; run: Run; onlyOne: boolean }) {
-  const t = useTranslations("organization.danger");
+  const t = useTranslations("accountOrganization.danger");
   const tc = useTranslations("common");
   const router = useRouter();
   const locale = useLocale();

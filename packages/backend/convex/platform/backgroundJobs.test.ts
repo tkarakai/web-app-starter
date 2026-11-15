@@ -5,7 +5,10 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { api, components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { createTestEnv } from "../test.modules";
+import { convexTest } from "convex-test";
+import { registerPlatform } from "@web-app-starter/convex-platform/test";
+import schema from "../schema";
+import { modules } from "../test.modules";
 import authSchema from "./betterAuth/schema";
 import { organizationFixture } from "./organizations.test-helpers";
 import { sendAuthEmail } from "./sendAuthEmail";
@@ -15,16 +18,16 @@ vi.mock("./sendAuthEmail", async (original) => ({
   sendAuthEmail: vi.fn(),
 }));
 
-// Keep the platform job test independent of the reference app's tables and endpoints:
-// adoption replaces organizationData with the buyer's own cleanup hook.
+// Keep the platform job test independent of the app: its `organizationData:deleteOrganizationData`
+// hook is optional (apps adopted before organizations have none), so inject a stand-in.
 const appCleanup = vi.hoisted(() => ({ organizations: [] as string[] }));
-vi.mock("../organizationData", async () => {
+const organizationDataHook = async () => {
   const { organizationDataCleanup } = await import("./functions");
   return { deleteOrganizationData: organizationDataCleanup(async (_ctx, organizationId) => {
     appCleanup.organizations.push(organizationId);
     return true;
   }) };
-});
+};
 
 /** Lets an organization past Better Auth's before-delete check, to reach the after-delete hook's own billing check. */
 const ownership = vi.hoisted(() => ({ skipMarkDeleting: false }));
@@ -55,7 +58,8 @@ afterEach(() => {
 });
 
 async function fixture(mode?: "organizations") {
-  const t = createTestEnv();
+  const t = convexTest(schema, { ...modules, "./organizationData.ts": organizationDataHook });
+  registerPlatform(t);
   t.registerComponent("betterAuth", authSchema, import.meta.glob("./betterAuth/**/*.*s"));
   const f = await organizationFixture(t);
   const boss = await f.user("boss", { role: "admin" });

@@ -23,6 +23,7 @@ import { makeFunctionReference } from "convex/server";
 import { scheduledDeletion } from "./billingAccess";
 import { sendLimitedAuthEmail } from "./authRateLimits";
 import { userDeletionBlockedEmail, userDeletionScheduledEmail } from "./sendAuthEmail";
+import { isMissingAppFunction } from "./optionalAppFunction";
 
 type Reader = Pick<QueryCtx, "runQuery" | "db">;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -132,7 +133,7 @@ export async function finishUserDeletion(
   try {
     await ctx.runMutation(makeFunctionReference<"mutation", { userId: string; ownerId: string }>("userData:deleteUserData"), { userId: args.userId, ownerId });
   } catch (error) {
-    if (!(error instanceof Error) || !error.message.includes("userData:deleteUserData") || !/Couldn't resolve|Could not find/i.test(error.message)) throw error;
+    if (!isMissingAppFunction(error, "userData:deleteUserData")) throw error;
   }
   for (const profileOwnerId of new Set([args.userId, ownerId])) {
     for (const profile of await ctx.db.query("userProfiles").withIndex("by_owner", q => q.eq("ownerId", profileOwnerId)).collect()) await ctx.db.delete(profile._id);
