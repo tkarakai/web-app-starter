@@ -185,6 +185,22 @@ test("adopt: a fresh clone is configured, stripped, linked and recorded; the zon
   assert.throws(() => adopt(root, { name: "Acme", repo: "acme/acme-app", build: false }), /already adopted/);
 });
 
+/** `convex/migrations.ts` as the reference app ships it, with the sample's backfill registered. */
+const SAMPLE_MIGRATIONS = `import { makeMigration, startMigrationsSerially } from "convex-helpers/server/migrations";
+
+import { internal } from "./_generated/api";
+import { internalMutation } from "./_generated/server";
+
+export const migration = makeMigration(internalMutation, { migrationTable: "migrations" });
+
+export default internalMutation(async (ctx) => {
+  await startMigrationsSerially(ctx, [
+    internal.sampleMigrations.projectsToOrganizations, // Sample domain; removed with the sample.
+    // Add future migrations here, in order.
+  ]);
+});
+`;
+
 test("sample removal replaces domain UI and retains account messages and platform bytes", (t) => {
   const root = mkdtempSync(path.join(tmpdir(), "adopt-sample-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -192,7 +208,8 @@ test("sample removal replaces domain UI and retains account messages and platfor
   const dashboard = "apps/web/src/app/[locale]/(dashboard)/dashboard/";
   write(root, `${backend}schema.ts`, read(`${backend}schema.ts`));
   write(root, `${backend}platform/tables.ts`, "platform bytes");
-  write(root, `${backend}migrations.ts`, read(`${backend}migrations.ts`));
+  // A fixed runner, not the repo's: in an adopted app this test sees the app's own migrations.ts.
+  write(root, `${backend}migrations.ts`, SAMPLE_MIGRATIONS);
   for (const file of ["projects.ts", "tasks.ts", "files.ts", "sampleTables.ts", "sampleMigrations.ts", "fileAccess.ts", "file-ownership.test.ts",
     "organization-projects.test.ts"]) write(root, `${backend}${file}`, "sample");
   write(root, "apps/web/src/components/projects/app-sidebar.tsx", "sample");

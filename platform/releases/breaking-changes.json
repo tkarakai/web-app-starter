@@ -1005,6 +1005,13 @@
           "touches": [
             "infra/aws/docker/"
           ]
+        },
+        {
+          "id": "v5-proxy-prefetch-rate-limit",
+          "path": "platform/tooling/codemods/v5-proxy-prefetch-rate-limit.ts",
+          "touches": [
+            "apps/web/src/proxy.ts"
+          ]
         }
       ],
       "migrations": [],
