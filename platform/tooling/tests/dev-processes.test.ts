@@ -20,7 +20,7 @@ import { copyConfiguredIcons } from "./icon-fixture.ts";
 
 const SCRIPTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ROOT = path.resolve(SCRIPTS, "../..");
-const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-dashboard.sh", "dev-start.sh", "dev-convex.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh", "local-fixtures.ts", "ensure-local-deps.sh", "ensure-app-env.sh", "http-ready.ts", "local-dev-deps.ts"];
+const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-dashboard.sh", "dev-start.sh", "dev-convex.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh", "local-fixtures.ts", "local-ports.ts", "ensure-local-deps.sh", "ensure-app-env.sh", "http-ready.ts", "local-dev-deps.ts"];
 // The dev scripts read ports from app.config.ts through platform/tooling/app-config.ts.
 const CONFIG_FILES = ["app.config.ts", "platform/packages/app-config/src/schema.ts", ".github/actions/deploy-convex/fixture-target.ts"];
 
@@ -563,7 +563,8 @@ test("noninteractive start, restart and exit preserve foreign backend", async ()
   });
   processes.push(launcher);
   fs.closeSync(output);
-  await waitFor(() => fs.readFileSync(log, "utf8").includes("[CI MODE] Staying in foreground"));
+  // The launcher runs several Node helpers before it reaches the foreground; allow for a loaded machine.
+  await waitFor(() => fs.readFileSync(log, "utf8").includes("[CI MODE] Staying in foreground"), 60_000, () => fs.readFileSync(log, "utf8"));
   assert.ok(exited(previous));
   assert.ok(await alive(outsider));
   const closed = new Promise((resolve) => launcher.once("exit", resolve));

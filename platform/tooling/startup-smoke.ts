@@ -9,21 +9,17 @@ import { resolve, join, dirname, delimiter } from "node:path";
 import { createRequire } from "node:module";
 import { spawn, execFileSync, type ChildProcess } from "node:child_process";
 import { once } from "node:events";
-import { createServer, type AddressInfo } from "node:net";
 import { stop, readRecords } from "./dev-processes.ts";
+import { releaseClaim, reservePorts } from "./local-ports.ts";
 import appConfig from "../../app.config.ts";
 
 const source = resolve(import.meta.dirname, "../..");
-/** Distinct free loopback ports, so this smoke never collides with another checkout's dev or E2E stack. */
-async function freePorts(count: number): Promise<number[]> {
-  const servers = Array.from({ length: count }, () => createServer().listen(0, "127.0.0.1"));
-  await Promise.all(servers.map(server => once(server, "listening")));
-  const ports = servers.map(server => (server.address() as AddressInfo).port);
-  await Promise.all(servers.map(server => new Promise(done => server.close(done))));
-  return ports;
-}
-const [cloudPort, sitePort, ...appPorts] = await freePorts(2 + Object.keys(appConfig.runtime.ports).length);
-const ports = Object.fromEntries(Object.keys(appConfig.runtime.ports).map((app, index) => [app, appPorts[index]])) as typeof appConfig.runtime.ports;
+// Distinct free ports, leased until this smoke exits, so it never collides with another
+// checkout's dev or E2E stack while the fixture installs and starts.
+const reserved = reservePorts(["cloud", "site", ...Object.keys(appConfig.runtime.ports)]);
+process.once("exit", () => { for (const claim of reserved.claims) releaseClaim(claim); });
+const { cloud: cloudPort, site: sitePort } = reserved.ports;
+const ports = Object.fromEntries(Object.keys(appConfig.runtime.ports).map(app => [app, reserved.ports[app]])) as typeof appConfig.runtime.ports;
 const fixtureConfig = { ...appConfig, runtime: { ...appConfig.runtime, ports } };
 const fixture = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), "starter-real-next-")));
 const write = (file: string, content: string) => { const path = join(fixture, file); fs.mkdirSync(dirname(path), { recursive: true }); fs.writeFileSync(path, content, { mode: 0o755 }); };
@@ -57,7 +53,7 @@ async function until(check: () => boolean, ms = 90_000) {
   throw new Error("Startup smoke timed out\n" + logs);
 }
 try {
-  const tools = ["package.json", "node-ts.sh", "dev-start.sh", "dev-convex.sh", "dev-processes.ts", "dev-stop.sh", "dev-status.sh", "dev-dashboard.sh", "app-config.ts", "agentic-origins.ts", "ensure-local-deps.sh", "ensure-app-env.sh", "copy-shared-assets.sh", "local-fixtures.ts", "http-ready.ts", "local-dev-deps.ts"];
+  const tools = ["package.json", "node-ts.sh", "dev-start.sh", "dev-convex.sh", "dev-processes.ts", "dev-stop.sh", "dev-status.sh", "dev-dashboard.sh", "app-config.ts", "agentic-origins.ts", "ensure-local-deps.sh", "ensure-app-env.sh", "copy-shared-assets.sh", "local-fixtures.ts", "local-ports.ts", "http-ready.ts", "local-dev-deps.ts"];
   for (const name of tools) write("platform/tooling/" + name, fs.readFileSync(join(source, "platform/tooling", name), "utf8"));
   for (const file of ["platform/packages/app-config/src/schema.ts", ".github/actions/deploy-convex/fixture-target.ts"]) write(file, fs.readFileSync(join(source, file), "utf8"));
   for (const icon of Object.values(appConfig.brand.icons)) {
@@ -105,6 +101,8 @@ export default {turbopack:{root:${JSON.stringify(fixture)}}};`);
   command(["install", "--lockfile-only", "--ignore-scripts"]); // Incoming revision's lockfile, without installing it.
   assert.throws(() => createRequire(join(fixture, "apps/web/package.json")).resolve("@repo/onboarding/styles.css"));
   fs.writeFileSync(join(fixture, "installs.log"), "");
+  // The fixture launcher leases these ports itself; a held lease would make it skip them.
+  for (const claim of reserved.claims) releaseClaim(claim);
   launch(["dev", "--app=web,landing"]);
   await until(() => { if (child!.exitCode !== null) throw new Error(logs); return logs.includes("[CI MODE] Staying in foreground"); });
   for (const app of ["web", "landing"]) {

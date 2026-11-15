@@ -11,7 +11,6 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PID_FILE="$PROJECT_DIR/.dev-pids"
-CONVEX_STATE_DIR="$HOME/.convex/anonymous-convex-backend-state"
 PROCESS_HELPER="$SCRIPT_DIR/dev-processes.ts"
 NODE_TS="$SCRIPT_DIR/node-ts.sh"
 source "$SCRIPT_DIR/dev-dashboard.sh"
@@ -148,6 +147,16 @@ fi
 
 STARTED_SERVICES=()
 TSCONFIG_WATCHER_PID=""
+CONVEX_START_LOCKED=false
+# Convex picks its backend and dashboard ports by probing, then binding: two checkouts
+# starting Convex at the same moment can pick the same port (the dashboard loser hangs).
+# Startups therefore take turns machine-wide; running backends are unaffected.
+release_convex_start_lock() {
+    if [ "$CONVEX_START_LOCKED" = true ]; then
+        "$NODE_TS" "$SCRIPT_DIR/local-ports.ts" unlock convex-start "$$" || true
+        CONVEX_START_LOCKED=false
+    fi
+}
 cleanup_on_exit() {
     # Bun can forward a termination signal after the foreground process group
     # has already received it. Shield the first cleanup operation too.
@@ -166,7 +175,13 @@ cleanup_on_exit() {
         done
         set +m
         [ -z "${TAIL_PID:-}" ] || kill "$TAIL_PID" 2>/dev/null || true
+        # A managed run used leased backend ports; give interactive dev its saved ones back.
+        if [ -n "${PLATFORM_E2E_PORTS:-}" ] && [ "$NEED_CONVEX" = true ]; then
+            (cd "$PROJECT_DIR/packages/backend" && "$NODE_TS" "$SCRIPT_DIR/e2e-ports.ts" restore-backend) || true
+        fi
     fi
+    release_convex_start_lock
+    "$NODE_TS" "$SCRIPT_DIR/local-ports.ts" release "$$" || true
     if [ -n "${TSCONFIG_WATCHER_PID:-}" ]; then
         kill "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
         wait "$TSCONFIG_WATCHER_PID" 2>/dev/null || true
@@ -287,14 +302,34 @@ print_convex_upgrade_fix() {
     echo -e "${GREEN}  Then re-run:${NC} ${GREEN}bun run dev${NC}"
 }
 
+# This checkout's Convex state directory, resolved the way the Convex CLI resolves it:
+# project-local first, then a legacy home directory for the named deployment, then the
+# agent default. Mirrors convexState() in local-fixtures.ts (kept in step by a test) without
+# a Node start on every status call. Never a fixed machine-wide path.
+convex_state_dir() {
+    local project_state="$PROJECT_DIR/packages/backend/.convex/local/default"
+    local legacy_root="$HOME/.convex/anonymous-convex-backend-state"
+    local name
+    name=$(get_deployment_name)
+    if [ -f "$project_state/config.json" ]; then
+        echo "$project_state"
+    elif [ -n "$name" ] && [ -d "$legacy_root/$name" ]; then
+        echo "$legacy_root/$name"
+    elif [ -d "$legacy_root/anonymous-agent" ]; then
+        echo "$legacy_root/anonymous-agent"
+    else
+        echo "$project_state"
+    fi
+}
+
 # Get ports from Convex config
 get_convex_ports() {
-    local deployment_name="$1"
-    local config_file="$CONVEX_STATE_DIR/$deployment_name/config.json"
+    local config_file
+    config_file="$(convex_state_dir)/config.json"
 
     if [ -f "$config_file" ]; then
-        local cloud_port=$(cat "$config_file" | grep -o '"cloud":[0-9]*' | grep -o '[0-9]*')
-        local site_port=$(cat "$config_file" | grep -o '"site":[0-9]*' | grep -o '[0-9]*')
+        local cloud_port=$(cat "$config_file" | grep -o '"cloud": *[0-9]*' | grep -o '[0-9]*')
+        local site_port=$(cat "$config_file" | grep -o '"site": *[0-9]*' | grep -o '[0-9]*')
         echo "$cloud_port $site_port"
     fi
 }
@@ -566,8 +601,11 @@ if [ "$NEED_CONVEX" = true ]; then
         TSCONFIG_WATCHER_PID=$!
     fi
 
+    "$NODE_TS" "$SCRIPT_DIR/local-ports.ts" lock convex-start "$$"
+    CONVEX_START_LOCKED=true
+
     if [ "$NON_INTERACTIVE" = true ]; then
-        echo "[CI MODE] Convex state dir: $CONVEX_STATE_DIR"
+        echo "[CI MODE] Convex state dir: $(convex_state_dir)"
         echo "[CI MODE] Starting: CONVEX_AGENT_MODE=anonymous CONVEX_VERBOSE=1 local Convex CLI dev (from $CONVEX_DIR)"
         (cd "$CONVEX_DIR" && CONVEX_VERBOSE=1 bash "$SCRIPT_DIR/dev-convex.sh" > "$PROJECT_DIR/.convex-dev.log" 2>&1) &
         CONVEX_PID=$!
@@ -642,6 +680,7 @@ if [ "$NEED_CONVEX" = true ]; then
     done
 
     printf "\n"
+    [ "$CONVEX_READY" = false ] || release_convex_start_lock
 
     if [ "$CONVEX_READY" = false ]; then
         echo -e "${RED}✖ Timeout waiting for Convex to start${NC}"
@@ -830,7 +869,10 @@ find_available_port() {
         case " ${SELECTED_PORTS:-} " in
             *" $port "*) port=$((port + 1)); continue ;;
         esac
-        if ! lsof -nP -iTCP:"$port" -sTCP:LISTEN > /dev/null 2>&1; then
+        # Lease the port until this launcher exits, so a launcher in another checkout
+        # starting at the same moment cannot select it before Next binds.
+        if ! lsof -nP -iTCP:"$port" -sTCP:LISTEN > /dev/null 2>&1 \
+            && "$NODE_TS" "$SCRIPT_DIR/local-ports.ts" claim "port-$port" "$$"; then
             echo "$port"
             return
         fi

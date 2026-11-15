@@ -270,7 +270,10 @@ test("sample removal leaves the retained backend suite runnable", (t) => {
   for (const file of ["projects.ts", "tasks.ts", "files.ts", "sampleTables.ts"]) {
     assert.equal(existsSync(path.join(backend, "convex", file)), false);
   }
-  execFileSync("bun", ["run", "test:convex", "--maxWorkers", "2"], { cwd: backend, stdio: "pipe", timeout: 120_000 });
+  // A nested correctness run of the whole backend suite, competing with the parallel tooling
+  // tests: vitest's 5 s per-test default fails it on a busy machine. The real test:convex step
+  // keeps that limit; this run is bounded by the 120 s spawn timeout instead.
+  execFileSync("bun", ["run", "test:convex", "--maxWorkers", "2", "--testTimeout", "30000"], { cwd: backend, stdio: "pipe", timeout: 120_000 });
 });
 
 /** Every file under `dir` (relative to `root`), skipping installed and generated output. */

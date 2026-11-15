@@ -1,30 +1,17 @@
-import { spawnSync } from "node:child_process";
-import { closeSync, ftruncateSync, openSync, readFileSync, writeSync } from "node:fs";
+import { closeSync, existsSync, ftruncateSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { join } from "node:path";
-import rawConfig from "../../app.config.ts";
-import { APP_IDS, validateAppConfig, type AppId } from "../packages/app-config/src/schema.ts";
+import { APP_IDS, type AppId } from "../packages/app-config/src/schema.ts";
+import { releaseClaim, reservePorts } from "./local-ports.ts";
 
-export function selectPorts(preferred: Record<string, number>, occupied: (port: number) => boolean): Record<string, number> {
-  const selected: Record<string, number> = {};
-  for (const [name, first] of Object.entries(preferred)) {
-    let port = first;
-    while (port <= first + 10 && (Object.values(selected).includes(port) || occupied(port))) port++;
-    if (port > first + 10) throw new Error(`No available local port between ${first} and ${first + 10} (${name})`);
-    selected[name] = port;
-  }
-  return selected;
-}
-
-/** Resolve once in the Playwright runner; workers and its launcher inherit the plan. */
+/**
+ * Resolve once in the Playwright runner; workers and its launcher inherit the plan. The ports
+ * are OS-assigned and leased to the runner until it exits, so a concurrent run in another
+ * checkout never plans the same port while this run's servers are still starting.
+ */
 export function e2eOrigin(app: AppId): string {
   if (!process.env.PLATFORM_E2E_PORTS) {
-    const config = validateAppConfig(rawConfig);
-    const preferred = Object.fromEntries(APP_IDS.map((id) => [id, config.runtime.ports[id]]));
-    const ports = selectPorts({ ...preferred, cloud: 3210, site: 3211 }, (port) => {
-      const result = spawnSync("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN"], { encoding: "utf8" });
-      if (result.error || (result.status !== 0 && result.status !== 1)) throw new Error(`Cannot inspect local port ${port}: ${result.error?.message ?? result.stderr}`);
-      return result.status === 0;
-    });
+    const { ports, claims } = reservePorts([...APP_IDS, "cloud", "site"]);
+    process.once("exit", () => { for (const claim of claims) releaseClaim(claim); });
     process.env.PLATFORM_E2E_PORTS = JSON.stringify(ports);
   }
   return `http://localhost:${plannedPort(app)}`;
@@ -38,31 +25,61 @@ export function plannedPort(name: string): number {
   return port;
 }
 
-/** Convex probes saved ports before applying CLI overrides. Stage only our
- * project-local config so another checkout's anonymous-agent is never probed. */
-export function prepareBackendPorts(directory: string): void {
+function rewritePorts(directory: string, ports: (previous: unknown) => unknown): boolean {
   const file = join(directory, ".convex/local/default/config.json");
   let descriptor: number;
   try {
     descriptor = openSync(file, "r+");
   } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") return;
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") return false;
     throw error;
   }
   try {
     const config = JSON.parse(readFileSync(descriptor, "utf8")) as Record<string, unknown>;
-    config.ports = { cloud: plannedPort("cloud"), site: plannedPort("site") };
+    config.ports = ports(config.ports);
     const content = JSON.stringify(config, null, 2) + "\n";
     writeSync(descriptor, content, 0, "utf8");
     ftruncateSync(descriptor, Buffer.byteLength(content));
   } finally {
     closeSync(descriptor);
   }
+  return true;
+}
+
+/** The checkout's own saved ports, kept while a managed run uses its leased ones. */
+const savedPortsFile = (directory: string) => join(directory, ".convex/platform-e2e-saved-ports.json");
+
+/** Convex probes saved ports before applying CLI overrides. Stage only our
+ * project-local config so another checkout's anonymous-agent is never probed. */
+export function prepareBackendPorts(directory: string): void {
+  // An interrupted run leaves the original record in place; never replace it with leased ports.
+  const keep = (ports: unknown) => { if (ports && !existsSync(savedPortsFile(directory))) writeFileSync(savedPortsFile(directory), JSON.stringify(ports) + "\n", { flag: "wx" }); };
+  const staged = rewritePorts(directory, (previous) => {
+    keep(previous);
+    return { cloud: plannedPort("cloud"), site: plannedPort("site") };
+  });
+  if (!staged) {
+    // A fresh checkout: Convex creates its state during this run. Afterwards, give it the ports
+    // a first interactive start would have used. Convex ignores everything in .convex/.
+    mkdirSync(join(directory, ".convex"), { recursive: true });
+    if (!existsSync(join(directory, ".convex/.gitignore"))) writeFileSync(join(directory, ".convex/.gitignore"), "/*\n");
+    keep({ cloud: 3210, site: 3211 });
+  }
+}
+
+/** After a managed run, give interactive `bun run dev` its usual backend ports back. */
+export function restoreBackendPorts(directory: string): void {
+  if (!existsSync(savedPortsFile(directory))) return;
+  const saved = JSON.parse(readFileSync(savedPortsFile(directory), "utf8")) as unknown;
+  rewritePorts(directory, () => saved);
+  rmSync(savedPortsFile(directory), { force: true });
 }
 
 if (process.argv[1]?.endsWith("/e2e-ports.ts")) {
   if (process.argv[2] === "prepare-backend") {
     prepareBackendPorts(process.cwd());
+  } else if (process.argv[2] === "restore-backend") {
+    restoreBackendPorts(process.cwd());
   } else if (process.argv[2] === "shell") {
     for (const app of APP_IDS) {
       const port = plannedPort(app);

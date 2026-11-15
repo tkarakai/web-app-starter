@@ -138,6 +138,45 @@ and clears the backend's generated deployment/URL entries. It preserves other en
 settings and your global Convex login and deployments, and never creates a cloud project.
 The next `bun run dev` creates and seeds a fresh anonymous local backend.
 
+### Local Convex state per checkout
+
+Each checkout keeps its own local Convex backend: its database, file storage and
+`config.json` live in `packages/backend/.convex/local/default`, and its URLs are in
+`packages/backend/.env.local`. Several checkouts and worktrees can run `bun run dev` or
+`CI=true bun run ci` at the same time. Managed E2E runs take OS-assigned ports that are leased
+to their Playwright runner, so they never compete with each other or with your dev servers.
+`bun run dev` leases each app port it selects until the launcher exits, so two checkouts
+starting at the same moment never pick the same port.
+Convex startups take turns: the launcher holds a machine-wide lock from starting Convex until
+its functions are ready, so two checkouts never pick the same local dashboard or backend port.
+
+Convex CLI versions before project-local state kept deployments under
+`~/.convex/anonymous-convex-backend-state/<deployment>`. The CLI still uses such a directory
+when a checkout has no project-local state. A uniquely named one, such as
+`anonymous-agent-1a2b3c4d`, belongs to the checkout whose `packages/backend/.env.local` names
+it, and keeps working. The directory named `anonymous-agent` is different: every checkout
+without project-local state attaches to it, so they all share one database. Managed E2E runs
+refuse to start on it. `bun run dev` still starts on it but prints a warning. To give each
+checkout its own state, stop dev in every checkout (`bun run dev:stop`) and choose one of these:
+
+- **Start fresh.** Move the shared directory aside. Each checkout creates its own state on its
+  next start, and the old data stays in the moved directory:
+
+  ```bash
+  mv ~/.convex/anonymous-convex-backend-state/anonymous-agent ~/.convex/anonymous-agent.shared-backup
+  ```
+
+- **Keep the data for one checkout.** In that checkout, copy the directory into project-local
+  state and record its deployment name. Then move the shared directory aside, as above:
+
+  ```bash
+  mkdir -p packages/backend/.convex/local
+  cp -Rp ~/.convex/anonymous-convex-backend-state/anonymous-agent packages/backend/.convex/local/default
+  node -e 'const fs=require("fs"),f="packages/backend/.convex/local/default/config.json",c=JSON.parse(fs.readFileSync(f,"utf8"));c.deploymentName="anonymous-agent";fs.writeFileSync(f,JSON.stringify(c))'
+  ```
+
+The platform never moves or deletes this data for you.
+
 The seed is idempotent. Restart `bun run dev` after resetting the database, or after upgrading
 a running dev backend to provision its new fixture authorization. Delete `.env.e2e.local` and
 restart to rotate the capability; the previous capability then stops working. Neither local app

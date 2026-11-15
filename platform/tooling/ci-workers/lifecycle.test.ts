@@ -608,9 +608,10 @@ await core.save(path.join(core.home, 'status.json'), { pauseRequest: 'old', paus
 const { main } = await import(path.join(base, 'cli.ts'));
 let finished = false;
 const draining = main(['pause', '--drain']).then(() => { finished = true; });
-await new Promise(resolve => setTimeout(resolve, 100));
+// Acknowledge the new request only once pause has recorded it; a fixed delay lost that race under load.
+let paused = await core.config();
+while (paused.pauseRequest === undefined) { await new Promise(resolve => setTimeout(resolve, 50)); paused = await core.config(); }
 assert.equal(finished, false);
-const paused = await core.config();
 await core.save(path.join(core.home, 'status.json'), { pauseRequest: paused.pauseRequest, paused: true, active: [123] });
 await new Promise(resolve => setTimeout(resolve, 1100));
 assert.equal(finished, false);

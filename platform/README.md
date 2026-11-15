@@ -143,7 +143,7 @@ This means you can switch branches or work in multiple worktrees simultaneously 
 
 ### Offline development
 
-The local Convex backend runs entirely on your machine—no internet connection required. Data persists in `~/.convex/anonymous-convex-backend-state/<deployment-name>/` between sessions.
+The local Convex backend runs entirely on your machine—no internet connection required. Data persists between sessions in the checkout's `packages/backend/.convex/local/default/` ([local Convex state per checkout](docs/development.md#local-convex-state-per-checkout)).
 
 ### Better Auth auto-configuration
 
@@ -455,7 +455,7 @@ Use [pre-push CI](docs/ci-pre-push.md) for local commands and debugging,
 
 ### Convex data and files
 
-- Local: `bun run dev` runs a local Convex backend in anonymous mode. Data and file storage persist in `~/.convex/anonymous-convex-backend-state/<deployment-name>/`. Each branch or worktree gets its own isolated deployment. The supported way to access local data is through Convex queries/mutations (your app or admin-only functions).
+- Local: `bun run dev` runs a local Convex backend in anonymous mode. Data and file storage persist in the checkout's `packages/backend/.convex/local/default/`. Each checkout or worktree gets its own isolated deployment ([local Convex state per checkout](docs/development.md#local-convex-state-per-checkout)). The supported way to access local data is through Convex queries/mutations (your app or admin-only functions).
 - Cloud: data and files live in Convex-managed cloud storage. Use the Convex dashboard and deployment tooling to inspect or export data.
 
 ### Better Auth data
