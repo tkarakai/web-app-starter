@@ -13,6 +13,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+## [5.0.2] - 2026-11-15
+
 ### Fixed
 
 - Two checkouts or worktrees on one machine can run `CI=true bun run ci`, including E2E, `test:startup` and `test:convex`, at the same time ([#414](https://github.com/tkarakai/web-app-starter/issues/414)). Before, one run could fail with `EADDRINUSE`, `Selected E2E port … is now occupied; refusing to reuse it` or a Convex startup timeout:
@@ -23,7 +25,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
   - **Fewer timing failures on a busy machine.** Two `test:dev-scripts` tests run the whole backend suite nested inside the parallel tooling run (`adopt.test.ts` sample removal, and the data-access guide examples). They failed with `Test timed out in 5000ms` at modest load. Their nested vitest runs now allow 30 s per test, and the spawn timeouts still bound them. Your own `bun run test:convex` keeps vitest's 5 s limit. Two other tests polled with fixed delays or short deadlines (the `ci-workers` drain test and a `dev-processes` launcher test); they now wait for the state itself.
 
-  **No action is required to take this release.** If the new warning appears, plan the move to per-checkout state; until then, avoid running two checkouts at once. If neither the warning nor the refusal appears, your checkouts already have their own state. Otherwise follow "Local Convex state per checkout" in [`docs/development.md`](./docs/development.md#local-convex-state-per-checkout). It shows how to move the shared directory aside for fresh state, or copy its data into one checkout. Existing data is never moved or deleted automatically. Uniquely named legacy deployments, such as `anonymous-agent-1a2b3c4d`, keep working unchanged.
+  **No action is required to take this release.**
+  - **Upgrade review.** `platform:upgrade` shows one seam change in the root `package.json`: `lint:dev-scripts` also lints the new `platform/tooling/local-ports.ts`. Accept it.
+  - **If startup prints the new shared-state warning**, an older checkout still uses `~/.convex/anonymous-convex-backend-state/anonymous-agent`. Plan the move to per-checkout state with "Local Convex state per checkout" in [`docs/development.md`](./docs/development.md#local-convex-state-per-checkout). It shows how to move the shared directory aside for fresh state, or copy its data into one checkout. Existing data is never moved or deleted automatically.
+  - **If neither the warning nor the refusal appears**, your checkouts already have their own state. Uniquely named legacy deployments, such as `anonymous-agent-1a2b3c4d`, keep working unchanged.
 
 ## [5.0.1] - 2026-11-15
 
@@ -1503,5 +1508,7 @@ tag/commit immediately; their own setup and deployment still need validation.
 
 [5.0.0]: https://github.com/tkarakai/web-app-starter/compare/v4.1.0...v5.0.0
 
-[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v5.0.1...HEAD
 [5.0.1]: https://github.com/tkarakai/web-app-starter/compare/v5.0.0...v5.0.1
+
+[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v5.0.2...HEAD
+[5.0.2]: https://github.com/tkarakai/web-app-starter/compare/v5.0.1...v5.0.2

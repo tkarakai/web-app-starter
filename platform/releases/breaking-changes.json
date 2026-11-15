@@ -1126,6 +1126,20 @@
       "renamedExports": [],
       "dependencyFloors": [],
       "changedSeams": []
+    },
+    {
+      "version": "5.0.2",
+      "previous": "5.0.1",
+      "supportedBaseline": ">=2.0.0 <5.0.2",
+      "codemods": [],
+      "migrations": [],
+      "env": [],
+      "removedFiles": [],
+      "renamedExports": [],
+      "dependencyFloors": [],
+      "changedSeams": [
+        "package.json"
+      ]
     }
   ]
 }
