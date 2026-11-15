@@ -563,7 +563,8 @@ test("noninteractive start, restart and exit preserve foreign backend", async ()
   });
   processes.push(launcher);
   fs.closeSync(output);
-  await waitFor(() => fs.readFileSync(log, "utf8").includes("[CI MODE] Staying in foreground"));
+  // The launcher runs several Node helpers before it reaches the foreground; allow for a loaded machine.
+  await waitFor(() => fs.readFileSync(log, "utf8").includes("[CI MODE] Staying in foreground"), 60_000, () => fs.readFileSync(log, "utf8"));
   assert.ok(exited(previous));
   assert.ok(await alive(outsider));
   const closed = new Promise((resolve) => launcher.once("exit", resolve));
