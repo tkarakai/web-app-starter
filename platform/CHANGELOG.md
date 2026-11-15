@@ -27,6 +27,11 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 - The platform backend test `organizations-http.test.ts` no longer hard-codes the locale `de`. An app that ships a subset of locales without `de` (for example `i18n.locales: ["en"]`) got `INVALID_LOCALE` in `bun run test:convex` and in `test:dev-scripts`, both required `platform:upgrade` checks ([#412](https://github.com/tkarakai/web-app-starter/issues/412)). The test now uses a locale your app ships, and a tooling test keeps platform backend tests from passing a literal non-English locale. No app action is required.
 
+- `bun run test:dev-scripts` no longer fails intermittently with `ENOENT … lstat '<repo>/.dev-process-test-…'`. The dev-process tests created their fixtures in the repository root while the landing configuration test was copying that root. They now use the system temporary directory ([#413](https://github.com/tkarakai/web-app-starter/issues/413)). No app action is required.
+
+- `bun run test:startup` takes free ports from the operating system for its fixture apps and Convex stand-in. It no longer competes for the configured app ports with other checkouts' dev and E2E stacks on the same machine ([#414](https://github.com/tkarakai/web-app-starter/issues/414)). No app action is required.
+
+
 ## [5.0.0] - 2026-11-14
 
 ### Added

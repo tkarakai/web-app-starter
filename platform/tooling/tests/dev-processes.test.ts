@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import mutableFs from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
+import { tmpdir } from "node:os";
 import * as path from "node:path";
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -227,7 +228,8 @@ test("default startup skips stripped apps and explicit missing apps fail before 
 });
 
 beforeEach(() => {
-  temp = fs.mkdtempSync(path.join(ROOT, ".dev-process-test-"));
+  // Outside the checkout: other tests copy the live repository root.
+  temp = fs.mkdtempSync(path.join(tmpdir(), "dev-process-test-"));
   base = fs.realpathSync(temp);
   root = path.join(base, "client");
   foreign = path.join(base, "client-other"); // Prefix matches must not count.
