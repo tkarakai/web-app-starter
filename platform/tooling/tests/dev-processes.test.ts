@@ -11,6 +11,7 @@ import mutableFs from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
+import { once } from "node:events";
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import * as manager from "../dev-processes.ts";
@@ -100,6 +101,22 @@ test("status finds live ownership when the legacy PID file is missing", async ()
   manager.stop(root);
   assert.equal(await alive(child), false);
   assert.deepEqual(manager.readRecords(root), {});
+});
+
+test("registration waits for a slow launch to enter the checkout, and fails fast for an exited process", async () => {
+  // On a loaded machine the background shell can take seconds to reach its app directory.
+  const slow = spawn("bash", ["-c", `sleep 6; cd ${JSON.stringify(root)} && exec -a convex-local-backend sleep 300`], { cwd: foreign, detached: true, stdio: "ignore" });
+  processes.push(slow);
+  await waitFor(() => Boolean(manager.identity(slow.pid!)));
+  manager.track(root, "convex", slow.pid!);
+  assert.equal(manager.readRecords(root).convex?.pid, slow.pid);
+  manager.stop(root);
+
+  const exited = spawn("true", [], { cwd: foreign });
+  await once(exited, "exit");
+  const started = Date.now();
+  assert.throws(() => manager.track(root, "convex", exited.pid!), /process was not registered/);
+  assert.ok(Date.now() - started < 2_000, "an exited process is not polled until the deadline");
 });
 
 test("registration failure stops only the newly launched process and keeps earlier ownership", async () => {
