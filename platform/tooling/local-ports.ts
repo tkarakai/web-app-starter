@@ -20,7 +20,9 @@ import { join } from "node:path";
 const HIGHEST_BROWSER_BLOCKED_PORT = 10080;
 
 export function leaseDirectory(): string {
-  const directory = process.env.PLATFORM_PORT_LEASE_DIR || join("/tmp", `web-app-starter-leases-${userInfo().uid}`);
+  // process.getuid works without a passwd entry (containers started with --user UID).
+  const uid = typeof process.getuid === "function" ? process.getuid() : userInfo().uid;
+  const directory = process.env.PLATFORM_PORT_LEASE_DIR || join("/tmp", `web-app-starter-leases-${uid}`);
   fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
   const stat = fs.lstatSync(directory);
   const foreign = typeof process.getuid === "function" && stat.uid !== process.getuid();
@@ -62,7 +64,7 @@ export function tryClaim(key: string, owner: number = process.pid): string | und
 }
 
 export function releaseClaim(claim: string): void {
-  fs.rmSync(join(leaseDirectory(), claim), { force: true });
+  if (claim) fs.rmSync(join(leaseDirectory(), claim), { force: true });
 }
 
 /** Release every claim held by `owner` (on `key` only, when given): a launcher that exits or gives up. */
@@ -100,7 +102,14 @@ export function reservePorts(names: readonly string[], owner: number = process.p
       const name = names.find(candidate => !(candidate in ports));
       if (name === undefined) break;
       if (port <= HIGHEST_BROWSER_BLOCKED_PORT || Object.values(ports).includes(port)) continue;
-      const claim = tryClaim(`port-${port}`, owner);
+      let claim: string | undefined;
+      try {
+        claim = tryClaim(`port-${port}`, owner);
+      } catch (error) {
+        // Leases only coordinate checkouts; without a usable directory, keep the OS-assigned port.
+        process.stderr.write(`Port leases unavailable (${(error as Error).message}); continuing without them.\n`);
+        claim = "";
+      }
       if (claim === undefined) continue;
       ports[name] = port;
       claims.push(claim);
@@ -134,16 +143,22 @@ if (process.argv[1]?.endsWith("/local-ports.ts")) {
     process.stderr.write("Usage: local-ports.ts lock|unlock|claim KEY OWNER_PID [TIMEOUT_SECONDS] | release OWNER_PID\n");
     process.exit(2);
   }
-  if (command === "release") {
-    releaseOwned(undefined, owner);
-  } else if (command === "claim") {
-    // Exit 1 while another live owner holds the key; the caller tries another.
-    if (tryClaim(key!, owner) === undefined) process.exit(1);
-  } else if (command === "unlock") {
-    releaseOwned(`lock-${key}`, owner);
-  } else {
-    const seconds = Number(timeoutArgument ?? "120");
-    const acquired = acquireLock(`lock-${key}`, owner, seconds * 1000, () => process.stderr.write(`Waiting for another checkout to finish its ${key}...\n`));
-    if (!acquired) process.stderr.write(`Still waiting after ${seconds}s for another checkout's ${key}; continuing without the lock.\n`);
+  try {
+    if (command === "release") {
+      releaseOwned(undefined, owner);
+    } else if (command === "claim") {
+      // Exit 1 while another live owner holds the key; the caller tries another.
+      if (tryClaim(key!, owner) === undefined) process.exit(1);
+    } else if (command === "unlock") {
+      releaseOwned(`lock-${key}`, owner);
+    } else {
+      const seconds = Number(timeoutArgument ?? "120");
+      const acquired = acquireLock(`lock-${key}`, owner, seconds * 1000, () => process.stderr.write(`Waiting for another checkout to finish its ${key}...\n`));
+      if (!acquired) process.stderr.write(`Still waiting after ${seconds}s for another checkout's ${key}; continuing without the lock.\n`);
+    }
+  } catch (error) {
+    // Exit 2, never 1 (held): callers continue without coordination rather than fail.
+    process.stderr.write(`Local leases unavailable: ${(error as Error).message}\n`);
+    process.exit(2);
   }
 }

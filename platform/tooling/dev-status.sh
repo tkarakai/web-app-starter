@@ -36,13 +36,16 @@ get_deployment_name() {
 convex_state_dir() {
     local project_state="$PROJECT_DIR/packages/backend/.convex/local/default"
     local legacy_root="$HOME/.convex/anonymous-convex-backend-state"
-    local name
-    name=$(get_deployment_name)
+    local name=""
+    # The Convex CLI reads only the backend's .env.local, never the root one.
+    if [ -f "$PROJECT_DIR/packages/backend/.env.local" ]; then
+        name=$(grep "^CONVEX_DEPLOYMENT=" "$PROJECT_DIR/packages/backend/.env.local" | tail -1 | sed 's/CONVEX_DEPLOYMENT=//; s/ #.*//; s/anonymous://')
+    fi
     if [ -f "$project_state/config.json" ]; then
         echo "$project_state"
-    elif [ -n "$name" ] && [ -d "$legacy_root/$name" ]; then
+    elif [[ "$name" == anonymous-* ]] && [ -f "$legacy_root/$name/config.json" ]; then
         echo "$legacy_root/$name"
-    elif [ -d "$legacy_root/anonymous-agent" ]; then
+    elif [ -f "$legacy_root/anonymous-agent/config.json" ]; then
         echo "$legacy_root/anonymous-agent"
     else
         echo "$project_state"

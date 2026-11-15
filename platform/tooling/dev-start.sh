@@ -309,16 +309,26 @@ print_convex_upgrade_fix() {
 convex_state_dir() {
     local project_state="$PROJECT_DIR/packages/backend/.convex/local/default"
     local legacy_root="$HOME/.convex/anonymous-convex-backend-state"
-    local name
-    name=$(get_deployment_name)
+    local name=""
+    # The Convex CLI reads only the backend's .env.local, never the root one.
+    if [ -f "$PROJECT_DIR/packages/backend/.env.local" ]; then
+        name=$(grep "^CONVEX_DEPLOYMENT=" "$PROJECT_DIR/packages/backend/.env.local" | tail -1 | sed 's/CONVEX_DEPLOYMENT=//; s/ #.*//; s/anonymous://')
+    fi
     if [ -f "$project_state/config.json" ]; then
         echo "$project_state"
-    elif [ -n "$name" ] && [ -d "$legacy_root/$name" ]; then
+    elif [[ "$name" == anonymous-* ]] && [ -f "$legacy_root/$name/config.json" ]; then
         echo "$legacy_root/$name"
-    elif [ -d "$legacy_root/anonymous-agent" ]; then
+    elif [ -f "$legacy_root/anonymous-agent/config.json" ]; then
         echo "$legacy_root/anonymous-agent"
     else
         echo "$project_state"
+    fi
+}
+
+# A managed E2E run leaves the checkout's own backend ports in .convex/; put them back.
+restore_saved_backend_ports() {
+    if [ -f "$PROJECT_DIR/packages/backend/.convex/platform-e2e-saved-ports.json" ]; then
+        (cd "$PROJECT_DIR/packages/backend" && "$NODE_TS" "$SCRIPT_DIR/e2e-ports.ts" restore-backend) || true
     fi
 }
 
@@ -601,7 +611,13 @@ if [ "$NEED_CONVEX" = true ]; then
         TSCONFIG_WATCHER_PID=$!
     fi
 
-    "$NODE_TS" "$SCRIPT_DIR/local-ports.ts" lock convex-start "$$"
+    # Playwright SIGKILLs its webServer group, so a managed run cannot restore the checkout's
+    # backend ports on exit. Restore them at the next ordinary start instead.
+    if [ -z "${PLATFORM_E2E_PORTS:-}" ]; then
+        restore_saved_backend_ports
+    fi
+
+    "$NODE_TS" "$SCRIPT_DIR/local-ports.ts" lock convex-start "$$" || echo "Continuing without the Convex startup lock." >&2
     CONVEX_START_LOCKED=true
 
     if [ "$NON_INTERACTIVE" = true ]; then
@@ -871,10 +887,15 @@ find_available_port() {
         esac
         # Lease the port until this launcher exits, so a launcher in another checkout
         # starting at the same moment cannot select it before Next binds.
-        if ! lsof -nP -iTCP:"$port" -sTCP:LISTEN > /dev/null 2>&1 \
-            && "$NODE_TS" "$SCRIPT_DIR/local-ports.ts" claim "port-$port" "$$"; then
-            echo "$port"
-            return
+        if ! lsof -nP -iTCP:"$port" -sTCP:LISTEN > /dev/null 2>&1; then
+            # 1: another live launcher holds it. Any other failure: leases are unavailable,
+            # so keep the old unleased behaviour rather than report no free port.
+            local claim_status=0
+            "$NODE_TS" "$SCRIPT_DIR/local-ports.ts" claim "port-$port" "$$" || claim_status=$?
+            if [ "$claim_status" -ne 1 ]; then
+                echo "$port"
+                return
+            fi
         fi
         port=$((port + 1))
     done

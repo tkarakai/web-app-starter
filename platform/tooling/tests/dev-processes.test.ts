@@ -20,6 +20,8 @@ import { copyConfiguredIcons } from "./icon-fixture.ts";
 
 const SCRIPTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ROOT = path.resolve(SCRIPTS, "../..");
+// Fixture launchers take leases and the Convex startup lock: keep them out of the machine-wide directory.
+process.env.PLATFORM_PORT_LEASE_DIR = fs.mkdtempSync(path.join(tmpdir(), "dev-process-leases-"));
 const INSTALLED = ["package.json", "node-ts.sh", "dev-processes.ts", "dev-dashboard.sh", "dev-start.sh", "dev-convex.sh", "dev-stop.sh", "dev-stop-convex.sh", "dev-nuke-all.sh", "dev-status.sh", "app-config.ts", "next-dev.sh", "local-fixtures.ts", "local-ports.ts", "ensure-local-deps.sh", "ensure-app-env.sh", "http-ready.ts", "local-dev-deps.ts"];
 // The dev scripts read ports from app.config.ts through platform/tooling/app-config.ts.
 const CONFIG_FILES = ["app.config.ts", "platform/packages/app-config/src/schema.ts", ".github/actions/deploy-convex/fixture-target.ts"];

@@ -4,6 +4,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { homedir } from "node:os";
 import { randomBytes } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { parseEnv } from "node:util";
 import { pathToFileURL } from "node:url";
 
@@ -27,29 +28,38 @@ const LEGACY_STATE = ".convex/anonymous-convex-backend-state";
 /**
  * Where the Convex CLI keeps this checkout's anonymous backend, by the CLI's own rule:
  * project-local `packages/backend/.convex/local/default` when it has a config, otherwise a
- * legacy directory under `~/.convex` if one exists for the deployment, otherwise project-local.
- * An unknown or missing deployment name falls back to the agent default, `anonymous-agent`.
+ * legacy `~/.convex` deployment (an `anonymous-` name whose directory has a config), otherwise
+ * project-local. An unknown or missing deployment name falls back to the agent default.
  */
 export function convexState(root: string, fileEnv: Env, home: string = homedir()): { directory: string; deploymentName: string; legacy: boolean } {
   const local = path.join(root, "packages/backend/.convex/local/default");
   const named = fileEnv.CONVEX_DEPLOYMENT?.replace(/^anonymous:/, "");
   if (fs.existsSync(path.join(local, "config.json"))) return { directory: local, deploymentName: named ?? SHARED_AGENT_DEPLOYMENT, legacy: false };
-  const isLegacy = (name: string) => fs.statSync(path.join(home, LEGACY_STATE, name), { throwIfNoEntry: false })?.isDirectory() === true;
+  const isLegacy = (name: string) => name.startsWith("anonymous-") && fs.statSync(path.join(home, LEGACY_STATE, name, "config.json"), { throwIfNoEntry: false })?.isFile() === true;
   const deploymentName = named && isLegacy(named) ? named : SHARED_AGENT_DEPLOYMENT;
   return isLegacy(deploymentName) ? { directory: path.join(home, LEGACY_STATE, deploymentName), deploymentName, legacy: true } : { directory: local, deploymentName, legacy: false };
 }
 
+/** Whether any process has the state's database open (lsof lists it). Unknown counts as unused. */
+export function stateInUse(directory: string): boolean {
+  const database = path.join(directory, "convex_local_backend.sqlite3");
+  if (!fs.existsSync(database)) return false;
+  const result = spawnSync("lsof", ["-t", "--", database], { encoding: "utf8" });
+  return result.status === 0 && result.stdout.trim() !== "";
+}
+
 /**
  * Every checkout without project-local state attaches to a legacy `anonymous-agent` directory,
- * so concurrent stacks from different checkouts would share one database. Managed E2E runs
- * (a Playwright port plan is present) refuse it; interactive startup keeps working and warns.
+ * so stacks from different checkouts can share one database. Startup warns. A managed E2E run
+ * (a Playwright port plan is present) refuses only while another backend has that database
+ * open, which is when sharing would corrupt it; this launcher has not started its own yet.
  */
-export function assertCheckoutState(root: string, fileEnv: Env, managed: boolean, warn: (message: string) => void, home: string = homedir()): void {
+export function assertCheckoutState(root: string, fileEnv: Env, managed: boolean, warn: (message: string) => void, home: string = homedir(), inUse: (directory: string) => boolean = stateInUse): void {
   const state = convexState(root, fileEnv, home);
   if (!state.legacy || state.deploymentName !== SHARED_AGENT_DEPLOYMENT) return;
-  const message = `This checkout's local Convex backend would use the machine-wide legacy state ${state.directory}, which every checkout without project-local state shares. ` +
+  const message = `This checkout's local Convex backend uses the machine-wide legacy state ${state.directory}, which every checkout without project-local state shares. ` +
     "Give each checkout its own state: see \"Local Convex state per checkout\" in platform/docs/development.md.";
-  if (managed) throw new Error(`${message} Managed E2E runs refuse shared state.`);
+  if (managed && inUse(state.directory)) throw new Error(`${message} Another local backend is using it right now; managed E2E runs refuse to share it.`);
   warn(`Warning: ${message}`);
 }
 
