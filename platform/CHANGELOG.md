@@ -13,6 +13,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+## [5.0.1] - 2026-11-15
+
 ### Fixed
 
 - `bun run dev` and the managed E2E and launcher tests no longer abort on a loaded machine with `Cannot verify ownership of next-… (PID …); process was not registered`. The launcher allowed about 1 s for a new service to enter its app directory. It now waits up to 15 s with backoff, and still fails at once if the process has exited ([#417](https://github.com/tkarakai/web-app-starter/issues/417)). No app action is required.
@@ -1487,5 +1489,7 @@ tag/commit immediately; their own setup and deployment still need validation.
 
 [4.1.0]: https://github.com/tkarakai/web-app-starter/compare/v4.0.0...v4.1.0
 
-[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v5.0.0...HEAD
 [5.0.0]: https://github.com/tkarakai/web-app-starter/compare/v4.1.0...v5.0.0
+
+[Unreleased]: https://github.com/tkarakai/web-app-starter/compare/v5.0.1...HEAD
+[5.0.1]: https://github.com/tkarakai/web-app-starter/compare/v5.0.0...v5.0.1
