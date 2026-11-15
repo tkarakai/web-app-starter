@@ -169,3 +169,20 @@ test("an upgrade without an app-owned userData module still bundles account dele
   const result = await execute(["bun", "build", path.join(convex, "platform/userDeletion.ts"), "--packages", "external", "--target", "node", "--outfile", path.join(f.app, "deletion.mjs")], f.app);
   assert.equal(result.exitCode, 0, result.log);
 });
+test("a generated seam changed on both sides is regenerated, never trusted to a clean text merge", async () => {
+  const file = "packages/backend/convex/_generated/api.d.ts";
+  // Imports at the top, the module map further down: like Convex's api.d.ts, so the app's removals
+  // and the target's addition land in separate hunks and merge without a textual conflict.
+  const decl = (modules: string[], extra: string[] = []) => modules.map(name => `import type * as ${name} from "../${name}.js";`).join("\n")
+    + "\n\n// a\n// b\n// c\n// d\n\ndeclare const api: {\n" + [...modules.filter(name => name !== "userData" && name !== "projects"), ...extra].map(name => `  ${name}: typeof ${name};`).join("\n") + "\n};\n";
+  const f = fixture({ files: { [file]: decl(["auth", "projects", "userData"]) }, seams: [{ id: "generated-api", path: file, hooks: [] }] });
+  // The app regenerated for its own modules (no sample projects, no userData); the target adds one.
+  write(f.app, file, decl(["auth"])); git(f.app, "add", "-A"); git(f.app, "commit", "-qm", "regenerate for the app");
+  write(f.source, file, decl(["auth", "projects", "userData"], ["billing"])); f.publish("2.0.1");
+  const result = await f.plan("2.0.1");
+  assert(result.plan.gates.some(row => row.id === "seam:" + file && row.kind === "seam-conflict" && /Regenerate/.test(row.message)));
+  assert(result.plan.changes.some(row => row.path === file && row.conflict));
+  // An ordinary seam with the same shape of change still merges without review.
+  const plain = fixture(); write(plain.source, "app.config.ts", fs.readFileSync(path.join(plain.source, "app.config.ts"), "utf8").replace("'old'", "'new'")); plain.publish("2.0.1");
+  assert.deepEqual((await plain.plan("2.0.1")).plan.gates, []);
+});

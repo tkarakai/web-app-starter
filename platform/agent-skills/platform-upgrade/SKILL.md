@@ -51,7 +51,8 @@ source or target mid-plan; another source requires an explicit trust decision.
 
 Keep app features, branding, ports, cookie prefix, locale overrides and optional-app choices.
 Edit only the files named for review. Preserve platform hooks when merging a seam; inspect the
-installed/app/target sections rather than blindly choosing one side. Platform files come from
+installed/app/target sections rather than blindly choosing one side. Never hand-merge a generated
+seam (`convex/_generated/`): regenerate it against the upgraded app, as `UPGRADING.md` describes. Platform files come from
 the release; intentional exceptions must remain recorded `PLATFORM-PATCH` entries.
 
 For each item, use its exact report ID and the actions documented in `UPGRADING.md`:
