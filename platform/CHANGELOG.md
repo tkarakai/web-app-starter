@@ -149,6 +149,12 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 - **Every app:** install Bun 1.4.4 locally (`bun upgrade`, or your version manager). CI installs it
   through the `setup-bun` action; take the release, then run `bun install` and `bun run ci:quick`.
+  Apps that kept the AWS Dockerfiles: run
+  `./platform/tooling/node-ts.sh platform/tooling/codemods/v5-bun-dockerfiles.ts`, then the same
+  command with `--check`. It moves `ARG BUN_VERSION=1.4.2` to `1.4.4` in `infra/aws/docker/*Dockerfile`
+  (pass another directory if you moved them); `check:runtime-baseline` fails until they match
+  `packageManager`. A Dockerfile with any other Bun version is yours to update.
+  **Done when:** `bun run check:runtime-baseline` passes.
 
 - **Apps that accepted the better-auth advisories GHSA-965c-763c-88jm, GHSA-r4xp-prcw-77qf or
   GHSA-q84f-53jg-9ppm** in `dependency-audit-exceptions.json`: this release fixes them, and the audit
