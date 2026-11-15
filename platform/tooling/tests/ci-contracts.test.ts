@@ -2,8 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
-import { matchesGlob } from "node:path";
+import { existsSync, readdirSync, readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { join, matchesGlob, resolve } from "node:path";
 import { waitForPage } from "../http-ready.ts";
 import { assessAdvisoryRace, runRaceCheck } from "../advisory-race.ts";
 import { auditResult, parseExceptions, reviewAllowlist } from "../dependency-audit.ts";
@@ -234,4 +234,21 @@ test("Dependency Review uses only validated, unexpired advisory exceptions", () 
   assert.equal(reviewAllowlist(parseExceptions(JSON.stringify({ exceptions: [exception] })), "2026-11-12"), exception.advisory);
   assert.equal(reviewAllowlist([], "2026-11-12"), "");
   assert.throws(() => reviewAllowlist([exception], "2026-11-13"), /expired on 2026-11-12/);
+});
+
+test("every platform package with tests is run by a CI check", () => {
+  const root = resolve(import.meta.dirname, "../../..");
+  const rootScripts = (JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { scripts: Record<string, string> }).scripts;
+  // test:shared-packages runs every package's test:coverage; the Backend Tests job runs every test:convex.
+  const turboTasks = ["test:coverage", "test:convex"];
+  const ciRunners = [...PLATFORM_CHECKS, "test:contracts"].map((script) => rootScripts[script] ?? "");
+  const hasTests = (dir: string): boolean => readdirSync(dir, { withFileTypes: true }).some((entry) =>
+    entry.name !== "node_modules" && (entry.isDirectory() ? hasTests(join(dir, entry.name)) : /\.test\.tsx?$/.test(entry.name)));
+  const unreached = readdirSync(join(root, "platform/packages")).map((name) => `platform/packages/${name}`)
+    .filter((dir) => existsSync(join(root, dir, "package.json")) && hasTests(join(root, dir)))
+    .filter((dir) => {
+      const scripts = (JSON.parse(readFileSync(join(root, dir, "package.json"), "utf8")) as { scripts?: Record<string, string> }).scripts ?? {};
+      return !turboTasks.some((task) => task in scripts) && !ciRunners.some((runner) => runner.includes(`${dir}/`) || runner.includes(`${dir} `));
+    });
+  assert.deepEqual(unreached, []);
 });

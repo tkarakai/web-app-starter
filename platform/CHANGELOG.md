@@ -23,6 +23,8 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
   The adoption tests now run the retained web unit suite after sample removal, and fail on any remaining code, string or generated-API entry that uses the sample. Taking this release does not change your app, because these files are yours. If you adopted 5.0.0 with `--remove-sample`, you can clean up: delete `apps/web/qa/tests/app-sidebar.test.tsx` and `apps/web/qa/tests/fixtures/data.ts` (`bun run test:unit` then passes), commit the `_generated/api.d.ts` that `bun run dev` writes, and remove the `sampleErrors` strings and their `app-error-keys.ts` entries if your app doesn't use them. Apps that kept the sample need nothing.
 
+- The `@web-app-starter/app-config` tests (config validation, ports, cookie prefix, locales, token overrides) now run in CI. No check reached them: the package had no `test:coverage` script, so `bun run test:shared-packages` skipped it, and it had no root runner ([#409](https://github.com/tkarakai/web-app-starter/issues/409)). A contract test now fails when any platform package with tests is run by no CI check. No app action is required. `bun run test:shared-packages`, which `bun run ci`, GitHub CI and `platform:upgrade` already run, now includes these tests and checks your `app.config.ts`.
+
 ## [5.0.0] - 2026-11-14
 
 ### Added

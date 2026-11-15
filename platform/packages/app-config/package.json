@@ -9,6 +9,7 @@
   },
   "scripts": {
     "test": "bun test tests",
+    "test:coverage": "bun test tests --coverage",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests --max-warnings 0"
   },
