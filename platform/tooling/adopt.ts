@@ -209,10 +209,21 @@ export function removeSample(root: string): void {
     if (!migrations.includes("internal.")) migrations = migrations.replace('import { internal } from "./_generated/api";\n', "");
     writeFileSync(at(`${backend}migrations.ts`), migrations);
   }
-  for (const file of ["sampleTables.ts", "sampleMigrations.ts", "projects.ts", "tasks.ts", "files.ts", "projectAccess.ts", "fileAccess.ts",
+  const sampleModules = ["sampleTables", "sampleMigrations", "projects", "tasks", "files", "projectAccess", "fileAccess"];
+  for (const file of [...sampleModules.map((name) => `${name}.ts`),
     "projects.test.ts", "tasks.test.ts", "files.test.ts", "authorization-contract.test.ts", "file-ownership.test.ts",
     "organization-projects.test.ts"]) {
     rmSync(at(`${backend}${file}`), { force: true });
+  }
+  // Drop the removed modules from the committed Convex API, exactly as `convex dev` regenerates it,
+  // so the adopted commit already matches what the first backend start writes.
+  const generatedApi = at(`${backend}_generated/api.d.ts`);
+  if (existsSync(generatedApi)) {
+    let api = readFileSync(generatedApi, "utf8");
+    for (const name of sampleModules) {
+      api = api.replace(`import type * as ${name} from "../${name}.js";\n`, "").replace(`  ${name}: typeof ${name};\n`, "");
+    }
+    writeFileSync(generatedApi, api);
   }
   for (const file of ["apps/web/src/components/projects", "apps/web/src/lib/projects.ts", "apps/web/qa/tests/projects.test.ts",
     "apps/web/qa/tests/app-sidebar.test.tsx", "apps/web/qa/tests/fixtures/data.ts",
@@ -247,9 +258,18 @@ export function removeSample(root: string): void {
     if (!/\btd\(/.test(content)) content = content.replace('  const td = useTranslations("dashboard");\n', "");
     writeFileSync(at(file), content);
   }
+  // The sample's error codes map to the sampleErrors strings removed below.
+  const errorKeys = at("apps/web/src/lib/app-error-keys.ts");
+  if (existsSync(errorKeys)) {
+    writeFileSync(errorKeys, readFileSync(errorKeys, "utf8").replace(/^ {2}[A-Z_]+: "sampleErrors\.[^"\n]+",\n/gm, ""));
+  }
   for (const file of readdirSync(at("packages/messages")).filter((name) => /^[a-z]{2}\.json$/.test(name))) {
     const messages = readJson<Record<string, unknown>>(at(`packages/messages/${file}`));
-    for (const key of ["projects", "tasks", "uploads"]) delete messages[key];
+    for (const key of ["projects", "tasks", "uploads", "sampleErrors"]) delete messages[key];
+    const dashboardMessages = messages.dashboard as Record<string, unknown> | undefined;
+    for (const key of ["projects", "noProjects", "noProjectsDescription", "projectNotFound", "projectNotFoundDescription", "tabs"]) {
+      delete dashboardMessages?.[key];
+    }
     writeJson(at(`packages/messages/${file}`), messages);
   }
 }
