@@ -1,7 +1,7 @@
 /** E2E fixture helpers must call the managed run's own backend, not a stale exported URL (#414 follow-up). */
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createServer, type AddressInfo } from "node:net";
 import { createServer as createHttpServer } from "node:http";
 import { once } from "node:events";
@@ -30,11 +30,15 @@ for (const helper of ["platform/apps/admin/qa/e2e/helpers/fixtures.ts", "apps/we
     const script = `import { createDisposableUser } from ${JSON.stringify(path.join(root, helper))};
 await createDisposableUser();`;
     // Like a lab or shell that still exports the old default URL while the run planned other ports.
-    const result = spawnSync(path.join(root, "platform/tooling/node-ts.sh"), ["--input-type=module", "-e", script], {
-      cwd: root, encoding: "utf8", timeout: 30_000,
+    // Asynchronous: the stub backend in this process must keep serving while the helper runs.
+    const child = spawn(path.join(root, "platform/tooling/node-ts.sh"), ["--input-type=module", "-e", script], {
+      cwd: root, stdio: ["ignore", "ignore", "pipe"],
       env: { ...process.env, PLATFORM_E2E_PORTS: JSON.stringify({ cloud: stale, site }), CONVEX_SITE_URL: `http://127.0.0.1:${stale}`, CONVEX_URL: `http://127.0.0.1:${stale}`, DEV_FIXTURE_SECRET: "a".repeat(64) },
     });
-    assert.equal(result.status, 0, result.stderr);
+    let stderr = "";
+    child.stderr.on("data", chunk => { stderr += String(chunk); });
+    const [status] = await once(child, "exit") as [number | null];
+    assert.equal(status, 0, stderr);
     assert.deepEqual(requests, ["POST /api/dev/e2e-user"]);
   });
 }
