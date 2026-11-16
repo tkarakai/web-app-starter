@@ -13,6 +13,10 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Fixed
+
+- The admin E2E suite no longer fails intermittently with `SURFACE_DISABLED` in "WebMCP provider simulator uses a real admin session…" (12 passed, 1 failed). Its specs toggle the backend's global agent surfaces and clean up by disabling them. Without `CI=true`, Playwright ran the spec files in parallel, so one file's cleanup could disable WebMCP while another test was using it. This hit `platform:upgrade`'s required `test:e2e` check, which runs in your environment and usually without `CI=true`. The admin suite now runs on one worker in every mode. No app action is required.
+
 ## [5.0.2] - 2026-11-15
 
 ### Fixed
