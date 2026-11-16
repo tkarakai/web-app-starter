@@ -220,6 +220,9 @@ function Sidebar({
     return (
       <div
         data-slot="sidebar"
+        // A landmark, so its links and footer are not page content outside every landmark (#416).
+        role="navigation"
+        aria-label={labels.title}
         className={cn(
           "flex h-full w-(--sidebar-width) flex-col bg-sidebar text-sidebar-foreground",
           className
@@ -294,6 +297,10 @@ function Sidebar({
       >
         <div
           data-sidebar="sidebar"
+          // A landmark, so its links and footer are not page content outside every landmark (#416).
+          // The mobile sheet is a titled dialog instead.
+          role="navigation"
+          aria-label={labels.title}
           className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
         >
           {children}

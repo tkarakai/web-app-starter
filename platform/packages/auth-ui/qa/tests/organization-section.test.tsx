@@ -173,6 +173,14 @@ describe("organization page", () => {
 });
 
 describe("organization switcher", () => {
+  it("names the trigger by its visible text first, then the action (WCAG 2.5.3 Label in Name)", () => {
+    mocks.mine = { ...two };
+    render(wrap(<SidebarProvider><OrganizationSwitcher logo={null} productName="Product" /></SidebarProvider>));
+    const trigger = screen.getByRole("button", { name: new RegExp(t.switcher.label) });
+    expect(trigger).not.toHaveAttribute("aria-label");
+    expect(trigger).toHaveAccessibleName(`Product Acme ${t.switcher.label}`);
+  });
+
   it("shows No organization when memberships are empty", () => {
     mocks.mine = { activeOrganizationId: null, organizations: [] };
     render(wrap(<SidebarProvider><OrganizationSwitcher logo={null} productName="Product" /></SidebarProvider>));
@@ -182,7 +190,7 @@ describe("organization switcher", () => {
   it("opens a menu to switch even with only one, with no create or settings entry (billing organizations create them)", async () => {
     mocks.mine = { ...two, organizations: two.organizations.slice(0, 1) };
     render(wrap(<SidebarProvider><OrganizationSwitcher logo={null} productName="Product" /></SidebarProvider>));
-    const trigger = screen.getByRole("button", { name: t.switcher.label });
+    const trigger = screen.getByRole("button", { name: new RegExp(t.switcher.label) });
     fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
     expect(await screen.findAllByRole("menuitem")).toHaveLength(1);
     expect(screen.queryByRole("menuitem", { name: t.switcher.create })).not.toBeInTheDocument();
@@ -192,7 +200,7 @@ describe("organization switcher", () => {
   it("restores an open menu after a transient unauthenticated query response without showing stale memberships", async () => {
     const switcher = () => wrap(<SidebarProvider><OrganizationSwitcher logo={null} productName="Product" /></SidebarProvider>);
     const result = render(switcher());
-    fireEvent.pointerDown(screen.getByRole("button", { name: t.switcher.label }), { button: 0, ctrlKey: false });
+    fireEvent.pointerDown(screen.getByRole("button", { name: new RegExp(t.switcher.label) }), { button: 0, ctrlKey: false });
     expect(await screen.findAllByRole("menuitem")).toHaveLength(2);
     mocks.mine = null; result.rerender(switcher());
     expect(screen.queryByRole("menuitem", { name: "Ada" })).not.toBeInTheDocument();
@@ -205,7 +213,7 @@ describe("organization switcher", () => {
   it("uses the new memberships when restoring a menu, including an empty membership list", async () => {
     const switcher = () => wrap(<SidebarProvider><OrganizationSwitcher logo={null} productName="Product" /></SidebarProvider>);
     const result = render(switcher());
-    fireEvent.pointerDown(screen.getByRole("button", { name: t.switcher.label }), { button: 0, ctrlKey: false });
+    fireEvent.pointerDown(screen.getByRole("button", { name: new RegExp(t.switcher.label) }), { button: 0, ctrlKey: false });
     expect(await screen.findAllByRole("menuitem")).toHaveLength(2);
     mocks.mine = null; result.rerender(switcher());
     mocks.mine = { ...two, organizations: two.organizations.slice(0, 1) }; result.rerender(switcher());
@@ -220,7 +228,7 @@ describe("organization switcher", () => {
     mocks.mine = two;
     const switcher = () => wrap(<SidebarProvider><OrganizationSwitcher logo={null} productName="Product" /></SidebarProvider>);
     const result = render(switcher());
-    fireEvent.pointerDown(screen.getByRole("button", { name: t.switcher.label }), { button: 0, ctrlKey: false });
+    fireEvent.pointerDown(screen.getByRole("button", { name: new RegExp(t.switcher.label) }), { button: 0, ctrlKey: false });
     expect(await screen.findAllByRole("menuitem")).toHaveLength(2);
     // The Convex client re-subscribes after refreshing its auth token: the query is briefly loading.
     mocks.mine = undefined;
@@ -228,7 +236,7 @@ describe("organization switcher", () => {
     mocks.mine = { ...two };
     result.rerender(switcher());
     expect(screen.getAllByRole("menuitem")).toHaveLength(2);
-    expect(screen.getByRole("button", { name: t.switcher.label, hidden: true })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: new RegExp(t.switcher.label), hidden: true })).toHaveAttribute("aria-expanded", "true");
   });
 });
 
