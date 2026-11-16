@@ -285,3 +285,22 @@ test("a held port has its own exit status, distinct from a crash", t => {
   assert.equal(claim(holder.pid!).status, 0);
   assert.equal(claim(process.pid).status, 3);
 });
+
+test("a managed run's apps get its planned backend URLs, never stale exported ones", () => {
+  // Next prefers the process environment over .env.local, so an exported CONVEX_URL (a shell
+  // profile, a CI or lab harness, the old 3210/3211 defaults) pointed the apps elsewhere.
+  const source = fs.readFileSync(path.join(root, "platform/tooling/dev-start.sh"), "utf8");
+  const start = source.indexOf("export_managed_backend_urls() {");
+  assert.ok(start > 0, "dev-start.sh defines export_managed_backend_urls");
+  const helper = source.slice(start, source.indexOf("\n}\n", start) + 3);
+  const call = source.search(/\n\s+export_managed_backend_urls\n/);
+  assert.ok(call > 0 && call < source.indexOf('start_next_app "$app_name"'), "called before any Next app starts");
+  const run = (plan: string | undefined) => {
+    const env: Record<string, string | undefined> = { ...process.env, CONVEX_URL: "http://127.0.0.1:3210", CONVEX_SITE_URL: "http://127.0.0.1:3211", NEXT_PUBLIC_CONVEX_SITE_URL: "http://127.0.0.1:3211", NEXT_PUBLIC_CONVEX_URL: "http://127.0.0.1:3210" };
+    if (plan === undefined) delete env.PLATFORM_E2E_PORTS; else env.PLATFORM_E2E_PORTS = plan;
+    return spawnSync("bash", ["-c", `${helper}\nCLOUD_PORT=58301; SITE_PORT=58302\nexport_managed_backend_urls\nprintf '%s %s %s %s' "$CONVEX_URL" "$CONVEX_SITE_URL" "$NEXT_PUBLIC_CONVEX_SITE_URL" "$NEXT_PUBLIC_CONVEX_URL"`], { encoding: "utf8", env }).stdout;
+  };
+  assert.equal(run(JSON.stringify({ cloud: 58301, site: 58302 })), "http://127.0.0.1:58301 http://127.0.0.1:58302 http://127.0.0.1:58302 http://127.0.0.1:58301");
+  // Interactive dev keeps whatever the developer exported.
+  assert.equal(run(undefined), "http://127.0.0.1:3210 http://127.0.0.1:3211 http://127.0.0.1:3211 http://127.0.0.1:3210");
+});
