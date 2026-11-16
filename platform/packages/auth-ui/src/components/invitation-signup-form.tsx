@@ -21,12 +21,12 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
+  CardTitle,
   Input,
   Label,
   Skeleton,
 } from "@web-app-starter/design-system";
 import { PasswordStrengthMeter, getMinPasswordLength } from "@web-app-starter/design-system/password-strength";
-import { PageTitle } from "./page-title";
 
 export function InvitationSignupForm({ token }: { token?: string }) {
   const router = useRouter();
@@ -97,9 +97,9 @@ export function InvitationSignupForm({ token }: { token?: string }) {
     return (
       <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
         <CardHeader className="space-y-2 text-center">
-          <PageTitle className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <CardTitle className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {ti("invalidTitle")}
-          </PageTitle>
+          </CardTitle>
           <CardDescription className="text-xl font-semibold leading-tight text-foreground">
             {ti("noToken")}
           </CardDescription>
@@ -134,9 +134,9 @@ export function InvitationSignupForm({ token }: { token?: string }) {
     return (
       <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
         <CardHeader className="space-y-2 text-center">
-          <PageTitle className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <CardTitle className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {ti("invalidTitle")}
-          </PageTitle>
+          </CardTitle>
           <CardDescription className="text-xl font-semibold leading-tight text-foreground">
             {reasonMessages[tokenValidation.reason] ?? ti("tokenInvalid")}
           </CardDescription>
@@ -150,9 +150,9 @@ export function InvitationSignupForm({ token }: { token?: string }) {
     return (
       <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
         <CardHeader className="space-y-2 text-center">
-          <PageTitle className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <CardTitle className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {ti("sessionConflictTitle")}
-          </PageTitle>
+          </CardTitle>
           <CardDescription className="text-xl font-semibold leading-tight text-foreground">
             {ti("sessionConflictDescription", { email: sessionConflict.sessionEmail })}
           </CardDescription>
@@ -261,7 +261,7 @@ export function InvitationSignupForm({ token }: { token?: string }) {
           <Sparkles className="h-4 w-4" />
           {ti("badge")}
         </div>
-        <PageTitle className="text-2xl font-semibold">{ti("title")}</PageTitle>
+        <CardTitle className="text-2xl font-semibold">{ti("title")}</CardTitle>
         <CardDescription>{ti("description")}</CardDescription>
       </CardHeader>
       <CardContent>

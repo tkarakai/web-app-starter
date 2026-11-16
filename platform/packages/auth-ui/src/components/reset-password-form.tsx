@@ -16,11 +16,11 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
+  CardTitle,
   Label,
   Separator,
 } from "@web-app-starter/design-system";
 import { PasswordStrengthMeter, getMinPasswordLength } from "@web-app-starter/design-system/password-strength";
-import { PageTitle } from "./page-title";
 
 export function ResetPasswordForm({
   token,
@@ -53,9 +53,9 @@ export function ResetPasswordForm({
             <Sparkles className="h-4 w-4" />
             {tr("badge")}
           </div>
-          <PageTitle className="text-2xl font-semibold">
+          <CardTitle className="text-2xl font-semibold">
             {tr("invalidTitle")}
-          </PageTitle>
+          </CardTitle>
           <CardDescription>
             {urlError === "EXPIRED" ? tr("tokenExpired") : tr("tokenInvalid")}
           </CardDescription>
@@ -95,9 +95,9 @@ export function ResetPasswordForm({
               <CheckCircle2 className="h-8 w-8 text-primary animate-in fade-in zoom-in duration-500" />
             </div>
           </div>
-          <PageTitle className="text-center text-2xl font-semibold">
+          <CardTitle className="text-center text-2xl font-semibold">
             {tr("successTitle")}
-          </PageTitle>
+          </CardTitle>
           <CardDescription className="text-center">
             {tr("successDescription")}
           </CardDescription>
@@ -161,9 +161,9 @@ export function ResetPasswordForm({
           <Sparkles className="h-4 w-4" />
           {tr("badge")}
         </div>
-        <PageTitle className="text-2xl font-semibold">
+        <CardTitle className="text-2xl font-semibold">
           {tr("title")}
-        </PageTitle>
+        </CardTitle>
         <CardDescription>{tr("description")}</CardDescription>
       </CardHeader>
       <CardContent>

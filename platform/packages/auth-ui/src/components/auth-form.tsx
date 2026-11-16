@@ -49,6 +49,7 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
+  CardTitle,
   Input,
   Label,
   type OtpInputHandle,
@@ -58,7 +59,6 @@ import {
   usePublicConfig,
 } from "@web-app-starter/design-system";
 import { PasswordStrengthMeter, getMinPasswordLength } from "@web-app-starter/design-system/password-strength";
-import { PageTitle } from "./page-title";
 
 type AuthMode = "sign-in" | "sign-up";
 type PasskeyPolicy = "disabled" | "optional" | "required";
@@ -468,9 +468,9 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             <Sparkles className="h-4 w-4" />
             {t("badge")}
           </div>
-          <PageTitle className="text-2xl font-semibold">
+          <CardTitle className="text-2xl font-semibold">
             {t("signUp.title")}
-          </PageTitle>
+          </CardTitle>
           <CardDescription>{t("signUp.description")}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -596,7 +596,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           <Sparkles className="h-4 w-4" />
           {t("badge")}
         </div>
-        <PageTitle className="text-2xl font-semibold">{stepTitle}</PageTitle>
+        <CardTitle className="text-2xl font-semibold">{stepTitle}</CardTitle>
         <CardDescription>{stepDescription}</CardDescription>
       </CardHeader>
       <CardContent>
