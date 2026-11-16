@@ -245,7 +245,12 @@ test("sample removal replaces domain UI and retains account messages and platfor
   assert.match(readFileSync(path.join(root, `${dashboard}organization/organization-client.tsx`), "utf8"), /@\/components\/app-sidebar"/);
 });
 
-test("sample removal leaves the retained backend suite runnable", (t) => {
+// The shipped starter only. In an adopted app the backend is the app's own code: replaying
+// removeSample() overwrites files such as organizationData.ts from templates, and the app's
+// test:convex then fails in the copy. An adopted app has already made its sample choice.
+test("sample removal leaves the retained backend suite runnable", {
+  skip: existsSync(path.join(REPO, ".platform-base.json")) || !existsSync(path.join(REPO, "packages/backend/convex/projects.ts")),
+}, (t) => {
   const root = mkdtempSync(path.join(tmpdir(), "adopt-backend-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const backend = path.join(root, "packages/backend");
