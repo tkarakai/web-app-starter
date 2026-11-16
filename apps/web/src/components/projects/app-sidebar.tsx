@@ -164,8 +164,9 @@ export function AppSidebar({
             <Collapsible open={projectsOpen} onOpenChange={setProjectsOpen} className="group/projects">
               <div className="flex items-center">
                 {/* The label renders the trigger, so the toggle is a real button (a div with button
-                    attributes fails axe's aria-allowed-attr). The default label colour meets AA. */}
-                <SidebarGroupLabel asChild className="mb-1 h-7 flex-1 cursor-pointer rounded-sm px-2 text-[11px] font-semibold uppercase tracking-[0.08em] hover:text-sidebar-foreground">
+                    attributes fails axe's aria-allowed-attr). The default label colour meets AA. Hidden when the
+                    sidebar collapses to icons, so focus never lands on an invisible control. */}
+                <SidebarGroupLabel asChild className="mb-1 h-7 flex-1 cursor-pointer rounded-sm px-2 text-[11px] font-semibold uppercase tracking-[0.08em] hover:text-sidebar-foreground group-data-[collapsible=icon]:hidden">
                   <CollapsibleTrigger>
                     <ChevronRight className="me-1 h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/projects:rotate-90 rtl:rotate-180 rtl:group-data-[state=open]/projects:rotate-90" />
                     {td("projects")}

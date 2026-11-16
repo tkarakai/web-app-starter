@@ -2,9 +2,9 @@ import * as React from "react";
 import { cn } from "@web-app-starter/design-system";
 
 /**
- * A standalone auth page's title: the card title's look, as the page's h1. A CardTitle (an h3)
- * with no heading above it fails axe's heading-order rule, and the page has no h1 (#416).
+ * The card title of a standalone auth page: the card title's look, as an h2 under the auth page
+ * shell's h1. A CardTitle is an h3, and an h1 followed by an h3 fails axe's heading-order (#416).
  */
-export function PageTitle({ className, ...props }: React.ComponentProps<"h1">) {
-  return <h1 data-slot="card-title" className={cn("text-lg font-semibold leading-none", className)} {...props} />;
+export function PageTitle({ className, ...props }: React.ComponentProps<"h2">) {
+  return <h2 data-slot="card-title" className={cn("text-lg font-semibold leading-none", className)} {...props} />;
 }

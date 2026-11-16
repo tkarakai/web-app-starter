@@ -363,7 +363,7 @@ function EnvironmentBanner({
                     {i > 0 && <Pipe />}
                     <span className="inline-flex items-center gap-1">
                       <span className="font-semibold">{item.key}</span>
-                      <span className="font-semibold">{item.val}</span>
+                      <span>{item.val}</span>
                       {item.copyVal && (
                         <CopyButton
                           value={item.copyVal}

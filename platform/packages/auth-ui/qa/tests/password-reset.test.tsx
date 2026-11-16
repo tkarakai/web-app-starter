@@ -31,12 +31,15 @@ beforeEach(() => {
 });
 
 describe("platform password reset", () => {
-  it("titles the standalone forgot- and reset-password pages with an h1 (heading order)", () => {
+  it("titles the forgot- and reset-password cards with an h2 under the auth page shell's h1 (heading order)", () => {
     const forgot = render(<NextIntlClientProvider locale="en" messages={en}><ForgotPasswordForm /></NextIntlClientProvider>);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(en.auth.forgotPassword.title);
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(en.auth.forgotPassword.title);
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 3 })).not.toBeInTheDocument();
     forgot.unmount();
     render(<NextIntlClientProvider locale="en" messages={en}><ResetPasswordForm token="reset-token" /></NextIntlClientProvider>);
-    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1);
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
   });
 
   it.each(["en", "hu"])("preserves the requesting origin and %s locale", async (locale) => {
