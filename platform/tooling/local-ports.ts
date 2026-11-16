@@ -41,22 +41,22 @@ function alive(pid: number): boolean {
 }
 
 /**
- * A process's start identity, as dev-processes.ts records it: ps's start time, plus the start
- * ticks from /proc on Linux. Empty when unknown. (dev-processes.ts cannot be imported here: it
- * uses import.meta, which Playwright's CommonJS transpile of this module does not support.)
+ * A process's start identity, the same from any caller. On Linux, the start ticks since boot from
+ * /proc (independent of time zone and wall-clock steps); elsewhere ps's start time in UTC (ps
+ * prints the caller's local time otherwise, and a claimant and a checker may differ in TZ).
+ * Empty when unknown. (dev-processes.ts has a similar identity() but uses import.meta, which
+ * Playwright's CommonJS transpile of this module does not support.)
  */
 function startIdentity(pid: number): string {
-  const result = spawnSync("ps", ["-p", String(pid), "-o", "lstart="], { encoding: "utf8", env: { ...process.env, LC_ALL: "C" } });
-  let started = result.status === 0 ? result.stdout.trim() : "";
-  if (!started) return "";
   try {
     const stat = fs.readFileSync(`/proc/${pid}/stat`, "utf8");
     const ticks = stat.slice(stat.lastIndexOf(")") + 1).trim().split(/\s+/)[19];
-    if (ticks) started += ":" + ticks;
+    if (ticks) return `ticks:${ticks}`;
   } catch {
-    // No /proc on macOS; the ps start time is the identity.
+    // No /proc on macOS: use ps below.
   }
-  return started;
+  const result = spawnSync("ps", ["-p", String(pid), "-o", "lstart="], { encoding: "utf8", env: { ...process.env, LC_ALL: "C", TZ: "UTC" } });
+  return result.status === 0 ? result.stdout.trim() : "";
 }
 
 /** A claim is held while its owner runs. Claims from older launchers record no start time. */

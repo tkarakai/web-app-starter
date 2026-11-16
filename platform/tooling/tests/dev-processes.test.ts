@@ -770,7 +770,7 @@ test("a managed run that exits before resolving Convex state keeps a legacy chec
   fs.writeFileSync(saved, JSON.stringify({ cloud: 3210, site: 3211 }) + "\n");
   const plan = JSON.stringify({ web: 58411, admin: 58412, landing: 58413, storybook: 58414, cloud: 58401, site: 58402 });
   try {
-    const result = await runScript("dev-start.sh", ["--ci", "--app=landing"], root, { ...process.env, HOME: home, PLATFORM_E2E_PORTS: plan });
+    const result = await runScript("dev-start.sh", ["--ci", "--app=landing"], root, { ...process.env, HOME: home, PLATFORM_E2E_PORTS: plan, PLATFORM_CONVEX_STATE_DIR: undefined });
     assert.equal(result.status, 17, result.stderr);
     // The next ordinary start restores these ports into the legacy config; nothing may drop them first.
     assert.deepEqual(JSON.parse(fs.readFileSync(saved, "utf8")), { cloud: 3210, site: 3211 });

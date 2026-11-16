@@ -327,3 +327,16 @@ test("a stale claim whose PID was reused by an unrelated process is reclaimed", 
   fs.writeFileSync(path.join(leases, `port-43002.${unrelated.pid}.cafecafe0000`), "");
   assert.equal(claim(process.pid).status, 3);
 });
+
+test("a live owner's claim stays held for a checker in another time zone", async t => {
+  // ps prints start times in the caller's local time; claimant and checker are separate process
+  // trees that may run with different TZ settings. A mismatch must never reclaim a live owner.
+  const leases = leaseDirectory(t);
+  const owner = spawn("sleep", ["30"]);
+  t.after(() => owner.kill());
+  await once(owner, "spawn");
+  const claim = (pid: number, tz: string) => spawnSync(nodeTs, [path.join(root, "platform/tooling/local-ports.ts"), "claim", "port-45555", String(pid)], { env: { ...process.env, PLATFORM_PORT_LEASE_DIR: leases, TZ: tz }, encoding: "utf8" });
+  assert.equal(claim(owner.pid!, "UTC").status, 0);
+  assert.equal(claim(process.pid, "America/New_York").status, 3);
+  assert.equal(fs.readdirSync(leases).length, 1, "the owner's claim survives");
+});
