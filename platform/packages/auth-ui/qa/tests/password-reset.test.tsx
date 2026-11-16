@@ -31,6 +31,14 @@ beforeEach(() => {
 });
 
 describe("platform password reset", () => {
+  it("titles the standalone forgot- and reset-password pages with an h1 (heading order)", () => {
+    const forgot = render(<NextIntlClientProvider locale="en" messages={en}><ForgotPasswordForm /></NextIntlClientProvider>);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(en.auth.forgotPassword.title);
+    forgot.unmount();
+    render(<NextIntlClientProvider locale="en" messages={en}><ResetPasswordForm token="reset-token" /></NextIntlClientProvider>);
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
   it.each(["en", "hu"])("preserves the requesting origin and %s locale", async (locale) => {
     render(<NextIntlClientProvider locale={locale} messages={en}>
       <ForgotPasswordForm />
