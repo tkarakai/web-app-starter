@@ -42,6 +42,7 @@ export function DashboardClient() {
   const organizations = useOrganizations();
   const hasOrganization = Boolean(organizations?.activeOrganizationId);
   const tc = useTranslations("common");
+  const td = useTranslations("dashboard");
 
   const pathname = usePathname();
   const search = useSearchParams();
@@ -85,6 +86,8 @@ export function DashboardClient() {
         </header>
 
         <div className="flex flex-1 flex-col overflow-y-auto">
+          {/* A selected project titles the page itself (ProjectHeader's h1). */}
+          {!selectedProjectId && <h1 className="sr-only">{td("projects")}</h1>}
           <div className="mx-auto w-full max-w-4xl px-6 pt-4 empty:hidden">
             <OrganizationInvitations onAccepted={() => setSelectedProjectId(null)} />
           </div>

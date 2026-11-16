@@ -13,6 +13,16 @@ version. Release-specific compatibility and deployment steps are listed explicit
 
 ## [Unreleased]
 
+### Fixed
+
+- Platform markup now passes axe's default rule set on the sign-in page and the signed-in shell, in light and dark ([#416](https://github.com/tkarakai/web-app-starter/issues/416)):
+  - **Environment banner contrast.** The development/staging banner showed its secondary parts (app, version, branch) at 70% opacity: 3.9:1 on the development band and 3.1:1 on staging, below WCAG AA's 4.5:1. All banner text now uses the band's full foreground (6.3:1 and 4.7:1). The parts are told apart by weight, and the copy icon meets the 3:1 non-text minimum.
+  - **Label in Name (WCAG 2.5.3).** The organization switcher and the language selector replaced their visible text with a fixed `aria-label` ("Switch organization", "Select language"). That text is now read after the visible text: the accessible name is, for example, "Acme Corp Switch organization" or "🇬🇧 English Select language". Tests that find these buttons by an exact name must match the new name; Playwright's default substring match still works.
+  - **Heading order.** Standalone auth pages titled themselves with a card title, an `h3`, and had no `h1`. These are sign-in and sign-up, forgot password, reset password, verify email, invitation sign-up and accept invitation. Their title is now the page's `h1`, with the same look.
+  - **Landmarks.** The desktop sidebar is now a navigation landmark named by its `labels.title`, so its menus and footer are no longer content outside every landmark. The mobile sidebar stays a titled dialog.
+
+  **Action, only to drop axe exclusions you added for these:** after upgrading, remove any exclusion of `[data-slot="environment-banner"]` or of the sidebar header (`[data-slot="sidebar-header"]`, the organization switcher), and run your axe check. Pages are your own: a page needs its own `h1` (the reference dashboard adds one), and an app-side collapsible group label should render a button through `<SidebarGroupLabel asChild><CollapsibleTrigger>`, not a `div`. The reference web app's `qa/e2e/a11y.spec.ts` now runs axe's full default rule set on sign-in and the signed-in dashboard, in both themes. Copy it if you want the same check.
+
 ## [5.0.2] - 2026-11-15
 
 ### Fixed

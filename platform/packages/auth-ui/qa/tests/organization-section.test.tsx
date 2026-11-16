@@ -236,7 +236,7 @@ describe("organization switcher", () => {
     mocks.mine = { ...two };
     result.rerender(switcher());
     expect(screen.getAllByRole("menuitem")).toHaveLength(2);
-    expect(screen.getByRole("button", { name: t.switcher.label, hidden: true })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: new RegExp(t.switcher.label), hidden: true })).toHaveAttribute("aria-expanded", "true");
   });
 });
 

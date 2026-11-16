@@ -12,11 +12,11 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
   Input,
   Label,
   Separator,
 } from "@web-app-starter/design-system";
+import { PageTitle } from "./page-title";
 
 function getAndClearPrefillEmail(): string {
   try {
@@ -76,9 +76,9 @@ export function ForgotPasswordForm() {
               <Mail className="h-8 w-8 text-primary animate-in fade-in zoom-in duration-500" />
             </div>
           </div>
-          <CardTitle className="text-center text-2xl font-semibold">
+          <PageTitle className="text-center text-2xl font-semibold">
             {tf("emailSent")}
-          </CardTitle>
+          </PageTitle>
           <CardDescription className="text-center">
             {tf("emailSentDescription", { email })}
           </CardDescription>
@@ -105,9 +105,9 @@ export function ForgotPasswordForm() {
           <Sparkles className="h-4 w-4" />
           {tf("badge")}
         </div>
-        <CardTitle className="text-2xl font-semibold">
+        <PageTitle className="text-2xl font-semibold">
           {tf("title")}
-        </CardTitle>
+        </PageTitle>
         <CardDescription>{tf("description")}</CardDescription>
       </CardHeader>
       <CardContent>

@@ -13,7 +13,6 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
   Skeleton,
   toast,
 } from "@web-app-starter/design-system";
@@ -21,6 +20,7 @@ import {
 import { organizationErrorKey, rememberInvitation, takeRememberedInvitation } from "../lib/organization";
 import { useSignOut } from "../lib/use-sign-out";
 import { SendVerificationButton } from "./organization-invitations";
+import { PageTitle } from "./page-title";
 
 function Panel({ title, description, state, children }: {
   title: string;
@@ -31,7 +31,7 @@ function Panel({ title, description, state, children }: {
   return (
     <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5" data-testid="accept-invitation" data-state={state}>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <PageTitle>{title}</PageTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       {children && <CardContent className="flex flex-col gap-2 sm:flex-row">{children}</CardContent>}

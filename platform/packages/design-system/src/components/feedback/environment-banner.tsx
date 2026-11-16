@@ -153,7 +153,7 @@ function CopyButton({
     <button
       type="button"
       onClick={handleCopy}
-      className="inline-flex rounded p-0.5 opacity-40 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current/30"
+      className="inline-flex rounded p-0.5 opacity-75 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current/30"
       aria-label="Copy to clipboard"
     >
       {copied ? (
@@ -282,11 +282,9 @@ function EnvironmentBanner({
       {statusParts.map((part, i) => (
         <React.Fragment key={i}>
           {i > 0 && <Pipe />}
-          <span
-            className={
-              i === 0 ? "font-semibold" : "opacity-70"
-            }
-          >
+          {/* Every part keeps the band's full foreground: 10px text at 70% opacity measured
+              3.9:1 (development) and 3.1:1 (staging), below WCAG AA's 4.5:1. */}
+          <span className={i === 0 ? "font-semibold" : undefined}>
             {part}
           </span>
         </React.Fragment>
@@ -345,7 +343,7 @@ function EnvironmentBanner({
           <CollapsiblePrimitive.CollapsibleTrigger asChild>
             <button
               type="button"
-              className="flex w-full items-center justify-center py-px text-[10px] font-medium tracking-wide transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/40"
+              className="flex w-full items-center justify-center py-px text-[10px] font-medium tracking-wide transition-colors hover:bg-black/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/40"
               aria-expanded={isOpen}
             >
               {collapsedBar}
@@ -364,7 +362,7 @@ function EnvironmentBanner({
                   <React.Fragment key={item.key}>
                     {i > 0 && <Pipe />}
                     <span className="inline-flex items-center gap-1">
-                      <span className="opacity-45">{item.key}</span>
+                      <span className="font-semibold">{item.key}</span>
                       <span className="font-semibold">{item.val}</span>
                       {item.copyVal && (
                         <CopyButton
@@ -383,7 +381,7 @@ function EnvironmentBanner({
                   <button
                     type="button"
                     onClick={() => setShowEnvVars((v) => !v)}
-                    className="mx-auto flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest opacity-45 transition-opacity hover:opacity-75"
+                    className="mx-auto flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest hover:underline"
                   >
                     <ChevronDown
                       className={cn(
@@ -407,12 +405,12 @@ function EnvironmentBanner({
                                   : "bg-black/[0.04]"
                               }
                             >
-                              <td className="whitespace-nowrap py-px pl-2 pr-3 opacity-55">
+                              <td className="whitespace-nowrap py-px pl-2 pr-3 font-semibold">
                                 {key}
                               </td>
                               <td className="whitespace-nowrap py-px pr-2">
                                 {value || (
-                                  <span className="opacity-30">&mdash;</span>
+                                  <span>&mdash;</span>
                                 )}
                               </td>
                             </tr>
