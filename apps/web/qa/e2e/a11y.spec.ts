@@ -35,6 +35,9 @@ test.describe("Accessibility", () => {
       await signIn(page);
       await page.goto("/en/dashboard");
       await page.waitForLoadState("networkidle");
+      // Audit the settled shell: organization data loaded and the overview titled (its h1).
+      await expect(page.getByTestId("active-organization")).toBeVisible();
+      await expect(page.locator("h1")).toHaveCount(1);
       expect(await axeViolations(page)).toEqual([]);
     });
   }
