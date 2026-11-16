@@ -16,6 +16,9 @@ version. Release-specific compatibility and deployment steps are listed explicit
 ### Fixed
 
 - The admin E2E suite no longer fails intermittently with `SURFACE_DISABLED` in "WebMCP provider simulator uses a real admin session…" (12 passed, 1 failed). Its specs toggle the backend's global agent surfaces and clean up by disabling them. Without `CI=true`, Playwright ran the spec files in parallel, so one file's cleanup could disable WebMCP while another test was using it. This hit `platform:upgrade`'s required `test:e2e` check, which runs in your environment and usually without `CI=true`. The admin suite now runs on one worker in every mode. No app action is required.
+- `test:dev-scripts` no longer fails in an adopted app whose backend changed files the sample removal replaces. One example is real cleanup code in `convex/organizationData.ts`, as its template asks for. The test "sample removal leaves the retained backend suite runnable" replayed sample removal on a copy of the app's own backend, which overwrote those files from templates, and then ran the app's `test:convex` there. Like its web sibling, it now runs only in the shipped starter, and skips once `.platform-base.json` records the adoption. No app action is required. If you carry a `PLATFORM-PATCH` that adds this skip, drop it when you upgrade.
+- A managed E2E run that exits before the launcher has resolved its Convex state, for example on a failed asset copy at startup, no longer deletes an older checkout's saved backend ports. The next `bun run dev` restores them as intended. No app action is required.
+- A port or startup lease left by a launcher that died is no longer kept alive when its PID is reused by an unrelated process. A claim now records its owner's start time and is held only while that same process runs. Claims written by v5.0.2 launchers record no start time, and they keep the previous PID-only rule. No app action is required.
 
 ## [5.0.2] - 2026-11-15
 

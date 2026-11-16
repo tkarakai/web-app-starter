@@ -11,7 +11,7 @@ export default defineConfig({
   testDir: "./qa/e2e",
   outputDir: "./qa/test-results",
   // Serial in every mode: the specs share one backend and toggle its global settings (agent
-  // surfaces, MFA policy), so a parallel file's cleanup could disable a surface another test was
+  // surfaces), so a parallel file's cleanup could disable a surface another test was
   // using. platform:upgrade runs test:e2e in the caller's environment, often without CI=true.
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
