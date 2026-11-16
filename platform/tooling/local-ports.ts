@@ -5,7 +5,8 @@
  * after planning. Each claim is a file named `<key>.<owner pid>.<token>` in one per-user
  * directory. A claimant writes its file first and then looks for another live claim on the
  * same key; if it finds one it withdraws. Two simultaneous claimants can both withdraw, but
- * never both win. Claims of exited owners are stale and removed by the next claimant.
+ * never both win. Claims of exited owners are stale and removed by the next claimant. A claim
+ * records its owner's start time, so a PID reused by an unrelated process does not keep it.
  *
  * This module is imported by Playwright configs (transpiled to CommonJS), so it must stay
  * synchronous and avoid `import.meta`.
@@ -39,6 +40,35 @@ function alive(pid: number): boolean {
   }
 }
 
+/**
+ * A process's start identity, as dev-processes.ts records it: ps's start time, plus the start
+ * ticks from /proc on Linux. Empty when unknown. (dev-processes.ts cannot be imported here: it
+ * uses import.meta, which Playwright's CommonJS transpile of this module does not support.)
+ */
+function startIdentity(pid: number): string {
+  const result = spawnSync("ps", ["-p", String(pid), "-o", "lstart="], { encoding: "utf8", env: { ...process.env, LC_ALL: "C" } });
+  let started = result.status === 0 ? result.stdout.trim() : "";
+  if (!started) return "";
+  try {
+    const stat = fs.readFileSync(`/proc/${pid}/stat`, "utf8");
+    const ticks = stat.slice(stat.lastIndexOf(")") + 1).trim().split(/\s+/)[19];
+    if (ticks) started += ":" + ticks;
+  } catch {
+    // No /proc on macOS; the ps start time is the identity.
+  }
+  return started;
+}
+
+/** A claim is held while its owner runs. Claims from older launchers record no start time. */
+function held(directory: string, entry: string, pid: number): boolean {
+  if (!alive(pid)) return false;
+  let recorded: string;
+  try { recorded = fs.readFileSync(join(directory, entry), "utf8").trim(); } catch { return false; }
+  if (!recorded) return true;
+  const current = startIdentity(pid);
+  return !current || current === recorded;
+}
+
 function ownerOf(entry: string, key: string): number | undefined {
   if (!entry.startsWith(`${key}.`)) return undefined;
   const pid = Number(entry.slice(key.length + 1).split(".")[0]);
@@ -50,11 +80,11 @@ export function tryClaim(key: string, owner: number = process.pid): string | und
   if (!/^[a-z0-9-]+$/.test(key)) throw new Error(`Invalid lease key ${key}`);
   const directory = leaseDirectory();
   const claim = `${key}.${owner}.${randomBytes(6).toString("hex")}`;
-  fs.writeFileSync(join(directory, claim), "", { flag: "wx", mode: 0o600 });
+  fs.writeFileSync(join(directory, claim), startIdentity(owner) + "\n", { flag: "wx", mode: 0o600 });
   for (const entry of fs.readdirSync(directory)) {
     const pid = entry === claim ? undefined : ownerOf(entry, key);
     if (pid === undefined || pid === owner) continue;
-    if (alive(pid)) {
+    if (held(directory, entry, pid)) {
       fs.rmSync(join(directory, claim), { force: true });
       return undefined;
     }

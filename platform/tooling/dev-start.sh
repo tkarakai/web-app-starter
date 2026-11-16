@@ -177,8 +177,10 @@ cleanup_on_exit() {
         [ -z "${TAIL_PID:-}" ] || kill "$TAIL_PID" 2>/dev/null || true
         # A managed run used leased backend ports; give interactive dev its saved ones back.
         # Playwright usually SIGKILLs this script, so the next ordinary start also restores them.
-        if [ -n "${PLATFORM_E2E_PORTS:-}" ] && [ "$NEED_CONVEX" = true ]; then
-            (cd "$PROJECT_DIR/packages/backend" && "$NODE_TS" "$SCRIPT_DIR/e2e-ports.ts" restore-backend "${PLATFORM_CONVEX_STATE_DIR:-$(convex_state_dir)}") || true
+        # Only once this launcher resolved its Convex state: an earlier exit (before the helper
+        # functions even exist) would otherwise restore into the wrong directory and drop the record.
+        if [ -n "${PLATFORM_E2E_PORTS:-}" ] && [ "$NEED_CONVEX" = true ] && [ -n "${PLATFORM_CONVEX_STATE_DIR:-}" ]; then
+            (cd "$PROJECT_DIR/packages/backend" && "$NODE_TS" "$SCRIPT_DIR/e2e-ports.ts" restore-backend "$PLATFORM_CONVEX_STATE_DIR") || true
         fi
     fi
     release_convex_start_lock
