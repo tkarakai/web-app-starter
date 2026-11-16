@@ -10,10 +10,13 @@ const managedOrigin = process.env.E2E_BASE_URL ? undefined : e2eOrigin("admin");
 export default defineConfig({
   testDir: "./qa/e2e",
   outputDir: "./qa/test-results",
-  fullyParallel: true,
+  // Serial in every mode: the specs share one backend and toggle its global settings (agent
+  // surfaces, MFA policy), so a parallel file's cleanup could disable a surface another test was
+  // using. platform:upgrade runs test:e2e in the caller's environment, often without CI=true.
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: process.env.CI
     ? [["github"], ["html", { outputFolder: "qa/playwright-report" }]]
     : [["html", { outputFolder: "qa/playwright-report" }]],
