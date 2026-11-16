@@ -18,7 +18,9 @@ async function deadPort(): Promise<number> {
   return port;
 }
 
-for (const helper of ["platform/apps/admin/qa/e2e/helpers/fixtures.ts", "apps/web/qa/e2e/helpers/fixtures.ts"]) {
+// Platform-owned helpers only: platform tests run in adopted apps, whose apps/web copy is theirs
+// and is not replaced on upgrade. The reference web helper is covered by the starter's web E2E.
+for (const helper of ["platform/apps/admin/qa/e2e/helpers/fixtures.ts"]) {
   test(`${helper} uses the managed plan's backend over an exported CONVEX_SITE_URL`, async t => {
     const requests: string[] = [];
     const backend = createHttpServer((request, response) => { requests.push(`${request.method} ${request.url}`); response.setHeader("Content-Type", "application/json"); response.end("{}"); });
