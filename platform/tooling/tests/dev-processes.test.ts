@@ -753,6 +753,32 @@ test("default startup starts landing with its browser backend", async () => {
   assert.ok(result.stdout.includes("Apps: web=false admin=false landing=true storybook=false convex=true"));
 });
 
+test("a managed run that exits before resolving Convex state keeps a legacy checkout's saved backend ports", async () => {
+  // Startup fails before the launcher has resolved where this checkout's Convex state lives.
+  fs.writeFileSync(path.join(root, "platform/tooling/copy-shared-assets.sh"), "#!/bin/bash\nexit 17\n", { mode: 0o755 });
+  for (const name of ["e2e-ports.ts"]) fs.copyFileSync(path.join(SCRIPTS, name), path.join(root, "platform/tooling", name));
+  fs.mkdirSync(path.join(root, "apps/landing"), { recursive: true });
+  fs.writeFileSync(path.join(root, "apps/landing/package.json"), "{}");
+  // An older checkout: its state is the legacy ~/.convex directory, not project-local.
+  const home = fs.mkdtempSync(path.join(tmpdir(), "dev-process-home-"));
+  const legacy = path.join(home, ".convex/anonymous-convex-backend-state/anonymous-agent-legacy");
+  fs.mkdirSync(legacy, { recursive: true });
+  fs.writeFileSync(path.join(legacy, "config.json"), JSON.stringify({ ports: { cloud: 58401, site: 58402 }, adminKey: "legacy" }));
+  fs.mkdirSync(path.join(root, "packages/backend/.convex"), { recursive: true });
+  fs.writeFileSync(path.join(root, "packages/backend/.env.local"), "CONVEX_DEPLOYMENT=anonymous:anonymous-agent-legacy\n");
+  const saved = path.join(root, "packages/backend/.convex/platform-e2e-saved-ports.json");
+  fs.writeFileSync(saved, JSON.stringify({ cloud: 3210, site: 3211 }) + "\n");
+  const plan = JSON.stringify({ web: 58411, admin: 58412, landing: 58413, storybook: 58414, cloud: 58401, site: 58402 });
+  try {
+    const result = await runScript("dev-start.sh", ["--ci", "--app=landing"], root, { ...process.env, HOME: home, PLATFORM_E2E_PORTS: plan });
+    assert.equal(result.status, 17, result.stderr);
+    // The next ordinary start restores these ports into the legacy config; nothing may drop them first.
+    assert.deepEqual(JSON.parse(fs.readFileSync(saved, "utf8")), { cloud: 3210, site: 3211 });
+  } finally {
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+});
+
 test("explicit landing startup starts its browser backend", async () => {
   fs.mkdirSync(path.join(root, "apps/landing"), { recursive: true });
   fs.writeFileSync(path.join(root, "apps/landing/package.json"), "{}");

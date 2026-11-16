@@ -304,3 +304,26 @@ test("a managed run's apps get its planned backend URLs, never stale exported on
   // Interactive dev keeps whatever the developer exported.
   assert.equal(run(undefined), "http://127.0.0.1:3210 http://127.0.0.1:3211 http://127.0.0.1:3211 http://127.0.0.1:3210");
 });
+
+test("a stale claim whose PID was reused by an unrelated process is reclaimed", async t => {
+  const leases = leaseDirectory(t);
+  const unrelated = spawn("sleep", ["30"]);
+  t.after(() => unrelated.kill());
+  await once(unrelated, "spawn");
+  const environment = { ...process.env, PLATFORM_PORT_LEASE_DIR: leases };
+  const claim = (owner: number) => spawnSync(nodeTs, [path.join(root, "platform/tooling/local-ports.ts"), "claim", "port-43002", String(owner)], { env: environment, encoding: "utf8" });
+  // A launcher that died long ago left this claim; its PID now belongs to `sleep`.
+  fs.writeFileSync(path.join(leases, `port-43002.${unrelated.pid}.deadbeef0000`), "Mon Jan  1 00:00:00 2001\n");
+  assert.equal(claim(process.pid).status, 0, "a claim whose recorded owner start differs is stale");
+  // A live owner's claim records its own start time and keeps blocking others.
+  fs.rmSync(leases, { recursive: true, force: true });
+  fs.mkdirSync(leases, { mode: 0o700 });
+  assert.equal(claim(unrelated.pid!).status, 0);
+  assert.notEqual(fs.readFileSync(path.join(leases, fs.readdirSync(leases)[0]), "utf8").trim(), "", "claims record their owner's start");
+  assert.equal(claim(process.pid).status, 3);
+  // A claim from an older launcher records no start time: kept while its PID is alive.
+  fs.rmSync(leases, { recursive: true, force: true });
+  fs.mkdirSync(leases, { mode: 0o700 });
+  fs.writeFileSync(path.join(leases, `port-43002.${unrelated.pid}.cafecafe0000`), "");
+  assert.equal(claim(process.pid).status, 3);
+});
