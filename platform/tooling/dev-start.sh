@@ -303,6 +303,17 @@ print_convex_upgrade_fix() {
     echo -e "${GREEN}  Then re-run:${NC} ${GREEN}bun run dev${NC}"
 }
 
+# A managed E2E run's apps must reach the backend it started. Next prefers the process
+# environment over .env.local, so exported CONVEX_URL/CONVEX_SITE_URL values (a shell profile,
+# a CI or lab harness, the old 3210/3211 defaults) would point them elsewhere. Interactive dev
+# keeps whatever the developer exported.
+export_managed_backend_urls() {
+    if [ -n "${PLATFORM_E2E_PORTS:-}" ] && [ -n "$CLOUD_PORT" ] && [ -n "$SITE_PORT" ]; then
+        export CONVEX_URL="http://127.0.0.1:$CLOUD_PORT" CONVEX_SITE_URL="http://127.0.0.1:$SITE_PORT"
+        export NEXT_PUBLIC_CONVEX_URL="$CONVEX_URL" NEXT_PUBLIC_CONVEX_SITE_URL="$CONVEX_SITE_URL"
+    fi
+}
+
 # This checkout's Convex state directory, resolved the way the Convex CLI resolves it:
 # project-local first, then a legacy home directory for the named deployment, then the
 # agent default. Mirrors convexState() in local-fixtures.ts (kept in step by a test) without
@@ -793,6 +804,7 @@ if [ "$NEED_CONVEX" = true ]; then
         if [ "$START_LANDING" = true ]; then
             update_env_var "$PROJECT_DIR/$APP_CONFIG_DIR_LANDING/.env.local" "NEXT_PUBLIC_CONVEX_SITE_URL" "http://127.0.0.1:$SITE_PORT"
         fi
+        export_managed_backend_urls
     else
         echo -e "${YELLOW}⚠ Unable to resolve Convex URLs for app .env.local files${NC}"
     fi

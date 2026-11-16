@@ -293,7 +293,7 @@ test("a managed run's apps get its planned backend URLs, never stale exported on
   const start = source.indexOf("export_managed_backend_urls() {");
   assert.ok(start > 0, "dev-start.sh defines export_managed_backend_urls");
   const helper = source.slice(start, source.indexOf("\n}\n", start) + 3);
-  const call = source.indexOf("\n    export_managed_backend_urls\n");
+  const call = source.search(/\n\s+export_managed_backend_urls\n/);
   assert.ok(call > 0 && call < source.indexOf('start_next_app "$app_name"'), "called before any Next app starts");
   const run = (plan: string | undefined) => {
     const env: Record<string, string | undefined> = { ...process.env, CONVEX_URL: "http://127.0.0.1:3210", CONVEX_SITE_URL: "http://127.0.0.1:3211", NEXT_PUBLIC_CONVEX_SITE_URL: "http://127.0.0.1:3211", NEXT_PUBLIC_CONVEX_URL: "http://127.0.0.1:3210" };
