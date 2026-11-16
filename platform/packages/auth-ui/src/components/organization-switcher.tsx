@@ -85,13 +85,11 @@ export function OrganizationSwitcher({ logo, productName, onSwitch }: Organizati
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton
                 size="lg"
+                aria-label={t("switcher.label")}
                 tooltip={active ? `${productName} · ${active.name}` : productName}
                 className="data-[state=open]:bg-sidebar-accent"
               >
                 {label}
-                {/* The action follows the visible text, so the accessible name begins with what a
-                    speech-input user sees (WCAG 2.5.3 Label in Name); an aria-label replaced it. */}
-                <span className="sr-only">{t("switcher.label")}</span>
                 <ChevronsUpDown className="ms-auto size-4 text-muted-foreground" />
               </SidebarMenuButton>
             </DropdownMenuTrigger>

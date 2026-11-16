@@ -26,7 +26,7 @@ interface LanguageSelectorProps {
   locales: LocaleOption[];
   /** Called when the user selects a locale. The consumer handles navigation. */
   onSelect: (locale: string) => void;
-  /** Accessible label for the dropdown trigger, read after the visible language (WCAG 2.5.3). */
+  /** Accessible label for the dropdown trigger. */
   ariaLabel?: string;
   className?: string;
   /**
@@ -117,6 +117,7 @@ export function LanguageSelector({
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
+        aria-label={ariaLabel}
         className={cn(
           "inline-flex h-9 items-center rounded-md border border-border/60 bg-background px-3 text-sm font-medium text-foreground transition-colors",
           "hover:bg-accent hover:text-accent-foreground",
@@ -129,8 +130,6 @@ export function LanguageSelector({
           <span className="me-2">{current?.flag}</span>
           {current?.nativeName}
         </span>
-        {/* Appended, not an aria-label, so the name begins with the visible language. */}
-        <span className="sr-only"> {ariaLabel}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"

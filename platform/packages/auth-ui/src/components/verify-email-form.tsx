@@ -17,12 +17,12 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
+  CardTitle,
   Input,
   Label,
   Separator,
   parseUserAgent,
 } from "@web-app-starter/design-system";
-import { PageTitle } from "./page-title";
 
 function formatDeviceName(userAgent: string | null | undefined, t: ReturnType<typeof useTranslations>): string {
   const parsed = parseUserAgent(userAgent);
@@ -184,11 +184,11 @@ export function VerifyEmailForm() {
               )}
             </div>
           </div>
-          <PageTitle className="text-center text-2xl font-semibold">
+          <CardTitle className="text-center text-2xl font-semibold">
             {errorMessage
               ? tv("verificationErrorTitle")
               : tv("verificationSuccessTitle")}
-          </PageTitle>
+          </CardTitle>
           <CardDescription className="text-center">
             {errorMessage ?? tv("verificationSuccessDescription")}
           </CardDescription>
@@ -281,9 +281,9 @@ export function VerifyEmailForm() {
             <Mail className="h-8 w-8 text-primary" />
           </div>
         </div>
-        <PageTitle className="text-center text-2xl font-semibold">
+        <CardTitle className="text-center text-2xl font-semibold">
           {tv("title")}
-        </PageTitle>
+        </CardTitle>
         <CardDescription className="text-center">
           {email
             ? tv("descriptionWithEmail", { email })
