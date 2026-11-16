@@ -8,6 +8,7 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
+  CardTitle,
 } from "@web-app-starter/design-system";
 import { SiteHeader } from "@web-app-starter/design-patterns";
 
@@ -20,7 +21,6 @@ import { ResetPasswordForm } from "../components/reset-password-form";
 import { VerifyEmailForm } from "../components/verify-email-form";
 import { WaitlistForm, type WaitlistFormProps } from "../components/waitlist-form";
 import { fetchOnboardingType } from "../lib/onboarding";
-import { PageTitle } from "../components/page-title";
 
 /** The marketing site URL for the header's home link, read at request time. */
 function landingUrl(): string {
@@ -141,7 +141,7 @@ async function renderSignUpView(
       ) : (
         <Card className="w-full max-w-md border-border/60 bg-card/80 shadow-xl shadow-primary/5">
           <CardHeader>
-            <PageTitle>{ti("signupBlocked")}</PageTitle>
+            <CardTitle>{ti("signupBlocked")}</CardTitle>
             <CardDescription>
               {ts("description")}
             </CardDescription>
