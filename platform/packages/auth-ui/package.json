@@ -33,7 +33,7 @@
     "@web-app-starter/agentic": "workspace:*"
   },
   "peerDependencies": {
-    "next": "^16.4.1",
+    "next": "^16.4.5",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
