@@ -102,7 +102,7 @@
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "convex": "1.49.0",
-    "next": "16.4.4",
+    "next": "16.4.5",
     "typescript-eslint": "8.72.1",
     "@hono/node-server": "2.1.6",
     "@smithy/core": "3.38.1",
